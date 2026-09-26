@@ -8,12 +8,17 @@ La VM ejecuta tres contenedores con Docker Compose:
 
 Los datos PostgreSQL, archivos de avatares y certificados usan volúmenes persistentes.
 
-## Actualizar desde este equipo
+## Código de la instancia publicada
 
-La copia en la VM vive en `/opt/vestidor18`. Transferir el árbol de trabajo sin `.env`, dependencias ni archivos locales y ejecutar:
+La VM usa la rama `main` de `https://github.com/Santyxd353/examenSI2REPO.git` en `/opt/vestidor18-repo`. El archivo `.env.vm` se conserva solo en la VM; no se sube a Git. Los datos de PostgreSQL, los archivos de la aplicación y los certificados permanecen en los volúmenes de Docker Compose.
+
+## Actualizar desde GitHub
 
 ```bash
-cd /opt/vestidor18
+cd /opt/vestidor18-repo
+git fetch origin
+git checkout main
+git pull --ff-only origin main
 sudo docker compose --env-file .env.vm -f infra/vm/compose.yml up -d --build
 ```
 
