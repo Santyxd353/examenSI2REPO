@@ -3,13 +3,23 @@ import type { PoseResult } from '../modules/pose-landmarker/src';
 export type Point = { x: number; y: number };
 export type Torso = { leftShoulder: Point; rightShoulder: Point; leftHip: Point; rightHip: Point };
 export type Layout = { width: number; height: number };
-export type GarmentKind = 'top' | 'dress' | 'unsupported';
+export type GarmentKind = 'top' | 'dress' | 'skirt' | 'unsupported';
 
 export function garmentImageFrame(torso: Torso, kind: Exclude<GarmentKind, 'unsupported'> = 'top') {
   const shoulderWidth = torso.rightShoulder.x - torso.leftShoulder.x;
+  const hipWidth = torso.rightHip.x - torso.leftHip.x;
   const shoulderY = (torso.leftShoulder.y + torso.rightShoulder.y) / 2;
   const hipY = (torso.leftHip.y + torso.rightHip.y) / 2;
   const torsoHeight = Math.max(hipY - shoulderY, shoulderWidth * 0.85);
+  if (kind === 'skirt') {
+    const width = Math.max(shoulderWidth * 1.05, hipWidth * 1.65);
+    return {
+      left: (torso.leftHip.x + torso.rightHip.x - width) / 2,
+      top: hipY - torsoHeight * 0.08,
+      width,
+      height: torsoHeight * 1.35,
+    };
+  }
   const width = shoulderWidth * 1.55;
   return {
     left: (torso.leftShoulder.x + torso.rightShoulder.x - width) / 2,
@@ -20,9 +30,17 @@ export function garmentImageFrame(torso: Torso, kind: Exclude<GarmentKind, 'unsu
 }
 
 export function garmentKind(categoryOrName: string): GarmentKind {
-  const type = categoryOrName.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const type = categoryOrName
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
   if (/^(vestidos?|dress(?:es)?)(?:\b|$)/i.test(type)) return 'dress';
-  if (/^(blusas?|camisas?|camisetas?|polos?|tops?|chaquetas?|poleras?|sueter(?:es)?|sudaderas?)(?:\b|$)/i.test(type))
+  if (/^(faldas?|skirts?)(?:\b|$)/i.test(type)) return 'skirt';
+  if (
+    /^(blusas?|camisas?|camisetas?|polos?|tops?|chaquetas?|poleras?|sueter(?:es)?|sudaderas?)(?:\b|$)/i.test(
+      type,
+    )
+  )
     return 'top';
   return 'unsupported';
 }
@@ -78,6 +96,17 @@ export function garmentOutline(torso: Torso, kind: Exclude<GarmentKind, 'unsuppo
   const width = rs.x - ls.x;
   const neckX = (ls.x + rs.x) / 2;
   const shoulderY = (ls.y + rs.y) / 2;
+  if (kind === 'skirt') {
+    const hipY = (lh.y + rh.y) / 2;
+    const hipWidth = rh.x - lh.x;
+    const hemY = hipY + Math.max(hipY - shoulderY, width * 0.85) * 1.25;
+    return [
+      { x: lh.x - hipWidth * 0.18, y: hipY - width * 0.03 },
+      { x: rh.x + hipWidth * 0.18, y: hipY - width * 0.03 },
+      { x: rh.x + hipWidth * 0.44, y: hemY },
+      { x: lh.x - hipWidth * 0.44, y: hemY },
+    ];
+  }
   const hemY =
     kind === 'dress'
       ? Math.max(lh.y, rh.y) + (Math.max(lh.y, rh.y) - shoulderY) * 0.75

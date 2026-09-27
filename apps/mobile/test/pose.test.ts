@@ -40,8 +40,10 @@ test('el vestido cubre más largo que una blusa', () => {
   assert.equal(garmentKind('Vestido floral'), 'dress');
   assert.equal(garmentKind('Blusa blanca'), 'top');
   assert.equal(garmentKind('POLO PARA MUJER'), 'top');
+  assert.equal(garmentKind('Falda midi'), 'skirt');
   assert.equal(garmentKind('Pantalón'), 'unsupported');
   assert.ok(garmentOutline(torso, 'dress')[4]!.y > garmentOutline(torso, 'top')[4]!.y);
+  assert.ok(garmentOutline(torso, 'skirt')[0]!.y >= torso.leftHip.y - 20);
 });
 
 test('la imagen ilustrativa se ancla a hombros y cadera', () => {
@@ -64,8 +66,19 @@ test('un PNG de vestido llega bajo la cadera sin cambiar el anclaje de hombros',
   assert.ok(top.top + top.height < 600);
 });
 
+test('una falda se ancla a la cadera y no a los hombros', () => {
+  const torso = projectTorso(pose, { width: 400, height: 800 });
+  assert.ok(torso);
+  const dress = garmentImageFrame(torso, 'dress');
+  const skirt = garmentImageFrame(torso, 'skirt');
+  assert.ok(skirt.top > dress.top);
+  assert.ok(skirt.top >= torso.leftHip.y - 30);
+  assert.equal(skirt.left + skirt.width / 2, 200);
+});
+
 test('el tipo AR se obtiene de una categoría reconocida, sin adivinar nombres comerciales', () => {
   assert.equal(garmentKind('Vestidos'), 'dress');
+  assert.equal(garmentKind('Faldas'), 'skirt');
   assert.equal(garmentKind('Blusas'), 'top');
   assert.equal(garmentKind('Esenciales'), 'unsupported');
   assert.equal(garmentKind('Topacio'), 'unsupported');
