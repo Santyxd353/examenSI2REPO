@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import type { CatalogLocation, CustomerAddress } from './types';
+import { checkoutBlocker } from './checkoutBlocker';
 
 export type MobileCartLine = {
   variantId: string;
@@ -85,6 +86,7 @@ export function MobileCommerceSheet({
   const [tab, setTab] = useState<'cart' | 'orders'>('cart');
   const [address, setAddress] = useState('');
   const [selectedAddressId, setSelectedAddressId] = useState<string>();
+  const [checkoutFeedback, setCheckoutFeedback] = useState('');
   const unavailable = lines.some((line) => line.available < line.quantity || line.price <= 0);
 
   useEffect(() => {
@@ -100,6 +102,16 @@ export function MobileCommerceSheet({
   }, [visible, addresses]);
 
   async function checkout() {
+    const blocker = checkoutBlocker({
+      locationSelected: Boolean(location),
+      address,
+      lines,
+    });
+    if (blocker) {
+      setCheckoutFeedback(blocker);
+      return;
+    }
+    setCheckoutFeedback('');
     if (await onCheckout(address.trim(), selectedAddressId)) {
       setTab('orders');
       setAddress('');
@@ -158,13 +170,24 @@ export function MobileCommerceSheet({
               selectedAddressId={selectedAddressId}
               busy={busy}
               unavailable={unavailable}
-              onAddressChange={setAddress}
+              checkoutFeedback={checkoutFeedback}
+              onAddressChange={(value) => {
+                setCheckoutFeedback('');
+                setAddress(value);
+              }}
               onSelectAddress={(selected) => {
+                setCheckoutFeedback('');
                 setSelectedAddressId(selected?.id);
                 setAddress(selected ? addressText(selected) : '');
               }}
-              onLocationChange={onLocationChange}
-              onChangeQuantity={onChangeQuantity}
+              onLocationChange={(selected) => {
+                setCheckoutFeedback('');
+                onLocationChange(selected);
+              }}
+              onChangeQuantity={async (variantId, quantity) => {
+                setCheckoutFeedback('');
+                await onChangeQuantity(variantId, quantity);
+              }}
               onCheckout={checkout}
             />
           ) : (
@@ -186,6 +209,7 @@ function CartContent({
   selectedAddressId,
   busy,
   unavailable,
+  checkoutFeedback,
   onAddressChange,
   onSelectAddress,
   onLocationChange,
@@ -201,6 +225,7 @@ function CartContent({
   selectedAddressId?: string;
   busy: boolean;
   unavailable: boolean;
+  checkoutFeedback: string;
   onAddressChange: (value: string) => void;
   onSelectAddress: (value?: CustomerAddress) => void;
   onLocationChange: (location: CatalogLocation) => void;
@@ -356,15 +381,16 @@ function CartContent({
       )}
 
       <Pressable
-        disabled={busy || unavailable || !location || address.trim().length < 10}
+        disabled={busy}
         style={[
           styles.checkoutButton,
-          (busy || unavailable || !location || address.trim().length < 10) && styles.disabled,
+          busy && styles.disabled,
         ]}
         onPress={() => void onCheckout()}
       >
         <Text style={styles.checkoutText}>{busy ? 'Procesando…' : 'Confirmar pedido  →'}</Text>
       </Pressable>
+      {!!checkoutFeedback && <Text style={styles.warning}>{checkoutFeedback}</Text>}
       <Text style={styles.disclaimer}>
         El stock se reserva por 15 minutos. El pago de esta versión es una demostración y no cobra
         dinero real.

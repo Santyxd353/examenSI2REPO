@@ -6,6 +6,8 @@ dist/
 !.env.azure.example
 .local/
 apps/mobile/.expo/
+apps/mobile/android/
+apps/mobile/modules/*/android/build/
 .venv/
 __pycache__/
 *.pyc

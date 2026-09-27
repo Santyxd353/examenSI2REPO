@@ -2,13 +2,14 @@
   "expo": {
     "name": "Lúmina · Moda femenina",
     "slug": "vestidor-ar-grupo18",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "vestidor18",
     "android": {
       "package": "bo.edu.grupo18.vestidorar",
+      "versionCode": 2,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"

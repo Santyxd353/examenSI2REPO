@@ -19,6 +19,7 @@ import { StatusBar } from 'expo-status-bar';
 import { API_URL, api } from './api';
 import { AccountSheet, type AddressInput } from './AccountSheet';
 import { MobileCommerceSheet, type MobileCartLine, type MobileOrder } from './MobileCommerceSheet';
+import { placeOrderAndRefresh } from './checkoutFlow';
 import type {
   Catalog,
   CatalogLocation,
@@ -229,19 +230,26 @@ export function CatalogScreen({
     setCommerceError('');
     setCommerceMessage('');
     try {
-      const order = await api('/commerce/checkout', {
-        method: 'POST',
-        body: JSON.stringify({
-          locationId: location.id,
-          address,
-          ...(addressId ? { addressId } : {}),
-          idempotency: operationId(),
-        }),
-      });
-      setCommerceMessage(
-        `Pedido ${order.numero} creado. Completa el pago de prueba antes de 15 minutos.`,
+      const { order, refreshFailed } = await placeOrderAndRefresh(
+        () =>
+          api('/commerce/checkout', {
+            method: 'POST',
+            body: JSON.stringify({
+              locationId: location.id,
+              address,
+              ...(addressId ? { addressId } : {}),
+              idempotency: operationId(),
+            }),
+          }),
+        async () => {
+          await Promise.all([loadCommerce(), onCatalogRefresh()]);
+        },
       );
-      await Promise.all([loadCommerce(), onCatalogRefresh()]);
+      setCommerceMessage(
+        refreshFailed
+          ? `Pedido ${order.numero} creado. Si aún no aparece, toca la pestaña Pedidos para actualizarla. Completa el pago de prueba antes de 15 minutos.`
+          : `Pedido ${order.numero} creado. Completa el pago de prueba antes de 15 minutos.`,
+      );
       return true;
     } catch (reason) {
       setCommerceError((reason as Error).message);
