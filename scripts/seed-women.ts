@@ -166,12 +166,16 @@ export async function seedWomen(client: PrismaClient) {
       });
 
       const arResource = await client.recurso_catalogo.findFirst({
-        where: { variante_id: variant.id, clave_objeto: arImageKey, uso: 'AR' },
+        where: { variante_id: variant.id, uso: 'AR' },
       });
       if (arResource) {
         await client.recurso_catalogo.update({
           where: { id: arResource.id },
           data: {
+            producto_id: product.id,
+            clave_objeto: arImageKey,
+            tipo_mime: 'image/png',
+            orden: 0,
             estado: 'PUBLICADO',
             texto_alternativo: `${item.name}, vista frontal para prueba RA`,
             licencia: 'Catálogo Grupo 18 / recurso RA generado',
@@ -192,15 +196,6 @@ export async function seedWomen(client: PrismaClient) {
           },
         });
       }
-      await client.recurso_catalogo.updateMany({
-        where: {
-          variante_id: variant.id,
-          uso: 'AR',
-          estado: 'PUBLICADO',
-          NOT: { clave_objeto: arImageKey },
-        },
-        data: { estado: 'BORRADOR' },
-      });
 
       const glbKey = `public/${item.kind}-${size}.glb`;
       const glbFile = resolve(storageRoot, glbKey);
