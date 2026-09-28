@@ -496,7 +496,9 @@ export function CatalogScreen({
               <View style={styles.promoCopy}>
                 <Text style={styles.promoBadge}>COLECCIÓN FEMENINA</Text>
                 <Text style={styles.promoTitle}>Vestidos y faldas,{`\n`}a tu manera.</Text>
-                <Text style={styles.promoText}>Explora prendas reales. La vista con cámara de vestidos es aproximada.</Text>
+                <Text style={styles.promoText}>
+                  Explora prendas reales. La vista con cámara de vestidos y faldas es aproximada.
+                </Text>
                 <Pressable
                   style={styles.promoButton}
                   onPress={() => {
@@ -629,7 +631,7 @@ export function CatalogScreen({
                   ))}
                 </ScrollView>
                 <View style={styles.cardActions}>
-                  {item.tipoPrenda === 'Vestidos' && (
+                  {(item.tipoPrenda === 'Vestidos' || item.tipoPrenda === 'Faldas') && (
                     <Pressable style={styles.arButton} onPress={() => onTryAr(item, variant)}>
                       <Text style={styles.arButtonText}>◇ AR aprox.</Text>
                     </Pressable>

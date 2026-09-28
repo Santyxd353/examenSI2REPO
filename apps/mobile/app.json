@@ -2,14 +2,14 @@
   "expo": {
     "name": "Lúmina · Moda femenina",
     "slug": "vestidor-ar-grupo18",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "vestidor18",
     "android": {
       "package": "bo.edu.grupo18.vestidorar",
-      "versionCode": 2,
+      "versionCode": 3,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
@@ -23,7 +23,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Lúmina usa la cámara para mostrar una vista aproximada de vestidos sobre tu imagen. El video no se almacena."
+          "cameraPermission": "Lúmina usa la cámara para mostrar una vista aproximada de vestidos y faldas sobre tu imagen. El video no se almacena."
         }
       ],
       [

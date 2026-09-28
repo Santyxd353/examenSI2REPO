@@ -17,7 +17,7 @@ beforeAll(async () => {
   url.pathname = '/vestidor18_test';
   process.env.DATABASE_URL = url.toString();
   db = new PrismaClient({ datasources: { db: { url: url.toString() } } });
-  variantId = (await db.variante.findFirstOrThrow()).id;
+  variantId = (await db.variante.findUniqueOrThrow({ where: { sku: 'G18-W21-S' } })).id;
   const location = await db.ubicacion.create({
     data: { nombre: `Web ${stamp}`, tipo: 'TIENDA', direccion: 'Prueba comercio', activa: true },
   });

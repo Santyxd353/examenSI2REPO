@@ -12,6 +12,8 @@ let app: INestApplication;
 let db: PrismaClient;
 let adminToken: string;
 let variantId: string;
+let productId: string;
+let seededArId: string | undefined;
 let resourceId: string | undefined;
 const rejectedResourceIds: string[] = [];
 let adminId: string;
@@ -24,7 +26,16 @@ beforeAll(async () => {
   process.env.DATABASE_URL = url.toString();
   process.env.STORAGE_ROOT = '.local/test-storage';
   db = new PrismaClient({ datasources: { db: { url: url.toString() } } });
-  variantId = (await db.variante.findFirstOrThrow({ where: { sku: 'G18-1-S' } })).id;
+  const variant = await db.variante.findUniqueOrThrow({ where: { sku: 'G18-W21-S' } });
+  variantId = variant.id;
+  productId = variant.producto_id;
+  const seededAr = await db.recurso_catalogo.findFirst({
+    where: { variante_id: variantId, uso: 'AR', estado: 'PUBLICADO' },
+  });
+  if (seededAr) {
+    seededArId = seededAr.id;
+    await db.recurso_catalogo.update({ where: { id: seededAr.id }, data: { estado: 'BORRADOR' } });
+  }
   const role = await db.rol.findUniqueOrThrow({ where: { nombre: 'Administrador' } });
   const admin = await db.usuario.create({
     data: {
@@ -47,6 +58,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  if (seededArId) {
+    await db.recurso_catalogo.update({
+      where: { id: seededArId },
+      data: { estado: 'PUBLICADO' },
+    });
+  }
   for (const id of rejectedResourceIds) {
     const resource = await db.recurso_catalogo.findUnique({ where: { id } });
     if (resource) {
@@ -171,7 +188,7 @@ test('imagen AR se carga como borrador y solo aparece en catálogo al publicarse
     const catalog = await request(app.getHttpServer()).get('/api/catalog');
     expect(catalog.status).toBe(200);
     return catalog.body.products
-      .find((product: { id: string }) => product.id === '20000000-0000-4000-8000-000000000001')
+      .find((product: { id: string }) => product.id === productId)
       .variantes.find((variant: { id: string }) => variant.id === variantId).arImagePath;
   };
   expect(await findImage()).toBeNull();

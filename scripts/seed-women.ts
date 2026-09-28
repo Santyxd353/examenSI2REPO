@@ -49,8 +49,12 @@ export async function seedWomen(client: PrismaClient) {
   });
   const location = await client.ubicacion.findUniqueOrThrow({ where: { id: locationId } });
   if (location.nombre === 'Almacén de desarrollo')
-    await client.ubicacion.update({ where: { id: locationId }, data: { nombre: 'Almacén Lúmina' } });
+    await client.ubicacion.update({
+      where: { id: locationId },
+      data: { nombre: 'Almacén Lúmina' },
+    });
   mkdirSync(resolve(storageRoot, 'public/catalog-women'), { recursive: true });
+  mkdirSync(resolve(storageRoot, 'public/catalog-ar'), { recursive: true });
 
   for (const [index, item] of items.entries()) {
     const number = index + 21;
@@ -59,6 +63,11 @@ export async function seedWomen(client: PrismaClient) {
     if (!existsSync(sourceImage)) throw new Error(`Falta fotografía de ${item.code}`);
     const imageKey = `public/catalog-women/${item.imageFile}`;
     copyFileSync(sourceImage, resolve(storageRoot, imageKey));
+    const arImageFile = item.imageFile.replace(/\.(?:jpe?g|webp)$/i, '.png');
+    const sourceArImage = resolve(catalogRoot, 'ar', arImageFile);
+    if (!existsSync(sourceArImage)) throw new Error(`Falta imagen RA de ${item.code}`);
+    const arImageKey = `public/catalog-ar/${arImageFile}`;
+    copyFileSync(sourceArImage, resolve(storageRoot, arImageKey));
 
     const product = await client.producto.upsert({
       where: { id: productId },
@@ -108,7 +117,11 @@ export async function seedWomen(client: PrismaClient) {
       for (const channel of ['WEB', 'APP', 'TIENDA']) {
         await client.precio_canal.upsert({
           where: {
-            variante_id_canal_desde: { variante_id: variant.id, canal: channel, desde: effectiveFrom },
+            variante_id_canal_desde: {
+              variante_id: variant.id,
+              canal: channel,
+              desde: effectiveFrom,
+            },
           },
           update: {},
           create: {
@@ -152,14 +165,39 @@ export async function seedWomen(client: PrismaClient) {
         },
       });
 
+      const arResource = await client.recurso_catalogo.findFirst({
+        where: { variante_id: variant.id, uso: 'AR' },
+      });
+      if (!arResource) {
+        await client.recurso_catalogo.create({
+          data: {
+            producto_id: product.id,
+            variante_id: variant.id,
+            clave_objeto: arImageKey,
+            tipo_mime: 'image/png',
+            orden: 0,
+            texto_alternativo: `${item.name}, vista frontal para prueba RA`,
+            licencia: 'Catálogo Grupo 18 / recurso RA generado',
+            uso: 'AR',
+            estado: 'PUBLICADO',
+          },
+        });
+      }
+
       const glbKey = `public/${item.kind}-${size}.glb`;
       const glbFile = resolve(storageRoot, glbKey);
       if (existsSync(glbFile)) {
         const buffer = readFileSync(glbFile);
-        const document = JSON.parse(buffer.subarray(20, 20 + buffer.readUInt32LE(12)).toString('utf8'));
+        const document = JSON.parse(
+          buffer.subarray(20, 20 + buffer.readUInt32LE(12)).toString('utf8'),
+        );
         const triangles = document.meshes
           .flatMap((mesh: any) => mesh.primitives)
-          .reduce((count: number, primitive: any) => count + document.accessors[primitive.indices].count / 3, 0);
+          .reduce(
+            (count: number, primitive: any) =>
+              count + document.accessors[primitive.indices].count / 3,
+            0,
+          );
         await client.modelo_prenda.upsert({
           where: {
             variante_id_plantilla_id_version: {
@@ -174,7 +212,12 @@ export async function seedWomen(client: PrismaClient) {
             plantilla_id: template.id,
             version: 1,
             clave_glb: glbKey,
-            ajuste: { talla: size, plantilla: 'g18-1', tipo: item.kind, representacion: 'referencial' },
+            ajuste: {
+              talla: size,
+              plantilla: 'g18-1',
+              tipo: item.kind,
+              representacion: 'referencial',
+            },
             bytes: buffer.length,
             triangulos: triangles,
             licencia: 'Silueta 3D original Grupo 18, representación aproximada',
@@ -187,8 +230,14 @@ export async function seedWomen(client: PrismaClient) {
   }
 
   await client.producto.updateMany({
-    where: { id: { in: [1, 2, 3].map((number) => `20000000-0000-4000-8000-${String(number).padStart(12, '0')}`) } },
+    where: {
+      id: {
+        in: [1, 2, 3].map(
+          (number) => `20000000-0000-4000-8000-${String(number).padStart(12, '0')}`,
+        ),
+      },
+    },
     data: { estado: 'RETIRADO' },
   });
-  console.log('Catálogo femenino listo: 12 productos, 36 variantes, fotos y siluetas 3D.');
+  console.log('Catálogo femenino listo: 12 productos, 36 variantes, fotos, RA y siluetas 3D.');
 }

@@ -33,7 +33,7 @@ beforeAll(async () => {
       usuario_rol: { create: { rol_id: adminRole.id, asignado_en: new Date() } },
     },
   });
-  variantId = (await db.variante.findFirstOrThrow()).id;
+  variantId = (await db.variante.findUniqueOrThrow({ where: { sku: 'G18-W21-S' } })).id;
   app = await createApp();
   const login = await request(app.getHttpServer())
     .post('/api/auth/login')

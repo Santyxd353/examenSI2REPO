@@ -34,7 +34,10 @@ beforeAll(async () => {
     },
   });
   adminId = admin.id;
-  const variant = await db.variante.findFirstOrThrow({ include: { producto: true } });
+  const variant = await db.variante.findUniqueOrThrow({
+    where: { sku: 'G18-W21-S' },
+    include: { producto: true },
+  });
   variantId = variant.id;
   const location = await db.ubicacion.create({
     data: {
