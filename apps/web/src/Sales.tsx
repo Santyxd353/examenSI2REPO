@@ -82,7 +82,8 @@ export function Sales() {
   async function sell(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!locationId || !cart.length) return setError('Agrega al menos una prenda a la venta.');
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     setBusy(true);
     setError('');
     setMessage('');
@@ -98,7 +99,7 @@ export function Sales() {
         }),
       });
       setCart([]);
-      event.currentTarget.reset();
+      formElement.reset();
       setMessage(`Venta ${sale.numero} confirmada por ${money(sale.total)}.`);
       await reload(locationId);
     } catch (reason) {

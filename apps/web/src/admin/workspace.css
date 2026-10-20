@@ -1,0 +1,360 @@
+.tenant-selector {
+  max-width: 170px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+.business-workspace {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+  padding: 28px 0 64px;
+}
+.business-sidebar {
+  position: sticky;
+  top: 20px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px 12px;
+}
+.business-sidebar-title {
+  display: grid;
+  gap: 8px;
+  padding: 0 12px 22px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+.business-sidebar-title > span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+}
+.business-sidebar-title > strong {
+  font-size: 19px;
+}
+.business-sidebar-title > small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.business-sidebar nav {
+  display: grid;
+  gap: 4px;
+}
+.business-sidebar nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.business-sidebar nav button.active {
+  background: var(--cream);
+  color: var(--accent);
+  font-weight: 700;
+}
+.business-content {
+  min-width: 0;
+}
+.business-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding: 0 0 14px;
+  margin-bottom: 28px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.business-context > span:last-child {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.business-context .connected {
+  color: #2c6c50;
+}
+.business-context .disconnected {
+  color: #995023;
+}
+.business-content .section-title {
+  padding-top: 12px;
+}
+.business-page-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.business-page-heading h1,
+.business-plan h1 {
+  font-size: 34px;
+  margin: 10px 0;
+}
+.business-page-heading p,
+.business-plan > p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.business-refresh,
+.business-recent button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 10px 12px;
+  white-space: nowrap;
+  background: #fff;
+  font-size: 12px;
+}
+.business-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.business-kpis article {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 20px 16px;
+}
+.business-kpis span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.business-kpis strong {
+  font-family: Manrope, sans-serif;
+  font-size: 25px;
+}
+.business-kpis small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.business-summary {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 20px 0 28px;
+}
+.business-module-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.business-module-grid > button {
+  display: grid;
+  gap: 12px;
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-align: left;
+  padding: 20px;
+}
+.business-module-grid strong {
+  font-size: 14px;
+}
+.business-module-grid span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.business-module-grid svg {
+  color: var(--accent);
+}
+.business-recent {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 22px;
+}
+.business-recent h2 {
+  font-size: 19px;
+}
+.business-recent > article {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 20px;
+  align-items: center;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.business-recent article > div {
+  display: grid;
+  gap: 6px;
+}
+.business-recent article small,
+.business-recent article > span {
+  color: var(--muted);
+}
+.business-plan {
+  max-width: 750px;
+  background: #fff;
+  padding: 32px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.business-plan dl {
+  display: grid;
+  gap: 12px;
+  font-size: 14px;
+}
+.business-plan dl > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.business-plan dt {
+  color: var(--muted);
+}
+.business-plan dd {
+  margin: 0;
+  font-weight: 600;
+}
+.business-content .admin-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.business-sidebar {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+.business-sidebar nav {
+  height: auto;
+  align-items: stretch;
+  min-width: 0;
+  max-width: 100%;
+}
+.business-sidebar nav button {
+  height: auto;
+  flex-shrink: 0;
+}
+.business-sidebar nav .active:after {
+  display: none;
+}
+@media (max-width: 1100px) {
+  .business-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .business-module-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .business-content .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 800px) {
+  .business-workspace {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .business-sidebar {
+    position: static;
+    padding: 12px;
+  }
+  .business-sidebar-title {
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+  }
+  .business-sidebar nav {
+    display: flex;
+    overflow: auto;
+    padding-bottom: 6px;
+  }
+  .business-sidebar nav button {
+    white-space: nowrap;
+  }
+  .business-page-heading {
+    align-items: flex-start;
+  }
+  .business-page-heading h1 {
+    font-size: 28px;
+  }
+  .business-recent > article {
+    grid-template-columns: 1fr auto;
+  }
+  .business-recent article > span {
+    grid-column: 1/-1;
+    grid-row: 2;
+  }
+  .business-plan {
+    padding: 22px;
+  }
+}
+@media (max-width: 480px) {
+  .business-kpis strong {
+    font-size: 20px;
+  }
+  .business-module-grid {
+    grid-template-columns: 1fr;
+  }
+  .business-refresh {
+    font-size: 0;
+    gap: 0;
+  }
+  .business-refresh svg {
+    width: 17px;
+    height: 17px;
+  }
+}
+@media (max-width: 800px) {
+  .business-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 650px) {
+  #root > header {
+    height: auto;
+    min-height: 110px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 16px 0 0;
+  }
+  #root > header > nav {
+    grid-row: 2;
+    grid-column: 1/-1;
+    overflow-x: auto;
+    min-width: 0;
+    max-width: 100%;
+    height: 44px;
+    gap: 24px;
+    align-items: stretch;
+  }
+  #root > header > nav button {
+    height: 44px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  #root > header > .wordmark {
+    grid-row: 1;
+    grid-column: 1;
+  }
+  #root > header > .account {
+    grid-row: 1;
+    grid-column: 2;
+  }
+  .tenant-selector {
+    max-width: 140px;
+    font-size: 12px;
+  }
+  .business-recent article strong {
+    overflow-wrap: anywhere;
+  }
+}

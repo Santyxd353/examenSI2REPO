@@ -3,6 +3,7 @@ import { mkdir, rm, writeFile } from 'fs/promises';
 import { resolve } from 'path';
 import { INestApplication } from '@nestjs/common';
 import { createApp } from '../src/app';
+import { TenantRegistry } from '../src/tenancy/platform';
 
 const webRoot = resolve('.local/test-production-web');
 let app: INestApplication;
@@ -41,6 +42,29 @@ test('sirve la aplicación web y sus recursos desde el API en producción', asyn
   const asset = await request(app.getHttpServer()).get('/assets/app.js');
   expect(asset.status).toBe(200);
   expect(asset.text).toContain('window.vestidor');
+});
+
+test('suspender Lúmina no bloquea el HTML y JavaScript compartidos por otras tiendas', async () => {
+  const registry = app.get(TenantRegistry);
+  await registry.pool.query("UPDATE platform.tenant SET state='SUSPENDED' WHERE slug='lumina'");
+  try {
+    expect((await request(app.getHttpServer()).get('/?tienda=otro-negocio')).status).toBe(200);
+    expect((await request(app.getHttpServer()).get('/assets/app.js')).status).toBe(200);
+    expect((await request(app.getHttpServer()).get('/api/platform/stores')).status).toBe(200);
+    expect((await request(app.getHttpServer()).get('/api/catalog')).status).toBe(403);
+  } finally {
+    await registry.pool.query("UPDATE platform.tenant SET state='ACTIVE' WHERE slug='lumina'");
+  }
+});
+
+test('rutas API y archivos ausentes conservan 404 aunque el prefijo cambie de mayúsculas', async () => {
+  for (const path of [
+    '/API/no-existe',
+    '/ASSETS/no-existe.png',
+    '/STORES/lumina/ASSETS/no-existe.png',
+  ]) {
+    expect((await request(app.getHttpServer()).get(path)).status).toBe(404);
+  }
 });
 
 test('recarga rutas SPA sin ocultar rutas API inexistentes', async () => {

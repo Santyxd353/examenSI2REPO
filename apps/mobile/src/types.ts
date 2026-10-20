@@ -5,6 +5,7 @@ export type Identity = {
   correo: string;
   roles: string[];
   permissions: string[];
+  tenant?: { id: string; slug: string; name: string };
 };
 
 export type CustomerAddress = {

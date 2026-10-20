@@ -91,11 +91,13 @@ export function Admin({
   categories,
   permissions,
   onCatalogChanged,
+  module = 'all',
 }: {
   products: Product[];
   categories: Category[];
   permissions: string[];
   onCatalogChanged: () => Promise<void>;
+  module?: 'all' | 'catalog' | 'inventory' | 'locations' | 'team';
 }) {
   const [locations, setLocations] = useState<Location[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -118,10 +120,14 @@ export function Admin({
   ]);
   const [brandChoice, setBrandChoice] = useState('__new__');
   const [typeChoice, setTypeChoice] = useState('__new__');
-  const managesLocations = permissions.includes('ubicaciones:gestionar');
-  const managesUsers = permissions.includes('usuarios:gestionar');
-  const managesInventory = permissions.includes('inventario:gestionar');
-  const managesCatalog = permissions.includes('catalogo:gestionar');
+  const managesLocations =
+    permissions.includes('ubicaciones:gestionar') && ['all', 'locations'].includes(module);
+  const managesUsers =
+    permissions.includes('usuarios:gestionar') && ['all', 'team'].includes(module);
+  const managesInventory =
+    permissions.includes('inventario:gestionar') && ['all', 'inventory'].includes(module);
+  const managesCatalog =
+    permissions.includes('catalogo:gestionar') && ['all', 'catalog'].includes(module);
   const variants = useMemo(
     () =>
       products.flatMap((product) =>
@@ -182,9 +188,15 @@ export function Admin({
 
   async function reload() {
     const [locationData, staffData, alertData, arData] = await Promise.all([
-      api('/locations'),
+      (managesLocations || managesUsers || ['all', 'inventory'].includes(module)) &&
+      (permissions.includes('inventario:consultar') ||
+        permissions.includes('ubicaciones:gestionar'))
+        ? api('/locations')
+        : Promise.resolve([]),
       managesUsers ? api('/staff') : Promise.resolve([]),
-      api('/locations/inventory/alerts'),
+      ['all', 'inventory'].includes(module) && permissions.includes('inventario:consultar')
+        ? api('/locations/inventory/alerts')
+        : Promise.resolve([]),
       managesCatalog ? api('/catalog/ar-resources') : Promise.resolve([]),
     ]);
     setLocations(locationData);
@@ -456,15 +468,33 @@ export function Admin({
   return (
     <section className="admin-page">
       <div className="section-title">
-        <span className="eyebrow">OPERACIÓN MULTISUCURSAL</span>
-        <h1>Sucursales, almacenes y responsables</h1>
+        <span className="eyebrow">ADMINISTRACIÓN DEL NEGOCIO</span>
+        <h1>
+          {
+            {
+              all: 'Sucursales, almacenes y responsables',
+              catalog: 'Catálogo y vestidor',
+              inventory: 'Inventario y movimientos',
+              locations: 'Sucursales y almacenes',
+              team: 'Equipo y permisos',
+            }[module]
+          }
+        </h1>
         <p>
-          Registra ubicaciones, asigna vendedores o analistas y actualiza existencias por variante.
+          {
+            {
+              all: 'Organiza la operación de tu negocio.',
+              catalog: 'Crea prendas, variantes y recursos para el vestidor.',
+              inventory: 'Consulta existencias, registra ajustes y concilia tus conteos.',
+              locations: 'Administra los espacios físicos de tu tienda.',
+              team: 'Asigna responsables y controla su alcance por ubicación.',
+            }[module]
+          }
         </p>
       </div>
       {error && <div className="message error">{error}</div>}
       {message && <div className="message">{message}</div>}
-      {alerts.length > 0 && (
+      {['all', 'inventory'].includes(module) && alerts.length > 0 && (
         <div className="stock-alerts" role="status">
           <div>
             <span className="eyebrow">ATENCIÓN DE INVENTARIO</span>
@@ -967,51 +997,56 @@ export function Admin({
           ))}
         </section>
       )}
-      <div className="location-list">
-        <h2>Ubicaciones registradas</h2>
-        {locations.map((location) => (
-          <article key={location.id}>
-            <div>
-              <b>{location.nombre}</b>
-              <span>
-                {location.tipo === 'TIENDA' ? 'Sucursal' : 'Almacén'} ·{' '}
-                {location.direccion || 'Sin dirección'} {!location.activa && '· Inactiva'}
-              </span>
-            </div>
-            <div>
-              <b>{location._count.inventario}</b>
-              <span>variantes</span>
-            </div>
-            <div>
-              <b>{location._count.usuario_ubicacion}</b>
-              <span>responsables</span>
-            </div>
-            <small>
-              {location.usuario_ubicacion
-                .map((x) => `${x.usuario.nombres} ${x.usuario.apellidos}`)
-                .join(', ') || 'Sin personal asignado'}
-            </small>
-            <div className="row-actions">
-              <button className="text-button" onClick={() => void showInventory(location)}>
-                <PackagePlus size={15} /> Inventario
-              </button>
-              <button className="text-button" onClick={() => void showHistory(location)}>
-                <History size={15} /> Movimientos
-              </button>
-              {managesLocations && location.activa && (
-                <>
-                  <button className="text-button" onClick={() => setEditingLocation(location)}>
-                    <Pencil size={15} /> Editar
-                  </button>
-                  <button className="text-button danger" onClick={() => void deactivate(location)}>
-                    <Power size={15} /> Desactivar
-                  </button>
-                </>
-              )}
-            </div>
-          </article>
-        ))}
-      </div>
+      {['all', 'locations', 'inventory'].includes(module) && (
+        <div className="location-list">
+          <h2>Ubicaciones registradas</h2>
+          {locations.map((location) => (
+            <article key={location.id}>
+              <div>
+                <b>{location.nombre}</b>
+                <span>
+                  {location.tipo === 'TIENDA' ? 'Sucursal' : 'Almacén'} ·{' '}
+                  {location.direccion || 'Sin dirección'} {!location.activa && '· Inactiva'}
+                </span>
+              </div>
+              <div>
+                <b>{location._count.inventario}</b>
+                <span>variantes</span>
+              </div>
+              <div>
+                <b>{location._count.usuario_ubicacion}</b>
+                <span>responsables</span>
+              </div>
+              <small>
+                {location.usuario_ubicacion
+                  .map((x) => `${x.usuario.nombres} ${x.usuario.apellidos}`)
+                  .join(', ') || 'Sin personal asignado'}
+              </small>
+              <div className="row-actions">
+                <button className="text-button" onClick={() => void showInventory(location)}>
+                  <PackagePlus size={15} /> Inventario
+                </button>
+                <button className="text-button" onClick={() => void showHistory(location)}>
+                  <History size={15} /> Movimientos
+                </button>
+                {managesLocations && location.activa && (
+                  <>
+                    <button className="text-button" onClick={() => setEditingLocation(location)}>
+                      <Pencil size={15} /> Editar
+                    </button>
+                    <button
+                      className="text-button danger"
+                      onClick={() => void deactivate(location)}
+                    >
+                      <Power size={15} /> Desactivar
+                    </button>
+                  </>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
       {editingLocation && (
         <form className="editor-panel" onSubmit={updateLocation}>
           <div>

@@ -23,9 +23,10 @@ import { PNG } from 'pngjs';
 import { z } from 'zod';
 import { Db } from './db';
 import { AuthGuard, AuthRequest, requirePermission } from './auth';
-import { removeStored, storedPath } from './storage';
+import { removeStored, storedPath, publicAssetPath } from './storage';
 import { assignAssortment } from './assortment';
 import { RealtimeGateway } from './realtime';
+import { requireCapacity } from './tenancy/capacity';
 
 const garmentInput = z
   .object({
@@ -260,9 +261,7 @@ export class CatalogController {
             ubicaciones: locations,
             modeloId: model?.id,
             plantillaId: model?.plantilla_id,
-            arImagePath: arResource
-              ? `/assets/${arResource.clave_objeto.replace(/^public\//, '')}`
-              : null,
+            arImagePath: arResource ? publicAssetPath(arResource.clave_objeto) : null,
           });
       }
       if (
@@ -273,7 +272,7 @@ export class CatalogController {
           ...p,
           tipoPrenda: p.categoria.nombre,
           imagenes: gallery.map((image) => ({
-            url: `/assets/${image.clave_objeto.replace(/^public\//, '')}`,
+            url: publicAssetPath(image.clave_objeto),
             textoAlternativo: image.texto_alternativo,
           })),
           variantes: disponibles.sort(
@@ -361,6 +360,7 @@ export class CatalogController {
         written.push(photo.key);
       }
       created = await this.db.$transaction(async (tx) => {
+        await requireCapacity(tx, 'products');
         const existingCategory = await tx.categoria.findFirst({
           where: { nombre: { equals: data.tipoPrenda, mode: 'insensitive' } },
         });
@@ -472,7 +472,7 @@ export class CatalogController {
       estado: resource.estado,
       textoAlternativo: resource.texto_alternativo,
       licencia: resource.licencia,
-      imagePath: `/assets/${resource.clave_objeto.replace(/^public\//, '')}`,
+      imagePath: publicAssetPath(resource.clave_objeto),
     }));
   }
 
@@ -546,7 +546,9 @@ export class CatalogController {
       if (!resource) throw new NotFoundException('Imagen AR no encontrada.');
       if (estado === 'PUBLICADO') {
         const bytes = await readFile(storedPath(resource.clave_objeto)).catch(() => {
-          throw new BadRequestException('El archivo AR no está disponible. Carga la imagen nuevamente.');
+          throw new BadRequestException(
+            'El archivo AR no está disponible. Carga la imagen nuevamente.',
+          );
         });
         validateArPng(bytes);
         await tx.recurso_catalogo.updateMany({
@@ -572,8 +574,11 @@ export class CatalogController {
       })
       .strict()
       .parse(body);
-    return this.db.producto.create({
-      data: { ...data, estado: 'BORRADOR', creado_en: new Date() },
+    return this.db.$transaction(async (tx) => {
+      await requireCapacity(tx, 'products');
+      return tx.producto.create({
+        data: { ...data, estado: 'BORRADOR', creado_en: new Date() },
+      });
     });
   }
 }

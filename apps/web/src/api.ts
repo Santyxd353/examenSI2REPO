@@ -1,3 +1,4 @@
+import { tenantSlug } from './tenant';
 let accessToken = '';
 let authRevision = 0;
 let closingSession = false;
@@ -10,7 +11,11 @@ export async function refresh() {
   if (closingSession) throw new Error('La sesión se está cerrando.');
   const revision = authRevision;
   if (!refreshPromise)
-    refreshPromise = fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
+    refreshPromise = fetch('/api/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-Tenant-Slug': tenantSlug() },
+    })
       .then(async (r) => {
         if (revision !== authRevision || closingSession) throw new Error('La sesión cambió.');
         if (!r.ok) {
@@ -32,7 +37,11 @@ export async function logoutSession() {
   authRevision++;
   try {
     await refreshPromise?.catch(() => {});
-    const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    const response = await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-Tenant-Slug': tenantSlug() },
+    });
     if (!response.ok) throw new Error('No se pudo cerrar la sesión. Vuelve a intentarlo.');
     setToken('');
   } finally {
@@ -42,6 +51,7 @@ export async function logoutSession() {
 export async function api(path: string, options: RequestInit = {}, retry = true): Promise<any> {
   if (closingSession && !path.startsWith('/auth/')) throw new Error('La sesión se está cerrando.');
   const headers = new Headers(options.headers);
+  headers.set('X-Tenant-Slug', tenantSlug());
   if (accessToken) headers.set('Authorization', 'Bearer ' + accessToken);
   if (options.body && !(options.body instanceof FormData))
     headers.set('Content-Type', 'application/json');

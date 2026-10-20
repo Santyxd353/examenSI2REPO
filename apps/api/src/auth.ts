@@ -19,6 +19,7 @@ import jwt from 'jsonwebtoken';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { z } from 'zod';
 import { Db } from './db';
+import { currentTenant, currentTenantSlug } from './tenancy/context';
 const digest = (v: string) => createHash('sha256').update(v).digest('hex');
 const correo = z.string().trim().toLowerCase().email().max(160);
 const credentials = z
@@ -47,6 +48,7 @@ export type Identity = {
   correo: string;
   roles: string[];
   permissions: string[];
+  tenant?: { id: string; slug: string; name: string };
 };
 export type AuthRequest = Request & { user: Identity };
 const cookieOptions = {
@@ -56,6 +58,8 @@ const cookieOptions = {
   path: '/api/auth',
   maxAge: 7 * 86400000,
 };
+const refreshCookieName = () =>
+  currentTenantSlug() === 'lumina' ? 'refresh' : `refresh_${currentTenantSlug()}`;
 @Injectable()
 export class AuthService {
   constructor(@Inject(Db) private db: Db) {}
@@ -72,6 +76,11 @@ export class AuthService {
       nombres: u.nombres,
       apellidos: u.apellidos,
       correo: u.correo,
+      tenant: {
+        id: currentTenant()?.id || '00000000-0000-4000-8000-000000000018',
+        slug: currentTenantSlug(),
+        name: currentTenant()?.name || 'Lúmina',
+      },
       roles: [...new Set(rows.map((r) => r.nombre))],
       permissions: [
         ...new Set(rows.filter((r) => r.recurso).map((r) => r.recurso + ':' + r.accion)),
@@ -80,7 +89,7 @@ export class AuthService {
   }
   private makeRefresh(userId: string, sessionId: string) {
     return jwt.sign(
-      { sid: sessionId, nonce: randomBytes(40).toString('hex') },
+      { sid: sessionId, tenant: currentTenantSlug(), nonce: randomBytes(40).toString('hex') },
       process.env.JWT_SECRET!,
       {
         subject: userId,
@@ -98,6 +107,7 @@ export class AuthService {
         issuer: 'vestidor18',
         audience: 'vestidor18-refresh',
       }) as jwt.JwtPayload;
+      if ((payload.tenant || 'lumina') !== currentTenantSlug()) throw new Error();
       if (
         !z.string().uuid().safeParse(payload.sid).success ||
         !z.string().uuid().safeParse(payload.sub).success
@@ -111,18 +121,22 @@ export class AuthService {
   private async tokenResponse(userId: string, sessionId: string, raw: string) {
     const user = await this.identity(userId);
     // The refresh hash also versions access tokens: rotation invalidates the prior access token.
-    const token = jwt.sign({ sid: sessionId, sv: digest(raw) }, process.env.JWT_SECRET!, {
-      subject: userId,
-      expiresIn: '15m',
-      algorithm: 'HS256',
-      issuer: 'vestidor18',
-      audience: 'vestidor18',
-    });
+    const token = jwt.sign(
+      { sid: sessionId, tenant: currentTenantSlug(), sv: digest(raw) },
+      process.env.JWT_SECRET!,
+      {
+        subject: userId,
+        expiresIn: '15m',
+        algorithm: 'HS256',
+        issuer: 'vestidor18',
+        audience: 'vestidor18',
+      },
+    );
     return { accessToken: token, user };
   }
   private async sessionResponse(userId: string, sessionId: string, raw: string, res: Response) {
     const response = await this.tokenResponse(userId, sessionId, raw);
-    res.cookie('refresh', raw, cookieOptions);
+    res.cookie(refreshCookieName(), raw, cookieOptions);
     return response;
   }
   async issue(id: string, res: Response) {
@@ -257,7 +271,7 @@ export class AuthService {
           data: { revocada_en: new Date() },
         });
     }
-    res.clearCookie('refresh', cookieOptions);
+    res.clearCookie(refreshCookieName(), cookieOptions);
     return { ok: true };
   }
   async mobileLogout(body: unknown) {
@@ -285,6 +299,7 @@ export class AuthService {
         issuer: 'vestidor18',
         audience: 'vestidor18',
       }) as jwt.JwtPayload;
+      if ((payload.tenant || 'lumina') !== currentTenantSlug()) throw new Error();
       const s = await this.db.sesion.findFirst({
         where: {
           id: payload.sid,
@@ -335,10 +350,10 @@ export class AuthController {
     return this.auth.mobileLogout(b);
   }
   @Post('refresh') refresh(@Req() r: Request, @Res({ passthrough: true }) s: Response) {
-    return this.auth.refresh(r.cookies?.refresh, s);
+    return this.auth.refresh(r.cookies?.[refreshCookieName()], s);
   }
   @Post('logout') logout(@Req() r: Request, @Res({ passthrough: true }) s: Response) {
-    return this.auth.logout(r.cookies?.refresh, s);
+    return this.auth.logout(r.cookies?.[refreshCookieName()], s);
   }
   @Get('me') @UseGuards(AuthGuard) me(@Req() r: AuthRequest) {
     return r.user;

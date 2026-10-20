@@ -8,7 +8,11 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 5173,
     strictPort: true,
-    proxy: { '/api': 'http://127.0.0.1:3018', '/assets': 'http://127.0.0.1:3018' },
+    proxy: {
+      '/api': 'http://127.0.0.1:3018',
+      '/assets': 'http://127.0.0.1:3018',
+      '/stores': 'http://127.0.0.1:3018',
+    },
   },
   build: {
     outDir: '../../dist/web',

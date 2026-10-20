@@ -13,6 +13,8 @@ while ! ./node_modules/.bin/prisma migrate deploy; do
   sleep 5
 done
 
+./node_modules/.bin/tsx scripts/migrate-tenants.ts
+
 if [ ! -s "${STORAGE_ROOT}/public/reference.glb" ] || [ ! -s "${STORAGE_ROOT}/public/dress-M.glb" ] || [ ! -s "${STORAGE_ROOT}/public/skirt-M.glb" ]; then
   "${PYTHON_PATH}" workers/avatar/process.py --demo "${STORAGE_ROOT}/public"
 fi

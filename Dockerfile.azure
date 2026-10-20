@@ -49,8 +49,10 @@ RUN mkdir -p /opt/models \
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY package.json package-lock.json ./
+COPY tsconfig.json ./
 COPY prisma ./prisma
-COPY scripts/seed.ts scripts/seed-women.ts scripts/grant-admin.ts ./scripts/
+COPY scripts/seed.ts scripts/seed-women.ts scripts/grant-admin.ts scripts/create-tenant.ts scripts/migrate-tenants.ts ./scripts/
+COPY apps/api/src/tenancy ./apps/api/src/tenancy
 COPY catalog-assets/women ./catalog-assets/women
 COPY workers/avatar ./workers/avatar
 COPY docker/azure-entrypoint.sh /usr/local/bin/azure-entrypoint

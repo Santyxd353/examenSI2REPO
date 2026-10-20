@@ -1,6 +1,13 @@
 import { resolve, sep } from 'path';
 import { mkdir, rm } from 'fs/promises';
-export const storageRoot = () => resolve(process.env.STORAGE_ROOT || '.local/storage');
+import { currentTenant, currentTenantSlug } from './tenancy/context';
+export const storageRoot = () =>
+  resolve(currentTenant()?.storageDirectory || process.env.STORAGE_ROOT || '.local/storage');
+export function publicAssetPath(key: string) {
+  const asset = key.replace(/^public\//, '');
+  const slug = currentTenantSlug();
+  return slug === 'lumina' ? `/assets/${asset}` : `/stores/${slug}/assets/${asset}`;
+}
 export function storedPath(key: string) {
   const root = storageRoot(),
     path = resolve(root, key);

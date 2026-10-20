@@ -16,11 +16,14 @@
     "mobile:check": "npm --prefix apps/mobile run check",
     "mobile:pose-test": "tsx --test apps/mobile/test/pose.test.ts",
     "test": "jest --runInBand",
+    "test:admin-ui": "npm run build && node scripts/check-admin-ui.cjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx scripts/seed.ts",
     "db:prepare-test": "tsx scripts/prepare-test.ts",
-    "user:grant-admin": "tsx scripts/grant-admin.ts"
+    "user:grant-admin": "tsx scripts/grant-admin.ts",
+    "tenant:create": "tsx scripts/create-tenant.ts",
+    "tenant:migrate": "tsx scripts/migrate-tenants.ts"
   },
   "dependencies": {
     "@nestjs/common": "11.2.5",

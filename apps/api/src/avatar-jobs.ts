@@ -5,6 +5,8 @@ import { spawn, ChildProcess } from 'child_process';
 import { writeFile, mkdir, stat, unlink } from 'fs/promises';
 import { resolve, relative } from 'path';
 import { Prisma } from '@prisma/client';
+import { TenantRegistry } from './tenancy/platform';
+import { currentTenant, runForTenant } from './tenancy/context';
 type WorkerOutput = {
   ok: boolean;
   avatar_file?: string;
@@ -18,16 +20,37 @@ export class AvatarJobs implements OnModuleDestroy {
   private timer?: NodeJS.Timeout;
   private busy = false;
   private child?: ChildProcess;
-  constructor(@Inject(Db) private db: Db) {}
+  private sweeping = false;
+  constructor(
+    @Inject(Db) private db: Db,
+    @Inject(TenantRegistry) private registry: TenantRegistry,
+  ) {}
   start() {
     this.timer = setInterval(
       () =>
-        void this.tick().catch(() =>
+        void this.sweep().catch(() =>
           console.error('El procesador reintentará la revisión de la cola.'),
         ),
       3000,
     );
     this.timer.unref();
+  }
+  async sweep() {
+    if (this.sweeping) return;
+    this.sweeping = true;
+    try {
+      for (const tenant of await this.registry.listForMaintenance()) {
+        try {
+          await runForTenant(tenant, () => this.tick());
+        } catch {
+          console.error(
+            `La cola de ${tenant.slug} requiere revisión; las otras tiendas continúan.`,
+          );
+        }
+      }
+    } finally {
+      this.sweeping = false;
+    }
   }
   async onModuleDestroy() {
     if (this.timer) clearInterval(this.timer);
@@ -117,7 +140,9 @@ export class AvatarJobs implements OnModuleDestroy {
         },
         data: { estado: 'FALLIDO', error_codigo: 'INTENTOS_AGOTADOS', terminado_en: new Date() },
       });
-      const rows = await this.db.$queryRaw<{ id: string }[]>`
+      const rows = currentTenant()?.readOnly
+        ? []
+        : await this.db.$queryRaw<{ id: string }[]>`
     UPDATE trabajo_avatar SET estado='PROCESANDO',iniciado_en=now(),intentos=intentos+1
     WHERE id=(SELECT id FROM trabajo_avatar WHERE estado='EN_COLA' AND tipo='GENERAR' AND intentos<3 ORDER BY creado_en FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING id`;
       if (rows.length) await this.process(rows[0].id);

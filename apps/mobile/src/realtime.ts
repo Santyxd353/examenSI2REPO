@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { getAccessToken, REALTIME_URL } from './api';
+import { getAccessToken, getTenantSlug, REALTIME_URL } from './api';
 
 let socket: Socket | null = null;
 
@@ -10,7 +10,7 @@ export function connectRealtime(
   socket?.disconnect();
   socket = io(`${REALTIME_URL}/realtime`, {
     transports: ['websocket'],
-    auth: { token: getAccessToken() },
+    auth: { token: getAccessToken(), tenant: getTenantSlug() },
     reconnection: true,
   });
   socket.on('connect', () => socket?.emit('inventory:subscribe', { locationId }));

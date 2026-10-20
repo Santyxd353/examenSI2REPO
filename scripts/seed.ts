@@ -3,52 +3,10 @@ import { PrismaClient } from '@prisma/client';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { seedWomen } from './seed-women';
+import { seedTenantRoles } from '../apps/api/src/tenancy/defaults';
 const db = new PrismaClient();
 export async function seed(client: PrismaClient = db) {
-  const roles = ['Cliente', 'Administrador', 'Vendedor', 'Analista'];
-  for (const nombre of roles)
-    await client.rol.upsert({
-      where: { nombre },
-      update: {},
-      create: { nombre, descripcion: nombre, protegido: true },
-    });
-  const grants: Record<string, [string, string][]> = {
-    Administrador: [
-      ['catalogo', 'gestionar'],
-      ['usuarios', 'gestionar'],
-      ['ubicaciones', 'gestionar'],
-      ['inventario', 'consultar'],
-      ['inventario', 'gestionar'],
-      ['ventas', 'registrar'],
-      ['pedidos', 'gestionar'],
-      ['reportes', 'consultar'],
-      ['modelos', 'gestionar'],
-    ],
-    Vendedor: [
-      ['inventario', 'consultar'],
-      ['inventario', 'gestionar'],
-      ['ventas', 'registrar'],
-    ],
-    Analista: [
-      ['inventario', 'consultar'],
-      ['reportes', 'consultar'],
-    ],
-  };
-  for (const [roleName, permissions] of Object.entries(grants)) {
-    const role = await client.rol.findUniqueOrThrow({ where: { nombre: roleName } });
-    for (const [recurso, accion] of permissions) {
-      const perm = await client.permiso.upsert({
-        where: { recurso_accion: { recurso, accion } },
-        update: {},
-        create: { recurso, accion, descripcion: recurso + ' ' + accion },
-      });
-      await client.rol_permiso.upsert({
-        where: { rol_id_permiso_id: { rol_id: role.id, permiso_id: perm.id } },
-        update: {},
-        create: { rol_id: role.id, permiso_id: perm.id },
-      });
-    }
-  }
+  await seedTenantRoles(client);
   const category = await client.categoria.upsert({
     where: { nombre: 'Esenciales' },
     update: {},

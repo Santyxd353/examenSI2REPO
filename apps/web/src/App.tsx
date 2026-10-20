@@ -15,16 +15,14 @@ import {
   Search,
   Shirt,
   ShoppingBag,
-  ClipboardList,
   Trash2,
 } from 'lucide-react';
 import { api, privateModel, refresh, setToken, logoutSession } from './api';
 import { Viewer } from './Viewer';
-import { Admin } from './Admin';
-import { Reports } from './Reports';
-import { Sales } from './Sales';
+import { AdminWorkspace } from './admin/AdminWorkspace';
+import { businessModules } from './admin/modules';
 import { Commerce } from './Commerce';
-import { OrdersAdmin } from './OrdersAdmin';
+import { tenantAsset, tenantSlug, selectTenant } from './tenant';
 type CatalogLocation = {
   id: string;
   nombre: string;
@@ -104,9 +102,7 @@ function GarmentArt({ color = '#d5c6b0' }: { color?: string }) {
 export function App() {
   const accountEpoch = useRef(0),
     viewEpoch = useRef(0);
-  const [page, setPage] = useState<
-      'catalogo' | 'avatar' | 'admin' | 'reports' | 'sales' | 'commerce' | 'orders'
-    >('catalogo'),
+  const [page, setPage] = useState<'catalogo' | 'avatar' | 'admin' | 'commerce'>('catalogo'),
     [user, setUser] = useState<any>(null),
     [authOpen, setAuthOpen] = useState(false),
     [register, setRegister] = useState(false);
@@ -131,10 +127,11 @@ export function App() {
     [galleryIndex, setGalleryIndex] = useState<Record<string, number>>({}),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
+  const [stores, setStores] = useState<{ slug: string; name: string }[]>([]);
   const [avatars, setAvatars] = useState<Avatar[]>([]),
     [jobs, setJobs] = useState<Job[]>([]),
-    [bodyUrl, setBodyUrl] = useState('/assets/reference.glb'),
-    [garmentUrl, setGarmentUrl] = useState<string | null>('/assets/dress-M.glb');
+    [bodyUrl, setBodyUrl] = useState(tenantAsset('/assets/reference.glb')),
+    [garmentUrl, setGarmentUrl] = useState<string | null>(tenantAsset('/assets/dress-M.glb'));
   const [current, setCurrent] = useState<Avatar | null>(null),
     [session, setSession] = useState<string | null>(null),
     [notice, setNotice] = useState('');
@@ -181,6 +178,9 @@ export function App() {
   }, [catalogLocation, query, brand, category, color, size, catalogVersion]);
   useEffect(() => {
     const epoch = accountEpoch.current;
+    void api('/platform/stores')
+      .then(setStores)
+      .catch(() => {});
     refresh()
       .then((d) => {
         if (epoch === accountEpoch.current) setUser(d.user);
@@ -308,8 +308,8 @@ export function App() {
       setNotice('');
       setError('');
       setCurrent(null);
-      setBodyUrl('/assets/reference.glb');
-      setGarmentUrl('/assets/dress-M.glb');
+      setBodyUrl(tenantAsset('/assets/reference.glb'));
+      setGarmentUrl(tenantAsset('/assets/dress-M.glb'));
       setPage('catalogo');
     } catch (e) {
       if (epoch === accountEpoch.current) setError((e as Error).message);
@@ -390,8 +390,8 @@ export function App() {
       if (epoch !== viewEpoch.current) return;
       if (current?.id === a.id) {
         setCurrent(null);
-        setBodyUrl('/assets/reference.glb');
-        setGarmentUrl('/assets/dress-M.glb');
+        setBodyUrl(tenantAsset('/assets/reference.glb'));
+        setGarmentUrl(tenantAsset('/assets/dress-M.glb'));
       }
       await reload();
       if (epoch !== viewEpoch.current) return;
@@ -493,31 +493,30 @@ export function App() {
               <ShoppingBag size={16} /> Mi carrito
             </button>
           )}
-          {user?.permissions?.includes('inventario:consultar') && (
+          {businessModules.some(
+            (module) => module.permission && user?.permissions?.includes(module.permission),
+          ) && (
             <button className={page === 'admin' ? 'active' : ''} onClick={() => setPage('admin')}>
-              Inventario
-            </button>
-          )}
-          {user?.permissions?.includes('reportes:consultar') && (
-            <button
-              className={page === 'reports' ? 'active' : ''}
-              onClick={() => setPage('reports')}
-            >
-              Reportes
-            </button>
-          )}
-          {user?.permissions?.includes('pedidos:gestionar') && (
-            <button className={page === 'orders' ? 'active' : ''} onClick={() => setPage('orders')}>
-              <ClipboardList size={16} /> Pedidos
-            </button>
-          )}
-          {user?.permissions?.includes('ventas:registrar') && (
-            <button className={page === 'sales' ? 'active' : ''} onClick={() => setPage('sales')}>
-              Vender
+              Administración
             </button>
           )}
         </nav>
         <div className="account">
+          <select
+            className="tenant-selector"
+            aria-label="Tienda"
+            value={tenantSlug()}
+            onChange={(event) => selectTenant(event.target.value)}
+          >
+            {!stores.some((store) => store.slug === tenantSlug()) && (
+              <option value={tenantSlug()}>{tenantSlug()}</option>
+            )}
+            {stores.map((store) => (
+              <option key={store.slug} value={store.slug}>
+                {store.name}
+              </option>
+            ))}
+          </select>
           {user ? (
             <>
               <span>Hola, {user.nombres.split(' ')[0]}</span>
@@ -545,14 +544,8 @@ export function App() {
             : page === 'avatar'
               ? 'Tu espacio / Mi avatar'
               : page === 'admin'
-                ? 'Administración / Sucursales y almacenes'
-                : page === 'commerce'
-                  ? 'Tienda / Carrito y pedidos'
-                  : page === 'orders'
-                    ? 'Operaciones / Gestión de pedidos'
-                    : page === 'reports'
-                      ? 'Analítica / Reportes comerciales'
-                      : 'Operaciones / Registrar venta'}
+                ? 'Administración / Mi negocio'
+                : 'Tienda / Carrito y pedidos'}
         </div>
         {error && !authOpen && (
           <div className="message error" role="alert">
@@ -616,7 +609,9 @@ export function App() {
                 <div className="model-info">
                   <div>
                     <small>{current ? 'TU VESTIDOR' : 'EXPLORA EL VESTIDOR'}</small>
-                    <b>{current ? 'Avatar · versión ' + current.version : 'Vestido de referencia'}</b>
+                    <b>
+                      {current ? 'Avatar · versión ' + current.version : 'Vestido de referencia'}
+                    </b>
                     <span>
                       {current
                         ? 'Representación corporal aproximada'
@@ -643,7 +638,9 @@ export function App() {
                     <select value={category} onChange={(event) => setCategory(event.target.value)}>
                       <option value="">Vestidos y faldas</option>
                       {categories.map((option) => (
-                        <option value={option.id} key={option.id}>{option.nombre}</option>
+                        <option value={option.id} key={option.id}>
+                          {option.nombre}
+                        </option>
                       ))}
                     </select>
                   </label>
@@ -831,9 +828,9 @@ export function App() {
                 </div>
               )}
               <p className="catalog-disclaimer">
-                Catálogo académico con referencias de marcas reales. Los precios y las existencias son
-                de demostración; las siluetas 3D muestran una aproximación, no el ajuste exacto de la prenda.
-                Imágenes de los fabricantes. Sin afiliación comercial.
+                Catálogo académico con referencias de marcas reales. Los precios y las existencias
+                son de demostración; las siluetas 3D muestran una aproximación, no el ajuste exacto
+                de la prenda. Imágenes de los fabricantes. Sin afiliación comercial.
               </p>
             </section>
             <section className="how">
@@ -859,18 +856,12 @@ export function App() {
             </section>
           </>
         ) : page === 'admin' ? (
-          <Admin
+          <AdminWorkspace
             products={products}
             categories={categories}
             permissions={user?.permissions || []}
             onCatalogChanged={loadCatalog}
           />
-        ) : page === 'reports' ? (
-          <Reports />
-        ) : page === 'orders' ? (
-          <OrdersAdmin />
-        ) : page === 'sales' ? (
-          <Sales />
         ) : page === 'commerce' ? (
           <Commerce locations={catalogLocations} onInventoryChanged={loadCatalog} />
         ) : (

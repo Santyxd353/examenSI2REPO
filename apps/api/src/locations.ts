@@ -23,6 +23,7 @@ import { AuthGuard, AuthRequest, Identity, requirePermission } from './auth';
 import { Db } from './db';
 import { assignAssortment } from './assortment';
 import { RealtimeGateway } from './realtime';
+import { requireCapacity } from './tenancy/capacity';
 
 const locationInput = z
   .object({
@@ -104,6 +105,7 @@ export class LocationsController {
     return this.db.$transaction(async (tx) => {
       // Serialize hierarchy edits; the row lock also coordinates with stock writers.
       await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('vestidor18:ubicacion:jerarquia', 0))`;
+      await requireCapacity(tx, 'locations');
       if (data.padreId) await lockActiveLocations(tx, [data.padreId]);
       const location = await tx.ubicacion.create({
         data: {
@@ -144,6 +146,7 @@ export class LocationsController {
       await tx.$queryRaw`SELECT id FROM ubicacion WHERE id=${id}::uuid FOR UPDATE`;
       const found = await tx.ubicacion.findUnique({ where: { id } });
       if (!found) throw new NotFoundException('Ubicación no encontrada.');
+      if (data.activa === true && !found.activa) await requireCapacity(tx, 'locations');
       const effectiveParentId = data.padreId === undefined ? found.padre_id : data.padreId;
       if (effectiveParentId && (data.padreId !== undefined || data.activa === true)) {
         let parent = await tx.ubicacion.findFirst({
@@ -704,6 +707,7 @@ export class StaffController {
       throw new BadRequestException('Una o más ubicaciones no existen o están inactivas.');
     const password = await hash(data.clave, 12);
     return this.db.$transaction(async (tx) => {
+      await requireCapacity(tx, 'staff');
       const role = await tx.rol.findUniqueOrThrow({ where: { nombre: data.rol } });
       const user = await tx.usuario.create({
         data: {

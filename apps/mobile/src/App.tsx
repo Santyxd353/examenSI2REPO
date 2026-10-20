@@ -16,7 +16,16 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { StatusBar } from 'expo-status-bar';
 import Svg, { Polygon } from 'react-native-svg';
-import { API_URL, api, login, logout, registerClient, restoreSession } from './api';
+import {
+  API_URL,
+  api,
+  login,
+  logout,
+  registerClient,
+  restoreSession,
+  getTenantSlug,
+  selectTenant,
+} from './api';
 import { AdminDashboard } from './AdminDashboard';
 import { CatalogScreen } from './CatalogScreen';
 import { connectRealtime } from './realtime';
@@ -51,6 +60,38 @@ export function App() {
   const [error, setError] = useState('');
   const [catalogLoading, setCatalogLoading] = useState(false);
 
+  async function closeAccount() {
+    setLoading(true);
+    catalogRequest.current++;
+    try {
+      await logout();
+    } catch (reason) {
+      setError((reason as Error).message);
+      setLoading(false);
+      return;
+    }
+    setUser(null);
+    setAdminClientMode(false);
+    setCatalog({
+      products: [],
+      locations: [],
+      categories: [],
+      filters: { brands: [], colors: [], sizes: [] },
+    });
+    setLocation(null);
+    setSelection(null);
+    setBrand('');
+    setColor('');
+    setSize('');
+    setSearch('');
+    setDebouncedSearch('');
+    setCategory('');
+    setPage('catalog');
+    setError('');
+    setCatalogLoading(false);
+    setLoading(false);
+  }
+
   async function loadCatalog(locationId = location?.id || '') {
     const requestId = ++catalogRequest.current;
     const params = new URLSearchParams();
@@ -66,7 +107,7 @@ export function App() {
       const data = await api(`/catalog${params.size ? `?${params}` : ''}`);
       if (requestId !== catalogRequest.current) return;
       setCatalog(data);
-      if (!location && data.locations[0]) setLocation(data.locations[0]);
+      if (!locationId) setLocation(data.locations[0] || null);
     } finally {
       if (requestId === catalogRequest.current) setCatalogLoading(false);
     }
@@ -141,12 +182,7 @@ export function App() {
           await loadCatalog('');
           setAdminClientMode(true);
         }}
-        onLogout={() => {
-          void logout();
-          setUser(null);
-          setAdminClientMode(false);
-          setPage('catalog');
-        }}
+        onLogout={closeAccount}
       />
     );
 
@@ -198,12 +234,7 @@ export function App() {
             }
           : undefined
       }
-      onLogout={() => {
-        void logout();
-        setUser(null);
-        setAdminClientMode(false);
-        setPage('catalog');
-      }}
+      onLogout={closeAccount}
     />
   );
 }
@@ -227,6 +258,7 @@ function LoginScreen({
   const [confirmacion, setConfirmacion] = useState('');
   const [localError, setLocalError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [store, setStore] = useState(getTenantSlug());
 
   function switchMode(next: 'login' | 'register') {
     setMode(next);
@@ -253,9 +285,12 @@ function LoginScreen({
     }
     setBusy(true);
     try {
+      await selectTenant(store.trim().toLowerCase());
       if (mode === 'register')
         await onRegister(nombres.trim(), apellidos.trim(), normalizedEmail, clave);
       else await onLogin(normalizedEmail, clave);
+    } catch (reason) {
+      setLocalError((reason as Error).message);
     } finally {
       setBusy(false);
     }
@@ -301,6 +336,18 @@ function LoginScreen({
             </Text>
           </Pressable>
         </View>
+
+        <TextInput
+          accessibilityLabel="Identificador de tienda"
+          autoCapitalize="none"
+          autoCorrect={false}
+          editable={!busy}
+          placeholder="Identificador de tienda"
+          placeholderTextColor="#626a61"
+          style={styles.input}
+          value={store}
+          onChangeText={setStore}
+        />
 
         {mode === 'register' && (
           <>
@@ -419,9 +466,7 @@ function ArCamera({
     ? `${API_URL.replace(/\/api$/, '')}${variant.arImagePath}`
     : null;
   const categoryKind = garmentKind(product.tipoPrenda || '');
-  const kind = categoryKind === 'unsupported'
-      ? garmentKind(product.nombre)
-      : categoryKind;
+  const kind = categoryKind === 'unsupported' ? garmentKind(product.nombre) : categoryKind;
 
   useEffect(() => {
     if (
@@ -591,7 +636,11 @@ function ArCamera({
             <Text style={styles.primaryText}>Reintentar detección</Text>
           </Pressable>
         )}
-        {!arImageUrl && <Text style={styles.cameraPrivacy}>Silueta de color referencial; no reproduce los detalles del vestido de marca.</Text>}
+        {!arImageUrl && (
+          <Text style={styles.cameraPrivacy}>
+            Silueta de color referencial; no reproduce los detalles del vestido de marca.
+          </Text>
+        )}
         <Text style={styles.cameraHint}>
           Visualización aproximada. No garantiza la talla ni el ajuste físico de la prenda.
         </Text>

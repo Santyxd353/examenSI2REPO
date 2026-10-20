@@ -6,6 +6,12 @@ Primera entrega ejecutable basada en el documento actualizado [Plataforma_Vestid
 
 Repositorio oficial: [Santyxd353/examenSI2REPO](https://github.com/Santyxd353/examenSI2REPO). Rama principal: `main`.
 
+## Segunda entrega SaaS
+
+El alcance nuevo y la entrega prevista para el 27/10/2026 están en [alcance SaaS](docs/saas/ALCANCE_Y_ENTREGA.md). La implementación se desarrolla en `desarrollo/saas-offline`. Consulta [estado verificable](docs/saas/ESTADO.md) y [operación de tiendas](docs/saas/OPERACION.md).
+
+La base SaaS separa las bases, archivos, sesiones y eventos de cada negocio. La web incorpora un selector de tienda y la administración por módulos; Android incluye la tienda en su sesión. La suscripción distingue prueba, vigencia y vencimiento. Stripe, QR simulado, sincronización offline, nuevos dashboards, ML e ICONIX tienen avances registrados por separado; no se consideran completos por existir el registro de planes.
+
 La instancia pública se despliega desde `main` en una VM Azure con Docker Compose. Instrucciones: [docs/DESPLIEGUE_VM_AZURE.md](docs/DESPLIEGUE_VM_AZURE.md). La configuración para Azure Container Apps permanece en [docs/DESPLIEGUE_AZURE.md](docs/DESPLIEGUE_AZURE.md) como alternativa.
 
 Para obtener el proyecto:
@@ -31,11 +37,11 @@ Para habilitar de forma local la primera cuenta administradora, registra una cue
 npm run user:grant-admin -- correo@ejemplo.com
 ```
 
-La siguiente sesión mostrará **Inventario**, desde donde se crean, editan y desactivan sucursales o almacenes; se asignan vendedores o analistas a una o varias ubicaciones; se consulta el detalle físico, reservado, comprometido y disponible; se realizan conteos y conciliaciones; se configuran mínimos con alertas; se ajustan y transfieren existencias; y se consulta el historial. El catálogo muestra las unidades disponibles y permite filtrar las prendas por sucursal o almacén.
+La siguiente sesión mostrará **Administración**. Sus módulos separan Catálogo, Inventario, Sucursales y almacenes, Equipo, Vender, Pedidos, Reportes y Mi negocio. Allí se crean y desactivan ubicaciones, se asigna el personal, se consulta el stock físico, reservado, comprometido y disponible, se registran conteos y ajustes y se revisa el historial. El catálogo muestra las unidades disponibles y permite filtrar las prendas por sucursal o almacén.
 
-Los roles Administrador y Analista también ven **Reportes**. El panel resume ventas confirmadas por período, ubicación, producto y vendedor, además del inventario y sus alertas. Desde allí se puede ejecutar una proyección local de demanda, detectar valores semanales atípicos, obtener propuestas de reposición o traslado y formular consultas de solo lectura. Los resultados se guardan con la versión del modelo y explican los datos utilizados; son estimaciones estadísticas, no garantías de ventas futuras.
+Los roles Administrador y Analista abren **Administración → Reportes y análisis**. El panel resume ventas confirmadas por período, ubicación, producto y vendedor, además del inventario y sus alertas. Desde allí se puede ejecutar una proyección local de demanda, detectar valores semanales atípicos, obtener propuestas de reposición o traslado y formular consultas de solo lectura. Los resultados se guardan con la versión del modelo y explican los datos utilizados; son estimaciones estadísticas, no garantías de ventas futuras.
 
-Los roles Administrador y Vendedor ven **Vender**. La pantalla permite seleccionar una ubicación autorizada, agregar varias prendas, indicar cliente y método de pago, y confirmar una venta de mostrador. La operación crea pedido, detalle y pago confirmado, descuenta el stock y registra el movimiento en una sola transacción. Los métodos Efectivo, Tarjeta y QR son registros internos de esta versión local; todavía no ejecutan cobros en una pasarela bancaria.
+Los roles Administrador y Vendedor abren **Administración → Vender**. La pantalla permite seleccionar una ubicación autorizada, agregar varias prendas, indicar cliente y método de pago, y confirmar una venta de mostrador. La operación crea pedido, detalle y pago confirmado, descuenta el stock y registra el movimiento en una sola transacción. Los métodos Efectivo, Tarjeta y QR son registros internos de esta versión local; todavía no ejecutan cobros en una pasarela bancaria.
 
 Puedes explorar el catálogo y girar el maniquí de referencia sin una cuenta. Para enviar las tres fotos, entra a **Mi avatar**, declara tu altura y acepta el consentimiento. Los resultados pasan a revisión antes de poder usarse en el vestidor. Si las imágenes no superan la validación, se muestra el fallo y se purgan las fotos.
 
@@ -69,7 +75,7 @@ El instalador:
 
 Si PostgreSQL está en otro directorio, configura `VESTIDOR_PG_BIN` con su carpeta `bin`. Si la política de PowerShell bloquea un script descargado, revisa su contenido y desbloquea ese archivo con `Unblock-File`; no es necesario cambiar la política del equipo.
 
-Los scripts actuales usan los puertos locales **55418 / 3018 / 5173**. Una conexión distinta requiere configurar y arrancar los componentes manualmente. No hay despliegue en Azure ni acceso desde teléfonos físicos en esta entrega.
+Los scripts actuales usan los puertos locales **55418 / 3018 / 5173**. Una conexión distinta requiere configurar y arrancar los componentes manualmente. La instancia Azure usa su propia configuración y el APK se conecta mediante HTTPS.
 
 ## Estructura y stack
 

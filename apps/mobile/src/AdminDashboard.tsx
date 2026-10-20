@@ -100,7 +100,7 @@ export function AdminDashboard({ user, onClientMode, onLogout }: Props) {
       <View style={styles.header}>
         <View>
           <Text style={styles.logo}>lúmina°</Text>
-          <Text style={styles.logoSub}>PANEL ADMINISTRADOR</Text>
+          <Text style={styles.logoSub}>{user.tenant?.name || 'Lúmina'} · ADMINISTRACIÓN</Text>
         </View>
         <Pressable accessibilityRole="button" style={styles.avatar} onPress={onLogout}>
           <Text style={styles.avatarText}>{user.nombres.slice(0, 1).toUpperCase()}</Text>
