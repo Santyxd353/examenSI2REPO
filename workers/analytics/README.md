@@ -6,10 +6,11 @@ anomalías, pronósticos y sugerencias de reposición.
 
 ## Estado
 
-B00 y B01 preparados. Existe un generador reproducible del dataset
+B00, B01 y B02 preparados. Existe un generador reproducible del dataset
 `demo-femenino-seed42-v1`, su catálogo demo, manifiesto, copia para anomalías y
-etiquetas separadas. Todavía no hay entrenamiento ni resultados de ML; B02 y
-B03 agregarán features, evaluación y el CLI acordado con el equipo A.
+etiquetas separadas. B02 agrega features históricas, baseline semanal,
+RandomForest y evaluación walk-forward 7/30 días. B03 agregará anomalías,
+reposición y el CLI acordado con el equipo A.
 
 ## Entorno local
 
@@ -39,6 +40,20 @@ $taskMlPython = Join-Path (Resolve-Path ../..) '.local/analytics-venv/Scripts/py
 El directorio de salida contiene `panel.csv`, `anomaly-panel.csv`,
 `anomaly-labels.csv`, `catalog.json` y `manifest.json`. Es privado, regenerable
 y no debe agregarse a Git.
+
+## Entrenamiento B02
+
+Desde `workers/analytics`, después de generar B01:
+
+```powershell
+$taskMlPython = Join-Path (Resolve-Path ../..) '.local/analytics-venv/Scripts/python.exe'
+& $taskMlPython -m pytest tests/test_features.py tests/test_temporal_evaluation.py tests/test_demand.py tests/test_artifacts.py -q
+& $taskMlPython -m lumina_analytics.demand --panel ../../.local/analytics/b01/panel.csv --output ../../.local/analytics/b02 --estimators 200 --jobs 1
+```
+
+La salida privada contiene `demand-model.joblib`, `metadata.json` y
+`evaluation.json`. Los artefactos joblib solo se cargan desde el directorio
+confiable y después de validar su SHA-256.
 
 ## Límites de integración
 
