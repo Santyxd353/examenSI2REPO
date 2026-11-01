@@ -1,60 +1,98 @@
 import * as SecureStore from 'expo-secure-store';
+import { createOfflineIdentity, canRestoreOfflineIdentity, type OfflineIdentity } from './auth/offlineIdentity';
+import { createSessionScope, type ScopeKey } from './auth/sessionScope';
+import { ApiProblem, type ApiProblemPayload } from './errors/ApiProblem';
+import { createApiHeaders } from './transport/headers';
 import type { Identity } from './types';
-type AuthReply = { accessToken: string; refreshToken: string; user: Identity; message?: string };
+
+type AuthReply = { accessToken: string; refreshToken: string; user: Identity; message?: string; code?: string };
 
 const TENANT_KEY = 'vestidor18.tenant';
-let selectedTenant = 'lumina';
-const sessionKey = (kind: 'access' | 'refresh', store = selectedTenant) =>
-  store === 'lumina' ? `vestidor18.${kind}` : `vestidor18.${store}.${kind}`;
-let sessionEpoch = 0;
-const captureSession = () => ({ store: selectedTenant, epoch: sessionEpoch });
-function assertSession(scope: ReturnType<typeof captureSession>) {
-  if (scope.store !== selectedTenant || scope.epoch !== sessionEpoch)
-    throw new Error('La tienda o la sesión cambió.');
-}
-export const getTenantSlug = () => selectedTenant;
-export async function selectTenant(slug: string) {
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 63)
-    throw new Error('El identificador de tienda no es válido.');
-  if (slug === selectedTenant) return;
-  await refreshPromise?.catch(() => {});
-  await clearPromise;
-  sessionEpoch++;
-  selectedTenant = slug;
-  accessToken = '';
-  refreshToken = '';
-  await SecureStore.setItemAsync(TENANT_KEY, slug);
-}
-export const API_URL = (
-  process.env.EXPO_PUBLIC_API_URL || 'https://172-191-104-91.sslip.io/api'
-).replace(/\/$/, '');
+const OFFLINE_IDENTITY_KEY = (tenant: string) => `vestidor18.${tenant}.identity`;
+const sessionKey = (kind: 'access' | 'refresh', tenant: string) =>
+  tenant === 'lumina' ? `vestidor18.${kind}` : `vestidor18.${tenant}.${kind}`;
+const scope = createSessionScope('lumina');
+
+export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://172-191-104-91.sslip.io/api').replace(/\/$/, '');
 export const REALTIME_URL = API_URL.replace(/\/api$/, '');
 
 let accessToken = '';
 let refreshToken = '';
-let refreshPromise: Promise<void> | null = null;
+let refreshPending: { scope: ScopeKey; promise: Promise<void> } | null = null;
 let clearPromise: Promise<void> | null = null;
 
-async function saveTokens(access: string, refresh: string, scope = captureSession()) {
-  assertSession(scope);
+export const getTenantSlug = () => scope.current().tenantSlug;
+export const getAccessToken = () => accessToken;
+export const captureSessionScope = () => scope.capture();
+export const isCurrentSessionScope = (value: ScopeKey) => scope.isCurrent(value);
+export const assertCurrentSessionScope = (value: ScopeKey) => scope.assertCurrent(value);
+
+function assertValidTenant(slug: string) {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 63)
+    throw new Error('El identificador de tienda no es válido.');
+}
+
+async function responsePayload(response: Response): Promise<ApiProblemPayload> {
+  const contentType = response.headers.get('content-type') || '';
+  const body = contentType.includes('application/json')
+    ? ((await response.json().catch(() => ({}))) as ApiProblemPayload)
+    : {};
+  return {
+    ...body,
+    correlationId: body.correlationId || response.headers.get('x-correlation-id') || undefined,
+  };
+}
+
+async function scopedFetch(url: string, init: RequestInit, requestScope: ScopeKey) {
+  try {
+    const response = await fetch(url, init);
+    scope.assertCurrent(requestScope);
+    return response;
+  } catch (reason) {
+    if (!scope.isCurrent(requestScope)) scope.assertCurrent(requestScope);
+    throw ApiProblem.network(reason);
+  }
+}
+
+async function persistOfflineIdentity(identity: Identity, requestScope: ScopeKey) {
+  scope.assertCurrent(requestScope);
+  const record = createOfflineIdentity(identity, requestScope);
+  await SecureStore.setItemAsync(OFFLINE_IDENTITY_KEY(requestScope.tenantSlug), JSON.stringify(record));
+  scope.assertCurrent(requestScope);
+}
+
+async function readOfflineIdentity(requestScope: ScopeKey): Promise<OfflineIdentity | null> {
+  const raw = await SecureStore.getItemAsync(OFFLINE_IDENTITY_KEY(requestScope.tenantSlug));
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as OfflineIdentity;
+    return canRestoreOfflineIdentity(parsed, requestScope) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveTokens(access: string, refresh: string, requestScope: ScopeKey) {
+  scope.assertCurrent(requestScope);
   accessToken = access;
   refreshToken = refresh;
   await Promise.all([
-    SecureStore.setItemAsync(sessionKey('access', scope.store), access),
-    SecureStore.setItemAsync(sessionKey('refresh', scope.store), refresh),
+    SecureStore.setItemAsync(sessionKey('access', requestScope.tenantSlug), access),
+    SecureStore.setItemAsync(sessionKey('refresh', requestScope.tenantSlug), refresh),
   ]);
-  assertSession(scope);
+  scope.assertCurrent(requestScope);
 }
 
-export function clearSession() {
+export async function clearSession() {
   if (clearPromise) return clearPromise;
-  const store = selectedTenant;
-  sessionEpoch++;
+  const requestScope = scope.capture();
+  scope.invalidate();
   accessToken = '';
   refreshToken = '';
   const pending = Promise.all([
-    SecureStore.deleteItemAsync(sessionKey('access', store)),
-    SecureStore.deleteItemAsync(sessionKey('refresh', store)),
+    SecureStore.deleteItemAsync(sessionKey('access', requestScope.tenantSlug)),
+    SecureStore.deleteItemAsync(sessionKey('refresh', requestScope.tenantSlug)),
+    SecureStore.deleteItemAsync(OFFLINE_IDENTITY_KEY(requestScope.tenantSlug)),
   ])
     .then(() => undefined)
     .finally(() => {
@@ -64,115 +102,129 @@ export function clearSession() {
   return pending;
 }
 
-async function rotate() {
-  const scope = captureSession();
-  if (!refreshToken) throw new Error('Inicia sesión para continuar.');
-  if (!refreshPromise)
-    refreshPromise = fetch(`${API_URL}/auth/mobile/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Tenant-Slug': scope.store },
-      body: JSON.stringify({ refreshToken }),
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error('La sesión venció.');
-        const data = (await response.json()) as AuthReply;
-        await saveTokens(data.accessToken, data.refreshToken, scope);
-      })
-      .finally(() => {
-        refreshPromise = null;
-      });
-  return refreshPromise;
+export async function selectTenant(slug: string) {
+  assertValidTenant(slug);
+  if (slug === getTenantSlug()) return;
+  await refreshPending?.promise.catch(() => {});
+  await clearSession();
+  scope.switchTenant(slug);
+  await SecureStore.setItemAsync(TENANT_KEY, slug);
 }
 
-export async function api(path: string, options: RequestInit = {}, retry = true): Promise<any> {
-  const scope = captureSession();
-  const headers = new Headers(options.headers);
-  headers.set('X-Client-Channel', 'APP');
-  headers.set('X-Tenant-Slug', scope.store);
-  if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
-  if (options.body) headers.set('Content-Type', 'application/json');
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
-  assertSession(scope);
+async function rotate(requestScope: ScopeKey) {
+  scope.assertCurrent(requestScope);
+  if (!refreshToken) throw ApiProblem.fromHttp(401, { message: 'Inicia sesión para continuar.' });
+  if (!refreshPending || !scope.isCurrent(refreshPending.scope)) {
+    const token = refreshToken;
+    const promise = scopedFetch(
+      `${API_URL}/auth/mobile/refresh`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Tenant-Slug': requestScope.tenantSlug },
+        body: JSON.stringify({ refreshToken: token }),
+      },
+      requestScope,
+    )
+      .then(async (response) => {
+        if (!response.ok) throw ApiProblem.fromHttp(response.status, await responsePayload(response));
+        const data = (await response.json()) as AuthReply;
+        await saveTokens(data.accessToken, data.refreshToken, requestScope);
+        await persistOfflineIdentity(data.user, requestScope);
+      })
+      .finally(() => {
+        if (refreshPending?.promise === promise) refreshPending = null;
+      });
+    refreshPending = { scope: requestScope, promise };
+  }
+  return refreshPending.promise;
+}
+
+// Las rutas existentes aún no declaran todos sus DTO. Las nuevas rutas deben usar
+// `api<T>()`; el valor por defecto conserva compatibilidad durante la migración.
+export async function api<T = any>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
+  const requestScope = scope.capture();
+  const headers = createApiHeaders(options.headers, requestScope, accessToken, options.body);
+
+  const response = await scopedFetch(`${API_URL}${path}`, { ...options, headers }, requestScope);
   if (response.status === 401 && retry && !path.startsWith('/auth/mobile/')) {
-    await rotate();
-    assertSession(scope);
-    return api(path, options, false);
+    await rotate(requestScope);
+    scope.assertCurrent(requestScope);
+    return api<T>(path, options, false);
   }
-  if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { message?: string };
-    throw new Error(body.message || 'No se pudo conectar con el servidor.');
-  }
-  const data = await response.json();
-  assertSession(scope);
+  if (!response.ok) throw ApiProblem.fromHttp(response.status, await responsePayload(response));
+  const data = (await response.json().catch(() => undefined)) as T;
+  scope.assertCurrent(requestScope);
   return data;
 }
 
 export async function restoreSession(): Promise<Identity | null> {
-  selectedTenant = (await SecureStore.getItemAsync(TENANT_KEY)) || 'lumina';
+  const persistedTenant = (await SecureStore.getItemAsync(TENANT_KEY)) || 'lumina';
+  assertValidTenant(persistedTenant);
+  scope.switchTenant(persistedTenant);
+  const requestScope = scope.capture();
   const [savedAccess, savedRefresh] = await Promise.all([
-    SecureStore.getItemAsync(sessionKey('access')),
-    SecureStore.getItemAsync(sessionKey('refresh')),
+    SecureStore.getItemAsync(sessionKey('access', requestScope.tenantSlug)),
+    SecureStore.getItemAsync(sessionKey('refresh', requestScope.tenantSlug)),
   ]);
   accessToken = savedAccess || '';
   refreshToken = savedRefresh || '';
   if (!refreshToken) return null;
   try {
-    return await api('/auth/me');
-  } catch {
-    await clearSession();
+    const identity = await api<Identity>('/auth/me');
+    await persistOfflineIdentity(identity, requestScope);
+    return identity;
+  } catch (reason) {
+    if (ApiProblem.isNetwork(reason)) {
+      const offline = await readOfflineIdentity(requestScope);
+      if (offline && scope.isCurrent(requestScope)) return offline.identity;
+      throw reason;
+    }
+    if (scope.isCurrent(requestScope)) await clearSession();
     return null;
   }
 }
 
-export async function login(correo: string, clave: string): Promise<Identity> {
+async function authenticate(path: string, payload: Record<string, string>): Promise<Identity> {
   await clearPromise;
-  const scope = captureSession();
-  const response = await fetch(`${API_URL}/auth/mobile/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Tenant-Slug': scope.store },
-    body: JSON.stringify({ correo, clave }),
-  });
+  const requestScope = scope.capture();
+  const response = await scopedFetch(
+    `${API_URL}${path}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Tenant-Slug': requestScope.tenantSlug },
+      body: JSON.stringify(payload),
+    },
+    requestScope,
+  );
   const data = (await response.json().catch(() => ({}))) as AuthReply;
-  if (!response.ok) throw new Error(data.message || 'Correo o contraseña incorrectos.');
-  await saveTokens(data.accessToken, data.refreshToken, scope);
+  if (!response.ok) throw ApiProblem.fromHttp(response.status, data);
+  await saveTokens(data.accessToken, data.refreshToken, requestScope);
+  await persistOfflineIdentity(data.user, requestScope);
   return data.user;
 }
 
-export async function registerClient(
-  nombres: string,
-  apellidos: string,
-  correo: string,
-  clave: string,
-): Promise<Identity> {
-  await clearPromise;
-  const scope = captureSession();
-  const response = await fetch(`${API_URL}/auth/mobile/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Tenant-Slug': scope.store },
-    body: JSON.stringify({ nombres, apellidos, correo, clave }),
-  });
-  const data = (await response.json().catch(() => ({}))) as AuthReply;
-  if (!response.ok) throw new Error(data.message || 'No se pudo crear la cuenta.');
-  await saveTokens(data.accessToken, data.refreshToken, scope);
-  return data.user;
-}
+export const login = (correo: string, clave: string) => authenticate('/auth/mobile/login', { correo, clave });
+
+export const registerClient = (nombres: string, apellidos: string, correo: string, clave: string) =>
+  authenticate('/auth/mobile/register', { nombres, apellidos, correo, clave });
 
 export async function logout() {
-  const store = selectedTenant;
+  const tenantSlug = getTenantSlug();
   const currentRefresh = refreshToken;
   await clearSession();
-  if (currentRefresh) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+  if (!currentRefresh) return;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
     await fetch(`${API_URL}/auth/mobile/logout`, {
       method: 'POST',
       signal: controller.signal,
-      headers: { 'Content-Type': 'application/json', 'X-Tenant-Slug': store },
+      headers: { 'Content-Type': 'application/json', 'X-Tenant-Slug': tenantSlug },
       body: JSON.stringify({ refreshToken: currentRefresh }),
-    })
-      .catch(() => {})
-      .finally(() => clearTimeout(timeout));
+    });
+  } catch {
+    // El cierre local ya revocó el acceso local; el servidor expira el token restante.
+  } finally {
+    clearTimeout(timeout);
   }
 }
-
-export const getAccessToken = () => accessToken;

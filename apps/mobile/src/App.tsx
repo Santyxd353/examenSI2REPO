@@ -27,6 +27,7 @@ import {
   selectTenant,
 } from './api';
 import { AdminDashboard } from './AdminDashboard';
+import { AdminNavigator } from './navigation/AdminNavigator';
 import { CatalogScreen } from './CatalogScreen';
 import { connectRealtime } from './realtime';
 import { detectPose, isPoseAvailable } from '../modules/pose-landmarker/src';
@@ -176,13 +177,18 @@ export function App() {
 
   if (isAdministrator(user) && !adminClientMode)
     return (
-      <AdminDashboard
+      <AdminNavigator
         user={user}
-        onClientMode={async () => {
-          await loadCatalog('');
-          setAdminClientMode(true);
-        }}
-        onLogout={closeAccount}
+        home={
+          <AdminDashboard
+            user={user}
+            onClientMode={async () => {
+              await loadCatalog('');
+              setAdminClientMode(true);
+            }}
+            onLogout={closeAccount}
+          />
+        }
       />
     );
 

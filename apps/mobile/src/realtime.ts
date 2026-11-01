@@ -1,5 +1,11 @@
 import { io, Socket } from 'socket.io-client';
-import { getAccessToken, getTenantSlug, REALTIME_URL } from './api';
+import {
+  captureSessionScope,
+  getAccessToken,
+  getTenantSlug,
+  isCurrentSessionScope,
+  REALTIME_URL,
+} from './api';
 
 let socket: Socket | null = null;
 
@@ -8,15 +14,22 @@ export function connectRealtime(
   onInventory: (event: { locationId: string; variantIds: string[]; reason: string }) => void,
 ) {
   socket?.disconnect();
-  socket = io(`${REALTIME_URL}/realtime`, {
+  const requestScope = captureSessionScope();
+  const connected = io(`${REALTIME_URL}/realtime`, {
     transports: ['websocket'],
     auth: { token: getAccessToken(), tenant: getTenantSlug() },
     reconnection: true,
   });
-  socket.on('connect', () => socket?.emit('inventory:subscribe', { locationId }));
-  socket.on('inventory:updated', onInventory);
+  socket = connected;
+  connected.on('connect', () => {
+    if (!isCurrentSessionScope(requestScope)) return connected.disconnect();
+    connected.emit('inventory:subscribe', { locationId });
+  });
+  connected.on('inventory:updated', (event) => {
+    if (isCurrentSessionScope(requestScope)) onInventory(event);
+  });
   return () => {
-    socket?.disconnect();
-    socket = null;
+    connected.disconnect();
+    if (socket === connected) socket = null;
   };
 }

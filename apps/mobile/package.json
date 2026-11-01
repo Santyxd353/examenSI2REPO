@@ -8,13 +8,14 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "check": "expo install --check"
+    "check": "expo install --check",
+    "test:unit": "tsx --test test/pose.test.ts test/checkout.test.ts test/checkoutFlow.test.ts test/sessionScope.test.ts test/apiProblems.test.ts test/offlineIdentity.test.ts test/transportHeaders.test.ts test/moduleRegistry.test.ts"
   },
   "dependencies": {
-    "expo": "~57.0.30",
+    "expo": "~57.0.31",
     "expo-camera": "~57.0.6",
     "expo-dev-client": "~57.0.20",
-    "expo-modules-core": "~57.0.19",
+    "expo-modules-core": "~57.0.24",
     "expo-secure-store": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.4",
+    "tsx": "4.21.0",
     "typescript": "~6.0.3"
   },
   "overrides": {
