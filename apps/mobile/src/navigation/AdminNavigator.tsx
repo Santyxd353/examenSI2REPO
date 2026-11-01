@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { modulesForIdentity, type MobileBusinessModule } from '../modules/registry';
 import { BusinessScreen } from '../BusinessScreen';
+import { SyncScreen } from '../SyncScreen';
 import type { Identity } from '../types';
 
 type Props = {
@@ -39,6 +40,8 @@ export function AdminNavigator({ user, home }: Props) {
         home
       ) : active === 'business' ? (
         <BusinessScreen />
+      ) : active === 'sync' ? (
+        <SyncScreen user={user} />
       ) : (
         <View style={styles.placeholder}>
           <Text style={styles.placeholderTitle}>{current?.label}</Text>
