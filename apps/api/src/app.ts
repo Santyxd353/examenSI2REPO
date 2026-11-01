@@ -22,6 +22,7 @@ import { RealtimeGateway } from './realtime';
 import { ApiErrors } from './errors';
 import { storedPath, ensureStorage } from './storage';
 import { TenantRegistry, TenantController, PlatformController } from './tenancy/platform';
+import { OfflineKeyController, OfflineKeyService } from './offline-keys';
 import { runForTenant } from './tenancy/context';
 import { HttpException } from '@nestjs/common';
 @Controller('health')
@@ -47,6 +48,7 @@ class HealthController {
     OrdersController,
     TenantController,
     PlatformController,
+    OfflineKeyController,
   ],
   providers: [
     Db,
@@ -56,6 +58,7 @@ class HealthController {
     CommercialAnalytics,
     RealtimeGateway,
     TenantRegistry,
+    OfflineKeyService,
   ],
 })
 class AppModule {}
