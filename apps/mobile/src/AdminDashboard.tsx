@@ -13,20 +13,23 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { api } from './api';
+import { getOfflineDeviceId } from './offline/device';
+import { openOfflineDatabase } from './offline/db';
+import { loadOfflineDashboard, reportSnapshotKey, saveOfflineDashboard } from './modules/reports/offlineReport';
 import type { Identity } from './types';
 
 type Report = {
   kpis: { pedidos: number; ventas: number; unidades: number; ticketPromedio: number };
   summary: string;
   generatedBy: string;
-  products: {
+  products: readonly {
     variante_id: string;
     producto: string;
     sku: string;
     unidades: number;
     ventas: number;
   }[];
-  locations: {
+  locations: readonly {
     ubicacion_id: string;
     ubicacion: string | null;
     pedidos: number;
@@ -53,6 +56,11 @@ function isoDaysAgo(days: number) {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+async function offlineScopeFor(user: Identity) {
+  if (!user.tenant) return null;
+  return { tenantId: user.tenant.id, actorId: user.id, deviceId: await getOfflineDeviceId() };
+}
+
 export function AdminDashboard({ user, onClientMode, onLogout }: Props) {
   const topInset = Platform.OS === 'android' ? NativeStatusBar.currentHeight || 24 : 0;
   const [days, setDays] = useState(30);
@@ -64,15 +72,28 @@ export function AdminDashboard({ user, onClientMode, onLogout }: Props) {
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
+    const from = isoDaysAgo(days);
+    const to = today();
+    const key = reportSnapshotKey(from, to);
     try {
-      const params = new URLSearchParams({ from: isoDaysAgo(days), to: today() });
-      setReport(await api(`/reports/summary?${params}`));
+      const params = new URLSearchParams({ from, to });
+      const current = await api<Report>(`/reports/summary?${params}`);
+      setReport(current);
+      const scope = await offlineScopeFor(user);
+      if (scope) await saveOfflineDashboard(await openOfflineDatabase(), scope, key, current);
     } catch (reason) {
-      setError((reason as Error).message);
+      const scope = await offlineScopeFor(user);
+      const cached = scope ? await loadOfflineDashboard(await openOfflineDatabase(), scope, key) : null;
+      if (cached) {
+        setReport(cached.report);
+        setError(`Sin conexión. Mostrando el último dashboard guardado (${new Date(cached.generatedAt).toLocaleString('es-BO')}).`);
+      } else {
+        setError((reason as Error).message);
+      }
     } finally {
       setLoading(false);
     }
-  }, [days]);
+  }, [days, user]);
 
   useEffect(() => {
     void load();
