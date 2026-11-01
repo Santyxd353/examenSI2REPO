@@ -7,11 +7,15 @@ import {
   Injectable,
   NotFoundException,
   OnModuleDestroy,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { Pool } from 'pg';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { currentTenant, TenantContext } from './context';
+import { AuthGuard, AuthRequest, requirePermission } from '../auth';
+import { Db } from '../db';
 
 export const DEFAULT_TENANT_ID = '00000000-0000-4000-8000-000000000018';
 export const validTenantSlug = (slug: string) =>
@@ -181,6 +185,8 @@ export class TenantRegistry implements OnModuleDestroy {
 
 @Controller('tenant')
 export class TenantController {
+  constructor(@Inject(Db) private readonly db: Db) {}
+
   @Get()
   info() {
     const tenant = currentTenant();
@@ -191,6 +197,31 @@ export class TenantController {
       state: tenant?.state,
       readOnly: tenant?.readOnly,
       subscription: tenant?.subscription,
+    };
+  }
+
+  @Get('subscription')
+  @UseGuards(AuthGuard)
+  async subscription(@Req() request: AuthRequest) {
+    requirePermission(request.user, 'usuarios:gestionar');
+    const tenant = currentTenant();
+    const [locations, products, staff] = await Promise.all([
+      this.db.ubicacion.count({ where: { activa: true } }),
+      this.db.producto.count(),
+      this.db.usuario.count({
+        where: {
+          estado: 'ACTIVO',
+          usuario_rol: { some: { rol: { nombre: { in: ['Administrador', 'Vendedor', 'Analista'] } } } },
+        },
+      }),
+    ]);
+    return {
+      subscription: tenant?.subscription,
+      usage: { locations, products, staff },
+      trial: {
+        active: tenant?.subscription?.status === 'TRIALING',
+        endsAt: tenant?.subscription?.status === 'TRIALING' ? tenant.subscription.periodEnd : null,
+      },
     };
   }
 }
