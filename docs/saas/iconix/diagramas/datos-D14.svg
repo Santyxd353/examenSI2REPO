@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1422" viewBox="0 0 1260 1422"><rect width="100%" height="100%" fill="white"/>
+<rect x="25" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="117.75" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">conjunto_entrenamiento</text>
+<text x="37" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK creado_por : uuid</text>
+<text x="37" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">nombre : varchar(120)</text>
+<text x="37" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">version : varchar(40)</text>
+<text x="37" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">origen : varchar(20)</text>
+<rect x="755" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="892.0" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">modelo_analitico</text>
+<text x="767" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="767" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK conjunto_entrenamiento_id : uuid</text>
+<text x="767" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">tipo : varchar(20)</text>
+<text x="767" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">nombre : varchar(80)</text>
+<text x="767" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">version : varchar(40)</text>
+<rect x="25" y="430" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="168.75" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">metrica_modelo</text>
+<text x="37" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK modelo_id : uuid</text>
+<text x="37" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK conjunto_id : uuid</text>
+<text x="37" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">particion : varchar(20)</text>
+<text x="37" y="626.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">nombre : varchar(40)</text>
+<rect x="755" y="430" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="879.25" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">ejecucion_analitica</text>
+<text x="767" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="767" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK modelo_id : uuid</text>
+<text x="767" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK solicitante_id : uuid</text>
+<text x="767" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK conjunto_id : uuid</text>
+<text x="767" y="626.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">desde : date</text>
+<rect x="25" y="795" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="795" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="155.5" y="824.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">consulta_analitica</text>
+<text x="37" y="875.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="904.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK usuario_id : uuid</text>
+<text x="37" y="933.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK modelo_id : uuid</text>
+<text x="37" y="962.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK definicion_reporte_id : uuid</text>
+<text x="37" y="991.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">tipo : varchar(15)</text>
+<polyline points="505,117.83333333333333 540,117.83333333333333 540,110.875 755,110.875" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="755,152.625 567,152.625 567,496.75 505,496.75" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="505,173.5 597,173.5 597,580.25 505,580.25" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="755,194.375 642,194.375 642,496.75 755,496.75" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="505,229.16666666666666 648,229.16666666666666 648,580.25 755,580.25" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="755,236.125 675,236.125 675,903.5 505,903.5" fill="none" stroke="#222222" stroke-width="2"/>
+<rect x="511" y="122.83333333333333" width="38.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="139.59333333333333" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..1</text>
+<rect x="708.0" y="115.875" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="132.635" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="91.83333333333333" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="108.59333333333333" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R1</text>
+<rect x="731.0" y="157.625" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="735.0" y="174.385" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="511" y="501.75" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="518.51" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="671.0" y="126.625" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="143.385" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R2</text>
+<rect x="511" y="178.5" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="195.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="511" y="585.25" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="602.01" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="147.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="164.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R3</text>
+<rect x="731.0" y="199.375" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="735.0" y="216.135" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="708.0" y="501.75" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="518.51" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="671.0" y="168.375" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="185.135" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R4</text>
+<rect x="511" y="234.16666666666666" width="38.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="250.92666666666665" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..1</text>
+<rect x="708.0" y="585.25" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="602.01" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="203.16666666666666" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="219.92666666666665" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R5</text>
+<rect x="711.0" y="241.125" width="38.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="715.0" y="257.885" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..1</text>
+<rect x="511" y="908.5" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="925.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="671.0" y="210.125" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="226.885" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R6</text>
+<text x="30" y="1189.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R1 conjunto_entrenamiento → modelo_analitico [0..1 -&gt; 0..N]: conjunto_entrenamiento_id (planificada)</text>
+<text x="30" y="1226.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R2 modelo_analitico → metrica_modelo [1 -&gt; 0..N]: modelo_id</text>
+<text x="30" y="1263.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R3 conjunto_entrenamiento → metrica_modelo [1 -&gt; 0..N]: conjunto_id</text>
+<text x="30" y="1300.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R4 modelo_analitico → ejecucion_analitica [1 -&gt; 0..N]: modelo_id</text>
+<text x="30" y="1337.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R5 conjunto_entrenamiento → ejecucion_analitica [0..1 -&gt; 0..N]: conjunto_id (planificada)</text>
+<text x="30" y="1374.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R6 modelo_analitico → consulta_analitica [0..1 -&gt; 0..N]: modelo_id</text>
+</svg>

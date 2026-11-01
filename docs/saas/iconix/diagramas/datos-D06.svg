@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="507" viewBox="0 0 1260 507"><rect width="100%" height="100%" fill="white"/>
+<rect x="25" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="216.75" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">variante</text>
+<text x="37" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK producto_id : uuid</text>
+<text x="37" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">sku : varchar(60)</text>
+<text x="37" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">codigo_barras : varchar(80)</text>
+<text x="37" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">talla : varchar(20)</text>
+<rect x="755" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="918.0" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">precio_canal</text>
+<text x="767" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="767" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK variante_id : uuid</text>
+<text x="767" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">canal : varchar(10)</text>
+<text x="767" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">moneda : char(3)</text>
+<text x="767" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">importe : numeric(12,2)</text>
+<polyline points="505,173.5 540,173.5 540,173.5 755,173.5" fill="none" stroke="#222222" stroke-width="2"/>
+<rect x="511" y="178.5" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="195.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="708.0" y="178.5" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="195.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="147.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="164.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R1</text>
+<text x="30" y="459.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R1 variante → precio_canal [1 -&gt; 0..N]: variante_id</text>
+</svg>

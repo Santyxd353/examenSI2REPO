@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1144" viewBox="0 0 1260 1144"><rect width="100%" height="100%" fill="white"/>
+<rect x="25.0" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="79.0" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«actor»</text>
+<text x="40.5" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Encargada de</text>
+<text x="59.75" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">inventario</text>
+<polyline points="112.0,145 112.0,751" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="232.2" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="274.2" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«frontera»</text>
+<text x="281.2" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Conteo</text>
+<text x="277.45" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Pantalla</text>
+<polyline points="319.2,145 319.2,751" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="439.4" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="485.65" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«control»</text>
+<text x="488.4" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Conteo</text>
+<text x="484.15" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Servicio</text>
+<polyline points="526.4,145 526.4,751" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="646.6" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="690.1" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="681.35" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Inventario</text>
+<polyline points="733.6,145 733.6,751" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="853.8" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="897.3" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="879.8" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Movimiento</text>
+<text x="911.05" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Stock</text>
+<polyline points="940.8,145 940.8,751" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="1061.0" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="1104.5" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="1094.0" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Operacion</text>
+<text x="1070.25" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Sincronizacion</text>
+<polyline points="1148.0,145 1148.0,751" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="520.4" y="175" width="12" height="566" fill="#eeeeee" stroke="#777777" stroke-width="1"/>
+<polyline points="112.0,213 319.2,213" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="319.2,213 309.06832906596827,217.28360176539516 309.06832906596827,208.71639823460484" fill="#222222"/>
+<rect x="157.1" y="178" width="117.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="161.1" y="197.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">1. introducir</text>
+<polyline points="319.2,285 526.4,285" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="526.4,285 516.2683290659683,289.28360176539513 516.2683290659683,280.71639823460487" fill="#222222"/>
+<rect x="363.54999999999995" y="250" width="118.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="367.54999999999995" y="269.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">2. confirmar</text>
+<polyline points="526.4,357 1148.0,357" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="1148.0,357 1137.8683290659683,361.28360176539513 1137.8683290659683,352.71639823460487" fill="#222222"/>
+<rect x="771.7" y="322" width="131.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="775.7" y="341.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">3. comprobar</text>
+<polyline points="526.4,429 733.6,429" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,429 723.4683290659683,433.28360176539513 723.4683290659683,424.71639823460487" fill="#222222"/>
+<rect x="574.0" y="394" width="112.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="578.0" y="413.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">4. bloquear</text>
+<polyline points="526.4,501 733.6,501" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,501 723.4683290659683,505.28360176539513 723.4683290659683,496.71639823460487" fill="#222222"/>
+<rect x="583.75" y="466" width="92.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="587.75" y="485.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">5. validar</text>
+<polyline points="526.4,573 940.8,573" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,573 930.6683290659682,577.2836017653951 930.6683290659682,568.7163982346049" fill="#222222"/>
+<rect x="679.5999999999999" y="538" width="108.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="683.5999999999999" y="557.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">6. registrar</text>
+<polyline points="526.4,645 1148.0,645" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="1148.0,645 1137.8683290659683,649.2836017653951 1137.8683290659683,640.7163982346049" fill="#222222"/>
+<rect x="784.95" y="610" width="104.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="788.95" y="629.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">7. persistir</text>
+<polyline points="526.4,717 319.2,717" fill="none" stroke="#222222" stroke-width="2" stroke-dasharray="8 6"/>
+<polygon points="319.2,717 329.3316709340317,712.7163982346049 329.3316709340317,721.2836017653951" fill="#222222"/>
+<rect x="371.54999999999995" y="682" width="102.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="375.54999999999995" y="701.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">8. mostrar</text>
+<text x="35" y="789.86" font-family="Arial" font-size="23" font-weight="bold" fill="#111111">Mensajes de la colaboración</text>
+<text x="35" y="829.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">1. introducirCantidadObservadaYMotivo()</text>
+<text x="35" y="865.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">2. confirmarConteo()</text>
+<text x="35" y="901.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">3. comprobarIntencionNoDuplicada()</text>
+<text x="35" y="937.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">4. bloquearYCompararVersionBase()</text>
+<text x="35" y="973.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">5. validarReservasYAplicarFisicoObservado()</text>
+<text x="35" y="1009.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">6. registrarObservadoYDiferencia()</text>
+<text x="35" y="1045.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">7. persistirComprobanteAtomico()</text>
+<text x="35" y="1081.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">8. mostrarConteoAplicadoOConciliacionRequerida()</text>
+</svg>

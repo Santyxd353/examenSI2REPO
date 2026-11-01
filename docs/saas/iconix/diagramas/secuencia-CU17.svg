@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1156" viewBox="0 0 1260 1156"><rect width="100%" height="100%" fill="white"/>
+<rect x="25.0" y="22" width="174" height="132" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="79.0" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«actor»</text>
+<text x="55.5078125" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Vendedora</text>
+<polyline points="112.0,157 112.0,763" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="232.2" y="22" width="174" height="132" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="274.2" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«frontera»</text>
+<text x="289.4578125" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Venta</text>
+<text x="265.45" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Mostrador</text>
+<text x="277.45" y="143.04" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Pantalla</text>
+<polyline points="319.2,157 319.2,763" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="439.4" y="22" width="174" height="132" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="485.65" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«control»</text>
+<text x="496.6578125" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Venta</text>
+<text x="472.65" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Mostrador</text>
+<text x="484.15" y="143.04" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Servicio</text>
+<polyline points="526.4,157 526.4,763" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="646.6" y="22" width="174" height="132" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="690.1" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="697.1" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Pedido</text>
+<polyline points="733.6,157 733.6,763" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="853.8" y="22" width="174" height="132" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="897.3" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="888.55" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Inventario</text>
+<polyline points="940.8,157 940.8,763" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="1061.0" y="22" width="174" height="132" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="1104.5" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="1121.25" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Pago</text>
+<polyline points="1148.0,157 1148.0,763" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="520.4" y="187" width="12" height="566" fill="#eeeeee" stroke="#777777" stroke-width="1"/>
+<polyline points="112.0,225 319.2,225" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="319.2,225 309.06832906596827,229.28360176539516 309.06832906596827,220.71639823460484" fill="#222222"/>
+<rect x="147.35" y="190" width="136.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="151.35" y="209.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">1. seleccionar</text>
+<polyline points="319.2,297 526.4,297" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="526.4,297 516.2683290659683,301.28360176539513 516.2683290659683,292.71639823460487" fill="#222222"/>
+<rect x="363.54999999999995" y="262" width="118.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="367.54999999999995" y="281.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">2. confirmar</text>
+<polyline points="526.4,369 733.6,369" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,369 723.4683290659683,373.28360176539513 723.4683290659683,364.71639823460487" fill="#222222"/>
+<rect x="569.75" y="334" width="120.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="573.75" y="353.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">3. recuperar</text>
+<polyline points="526.4,441 940.8,441" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,441 930.6683290659682,445.28360176539513 930.6683290659682,436.71639823460487" fill="#222222"/>
+<rect x="677.5999999999999" y="406" width="112.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="681.5999999999999" y="425.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">4. bloquear</text>
+<polyline points="526.4,513 733.6,513" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,513 723.4683290659683,517.2836017653951 723.4683290659683,508.71639823460487" fill="#222222"/>
+<rect x="577.75" y="478" width="104.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="581.75" y="497.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">5. persistir</text>
+<polyline points="526.4,585 940.8,585" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,585 930.6683290659682,589.2836017653951 930.6683290659682,580.7163982346049" fill="#222222"/>
+<rect x="679.5999999999999" y="550" width="108.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="683.5999999999999" y="569.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">6. registrar</text>
+<polyline points="526.4,657 1148.0,657" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="1148.0,657 1137.8683290659683,661.2836017653951 1137.8683290659683,652.7163982346049" fill="#222222"/>
+<rect x="785.7" y="622" width="103.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="789.7" y="641.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">7. guardar</text>
+<polyline points="526.4,729 319.2,729" fill="none" stroke="#222222" stroke-width="2" stroke-dasharray="8 6"/>
+<polygon points="319.2,729 329.3316709340317,724.7163982346049 329.3316709340317,733.2836017653951" fill="#222222"/>
+<rect x="367.79999999999995" y="694" width="110.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="371.79999999999995" y="713.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">8. devolver</text>
+<text x="35" y="801.86" font-family="Arial" font-size="23" font-weight="bold" fill="#111111">Mensajes de la colaboración</text>
+<text x="35" y="841.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">1. seleccionarUbicacionLineasYMetodoDeCobro()</text>
+<text x="35" y="877.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">2. confirmarVentaConUUID()</text>
+<text x="35" y="913.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">3. recuperarVentaPreviaOValidarNuevaIntencion()</text>
+<text x="35" y="949.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">4. bloquearYVerificarDisponible()</text>
+<text x="35" y="985.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">5. persistirVentaYDetalleConPreciosVigentes()</text>
+<text x="35" y="1021.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">6. registrarSalidaFisicaUnaSolaVez()</text>
+<text x="35" y="1057.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">7. guardarCobroDeclaradoYProcedencia()</text>
+<text x="35" y="1093.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">8. devolverComprobanteYVentaReciente()</text>
+</svg>

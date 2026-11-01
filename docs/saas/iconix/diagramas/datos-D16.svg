@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1057" viewBox="0 0 1260 1057"><rect width="100%" height="100%" fill="white"/>
+<rect x="25" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="206.0" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">ubicacion</text>
+<text x="37" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK padre_id : uuid</text>
+<text x="37" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">nombre : varchar(120)</text>
+<text x="37" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">tipo : varchar(20)</text>
+<text x="37" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">direccion : varchar(300)</text>
+<rect x="755" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="946.75" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">variante</text>
+<text x="767" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="767" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK producto_id : uuid</text>
+<text x="767" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">sku : varchar(60)</text>
+<text x="767" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">codigo_barras : varchar(80)</text>
+<text x="767" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">talla : varchar(20)</text>
+<rect x="25" y="430" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="201.25" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">prediccion</text>
+<text x="37" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK ejecucion_id : uuid</text>
+<text x="37" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK variante_id : uuid</text>
+<text x="37" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK ubicacion_id : uuid</text>
+<text x="37" y="626.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">canal : varchar(10)</text>
+<rect x="755" y="430" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="902.0" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">recomendacion</text>
+<text x="767" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="767" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK ejecucion_id : uuid</text>
+<text x="767" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK variante_id : uuid</text>
+<text x="767" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK origen_id : uuid</text>
+<text x="767" y="626.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK destino_id : uuid</text>
+<polyline points="505,106.7 545,106.7 545,140.1 505,140.1" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="755,131.75 567,131.75 567,496.75 505,496.75" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="505,173.5 597,173.5 597,580.25 505,580.25" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="755,215.25 642,215.25 642,482.8333333333333 755,482.8333333333333" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="505,206.9 648,206.9 648,538.5 755,538.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="505,240.3 675,240.3 675,594.1666666666666 755,594.1666666666666" fill="none" stroke="#222222" stroke-width="2"/>
+<rect x="511" y="111.7" width="38.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="128.46" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..1</text>
+<rect x="511" y="145.1" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="161.85999999999999" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="80.7" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="97.46000000000001" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R1</text>
+<rect x="731.0" y="136.75" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="735.0" y="153.51" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="511" y="501.75" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="518.51" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="671.0" y="105.75" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="122.51" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R2</text>
+<rect x="511" y="178.5" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="195.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="511" y="585.25" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="602.01" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="147.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="164.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R3</text>
+<rect x="731.0" y="220.25" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="735.0" y="237.01" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="708.0" y="487.8333333333333" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="504.5933333333333" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="671.0" y="189.25" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="206.01" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R4</text>
+<rect x="511" y="211.9" width="38.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="228.66" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..1</text>
+<rect x="708.0" y="543.5" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="560.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="180.9" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="197.66" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R5</text>
+<rect x="511" y="245.3" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="262.06" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="708.0" y="599.1666666666666" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="615.9266666666666" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="214.3" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="231.06" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R6</text>
+<text x="30" y="824.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R1 ubicacion → ubicacion [0..1 -&gt; 0..N]: padre_id</text>
+<text x="30" y="861.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R2 variante → prediccion [1 -&gt; 0..N]: variante_id</text>
+<text x="30" y="898.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R3 ubicacion → prediccion [1 -&gt; 0..N]: ubicacion_id</text>
+<text x="30" y="935.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R4 variante → recomendacion [1 -&gt; 0..N]: variante_id</text>
+<text x="30" y="972.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R5 ubicacion → recomendacion [0..1 -&gt; 0..N]: origen_id</text>
+<text x="30" y="1009.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R6 ubicacion → recomendacion [1 -&gt; 0..N]: destino_id</text>
+</svg>

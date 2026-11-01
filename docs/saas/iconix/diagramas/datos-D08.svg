@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1348" viewBox="0 0 1260 1348"><rect width="100%" height="100%" fill="white"/>
+<rect x="25" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="171.25" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">modelo_prenda</text>
+<text x="37" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK variante_id : uuid</text>
+<text x="37" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK plantilla_id : uuid</text>
+<text x="37" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK revisado_por : uuid</text>
+<text x="37" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">version : integer</text>
+<rect x="755" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="899.0" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">sesion_vestidor</text>
+<text x="767" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="767" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK usuario_id : uuid</text>
+<text x="767" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK avatar_id : uuid</text>
+<text x="767" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">canal : varchar(10)</text>
+<text x="767" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">iniciada_en : fecha</text>
+<rect x="25" y="430" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="168.25" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">evento_vestidor</text>
+<text x="37" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK sesion_id : uuid</text>
+<text x="37" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK variante_id : uuid</text>
+<text x="37" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK modelo_id : uuid</text>
+<text x="37" y="626.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">evento_cliente : uuid</text>
+<rect x="755" y="430" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="909.0" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">trabajo_avatar</text>
+<text x="767" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="767" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK usuario_id : uuid</text>
+<text x="767" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK captura_id : uuid</text>
+<text x="767" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK avatar_id : uuid</text>
+<text x="767" y="626.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">tipo : varchar(15)</text>
+<rect x="25" y="795" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="795" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="228.0" y="824.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">avatar</text>
+<text x="37" y="875.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="904.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK usuario_id : uuid</text>
+<text x="37" y="933.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK plantilla_id : uuid</text>
+<text x="37" y="962.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">version : integer</text>
+<text x="37" y="991.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">clave_glb : varchar(500)</text>
+<polyline points="505,861.75 540,861.75 540,131.75 755,131.75" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="755,215.25 567,215.25 567,496.75 505,496.75" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="505,173.5 597,173.5 597,580.25 505,580.25" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="505,945.25 621,945.25 621,538.5 755,538.5" fill="none" stroke="#222222" stroke-width="2"/>
+<rect x="511" y="866.75" width="38.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="883.51" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..1</text>
+<rect x="708.0" y="136.75" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="153.51" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="835.75" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="852.51" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R1</text>
+<rect x="731.0" y="220.25" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="735.0" y="237.01" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="511" y="501.75" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="518.51" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="671.0" y="189.25" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="206.01" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R2</text>
+<rect x="511" y="178.5" width="38.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="195.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..1</text>
+<rect x="511" y="585.25" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="602.01" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="147.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="164.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R3</text>
+<rect x="511" y="950.25" width="38.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="967.01" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..1</text>
+<rect x="708.0" y="543.5" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="560.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="919.25" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="936.01" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R4</text>
+<text x="30" y="1189.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R1 avatar → sesion_vestidor [0..1 -&gt; 0..N]: avatar_id</text>
+<text x="30" y="1226.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R2 sesion_vestidor → evento_vestidor [1 -&gt; 0..N]: sesion_id</text>
+<text x="30" y="1263.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R3 modelo_prenda → evento_vestidor [0..1 -&gt; 0..N]: modelo_id</text>
+<text x="30" y="1300.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R4 avatar → trabajo_avatar [0..1 -&gt; 0..N]: avatar_id</text>
+</svg>

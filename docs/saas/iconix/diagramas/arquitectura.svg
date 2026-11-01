@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1348" viewBox="0 0 1260 1348"><rect width="100%" height="100%" fill="white"/>
+<rect x="25" y="65" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="200.75390625" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Web React</text>
+<text x="37" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">Three.js · IndexedDB</text>
+<text x="37" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">caché de aplicación</text>
+<text x="37" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">motor local de reportes</text>
+<rect x="755" y="65" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="928.25" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">API NestJS</text>
+<text x="767" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">contexto de tienda</text>
+<text x="767" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">permisos · cuotas · transacciones</text>
+<text x="767" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">contratos versionados</text>
+<rect x="25" y="430" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="182.5" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Android Expo</text>
+<text x="37" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">AR local · SQLite</text>
+<text x="37" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">archivos privados</text>
+<text x="37" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">cola de operaciones</text>
+<rect x="755" y="430" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="845.0" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Persistencia PostgreSQL</text>
+<text x="767" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">control platform fijo</text>
+<text x="767" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">una base por negocio</text>
+<text x="767" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">archivos por tienda</text>
+<rect x="25" y="795" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="795" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="162.25" y="824.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Procesos Python</text>
+<text x="37" y="875.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">MediaPipe · Blender</text>
+<text x="37" y="904.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">RandomForest · IsolationForest</text>
+<text x="37" y="933.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">artefactos y métricas</text>
+<polyline points="505,144.5 540,144.5 540,103.625 755,103.625" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="755,103.625 744.8683290659683,107.90860176539516 744.8683290659683,99.34139823460484" fill="#222222"/>
+<polyline points="505,509.5 567,509.5 567,130.875 755,130.875" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="755,130.875 744.8683290659683,135.15860176539516 744.8683290659683,126.59139823460484" fill="#222222"/>
+<polyline points="755,158.125 668,158.125 668,509.5 755,509.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="755,509.5 744.8683290659683,513.7836017653951 744.8683290659683,505.21639823460487" fill="#222222"/>
+<polyline points="755,185.375 621,185.375 621,874.5 505,874.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="505,874.5 515.1316709340317,870.2163982346049 515.1316709340317,878.7836017653951" fill="#222222"/>
+<rect x="511" y="149.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="166.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="741.0" y="108.625" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="125.385" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="632.0" y="73.625" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="636.0" y="90.385" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R1</text>
+<rect x="511" y="514.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="531.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="741.0" y="135.875" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="152.635" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="558" y="483.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="500.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R2</text>
+<rect x="741.0" y="163.125" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="179.885" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="741.0" y="514.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="531.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="671.0" y="132.125" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="148.885" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R3</text>
+<rect x="741.0" y="190.375" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="207.135" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="511" y="879.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="896.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="671.0" y="159.375" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="176.135" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R4</text>
+<text x="30" y="1189.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R1 Web React → API NestJS: HTTPS y token por tienda</text>
+<text x="30" y="1226.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R2 Android Expo → API NestJS: HTTPS; sincronización al reconectar</text>
+<text x="30" y="1263.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R3 API NestJS → Persistencia PostgreSQL: repositorios según contexto</text>
+<text x="30" y="1300.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R4 API NestJS → Procesos Python: trabajos y resultados identificados</text>
+</svg>

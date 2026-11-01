@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1348" viewBox="0 0 1260 1348"><rect width="100%" height="100%" fill="white"/>
+<rect x="25" y="65" width="480" height="232" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="145.2578125" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">CrearAvatarPantalla</text>
+<text x="37" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- fotosTemporales</text>
+<text x="37" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- altura</text>
+<text x="37" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- consentimiento</text>
+<polyline points="25,215 505,215" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="37" y="244.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ aceptarConsentimientoYAdjuntarTresVistas</text>
+<text x="37" y="273.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">YAltura()</text>
+<rect x="755" y="65" width="480" height="174" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="838.0078125" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">GeneracionAvatarServicio</text>
+<text x="767" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- contexto : ContextoTienda</text>
+<text x="767" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- permiso : PoliticaAcceso</text>
+<polyline points="755,186 1235,186" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="767" y="215.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ validarCapturaYReservarCuotaConUUID()</text>
+<rect x="25" y="430" width="480" height="261" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="165.25" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">CapturaCorporal</text>
+<text x="37" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- PK id : uuid</text>
+<text x="37" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK usuario_id : uuid</text>
+<text x="37" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK consentimiento_id : uuid</text>
+<text x="37" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- altura_cm : numeric(5,2)</text>
+<polyline points="25,609 505,609" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="37" y="638.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ guardarConsentimientoYFotosPrivadasCon</text>
+<text x="37" y="667.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">Caducidad()</text>
+<rect x="755" y="430" width="480" height="261" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="910.51953125" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">TrabajoAvatar</text>
+<text x="767" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- PK id : uuid</text>
+<text x="767" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK usuario_id : uuid</text>
+<text x="767" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK captura_id : uuid</text>
+<text x="767" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK avatar_id : uuid</text>
+<polyline points="755,609 1235,609" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="767" y="638.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ crearTrabajoIdempotenteYVersionDe</text>
+<text x="767" y="667.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">Proceso()</text>
+<rect x="25" y="795" width="480" height="232" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="795" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="226.0078125" y="824.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Avatar</text>
+<text x="37" y="875.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- PK id : uuid</text>
+<text x="37" y="904.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK usuario_id : uuid</text>
+<text x="37" y="933.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK plantilla_id : uuid</text>
+<text x="37" y="962.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- version : integer</text>
+<polyline points="25,974 505,974" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="37" y="1003.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ persistirGLBPropioPendienteDeRevision()</text>
+<polyline points="505,181.0 540,181.0 540,105.5 755,105.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="755,105.5 744.8683290659683,109.78360176539516 744.8683290659683,101.21639823460484" fill="#222222"/>
+<polyline points="755,136.5 567,136.5 567,560.5 505,560.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="505,560.5 515.1316709340317,556.2163982346049 515.1316709340317,564.7836017653951" fill="#222222"/>
+<polyline points="755,167.5 668,167.5 668,560.5 755,560.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="755,560.5 744.8683290659683,564.7836017653951 744.8683290659683,556.2163982346049" fill="#222222"/>
+<polyline points="755,198.5 621,198.5 621,911.0 505,911.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="505,911.0 515.1316709340317,906.7163982346049 515.1316709340317,915.2836017653951" fill="#222222"/>
+<rect x="511" y="186.0" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="202.76" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="741.0" y="110.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="127.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="632.0" y="75.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="636.0" y="92.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R1</text>
+<rect x="741.0" y="141.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="158.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="511" y="565.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="582.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="671.0" y="110.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="127.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R2</text>
+<rect x="741.0" y="172.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="189.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="741.0" y="565.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="582.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="671.0" y="141.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="158.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R3</text>
+<rect x="741.0" y="203.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="220.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="511" y="916.0" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="932.76" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="671.0" y="172.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="189.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R4</text>
+<text x="30" y="1189.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R1 CrearAvatarPantalla → GeneracionAvatarServicio: solicitud validada</text>
+<text x="30" y="1226.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R2 GeneracionAvatarServicio → CapturaCorporal: operación en el contexto autorizado</text>
+<text x="30" y="1263.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R3 GeneracionAvatarServicio → TrabajoAvatar: operación en el contexto autorizado</text>
+<text x="30" y="1300.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R4 GeneracionAvatarServicio → Avatar: operación en el contexto autorizado</text>
+</svg>

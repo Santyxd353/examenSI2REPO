@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1040" viewBox="0 0 1260 1040"><rect width="100%" height="100%" fill="white"/>
+<ellipse cx="110.0" cy="227.0" rx="17.0" ry="17.0" fill="white" stroke="#222222" stroke-width="2"/>
+<polyline points="110,244.0 110,312.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="75,268.0 145,268.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="110,312.0 80,355.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="110,312.0 140,355.0" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="36.5" y="384.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">Administradora</text>
+<ellipse cx="110.0" cy="487.0" rx="17.0" ry="17.0" fill="white" stroke="#222222" stroke-width="2"/>
+<polyline points="110,504.0 110,572.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="75,528.0 145,528.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="110,572.0 80,615.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="110,572.0 140,615.0" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="49.25" y="644.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">Compradora</text>
+<ellipse cx="110.0" cy="747.0" rx="17.0" ry="17.0" fill="white" stroke="#222222" stroke-width="2"/>
+<polyline points="110,764.0 110,832.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="75,788.0 145,788.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="110,832.0 80,875.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="110,832.0 140,875.0" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="42.5" y="904.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">Encargada de</text>
+<text x="62.75" y="933.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">inventario</text>
+<rect x="300" y="30" width="920" height="980" fill="white" stroke="#222222" stroke-width="2"/>
+<text x="622.75" y="67.14" font-family="Arial" font-size="27" font-weight="bold" fill="#111111">Catálogo e inventario</text>
+<polyline points="150,280.0 340,150" fill="none" stroke="#222222" stroke-width="2"/>
+<ellipse cx="760.0" cy="156.0" rx="410.0" ry="46.0" fill="white" stroke="#222222" stroke-width="2"/>
+<text x="473.25" y="145.68" font-family="Arial" font-size="24" font-weight="normal" fill="#111111">CU06 Gestionar prendas variantes precios y recursos</text>
+<polyline points="150,540.0 340,268" fill="none" stroke="#222222" stroke-width="2"/>
+<ellipse cx="760.0" cy="274.0" rx="410.0" ry="46.0" fill="white" stroke="#222222" stroke-width="2"/>
+<text x="620.25" y="263.68" font-family="Arial" font-size="24" font-weight="normal" fill="#111111">CU07 Consultar colección</text>
+<polyline points="150,540.0 340,386" fill="none" stroke="#222222" stroke-width="2"/>
+<ellipse cx="760.0" cy="392.0" rx="410.0" ry="46.0" fill="white" stroke="#222222" stroke-width="2"/>
+<text x="570.25" y="381.68" font-family="Arial" font-size="24" font-weight="normal" fill="#111111">CU08 Gestionar perfil y direcciones</text>
+<polyline points="150,800.0 340,504" fill="none" stroke="#222222" stroke-width="2"/>
+<ellipse cx="760.0" cy="510.0" rx="410.0" ry="46.0" fill="white" stroke="#222222" stroke-width="2"/>
+<text x="625.26171875" y="499.68" font-family="Arial" font-size="24" font-weight="normal" fill="#111111">CU09 Ajustar existencias</text>
+<polyline points="150,800.0 340,622" fill="none" stroke="#222222" stroke-width="2"/>
+<ellipse cx="760.0" cy="628.0" rx="410.0" ry="46.0" fill="white" stroke="#222222" stroke-width="2"/>
+<text x="610.5" y="617.68" font-family="Arial" font-size="24" font-weight="normal" fill="#111111">CU10 Realizar conteo físico</text>
+<polyline points="150,800.0 340,740" fill="none" stroke="#222222" stroke-width="2"/>
+<ellipse cx="760.0" cy="746.0" rx="410.0" ry="46.0" fill="white" stroke="#222222" stroke-width="2"/>
+<text x="643.02734375" y="735.68" font-family="Arial" font-size="24" font-weight="normal" fill="#111111">CU11 Transferir stock</text>
+</svg>

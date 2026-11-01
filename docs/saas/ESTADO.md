@@ -1,6 +1,11 @@
 # Estado de Lúmina SaaS
 
-Actualización: 20/10/2026.
+Actualización documental: 31/10/2026. Entrega prevista: 07/11/2026.
+
+La prioridad confirmada es terminar primero el documento ICONIX y desarrollar
+la ampliación según esa especificación. La evidencia técnica del primer
+incremento que figura abajo corresponde al 20/10; no se ha vuelto a ejecutar
+ni desplegar la aplicación durante esta actualización documental.
 
 | Área | Estado | Evidencia |
 | --- | --- | --- |
@@ -12,9 +17,9 @@ Actualización: 20/10/2026.
 | Inventario y paquete offline | Pendiente | Requiere contexto de tienda y protocolo durable |
 | Reportes y dashboards offline | Pendiente | Requiere conjunto local y definición común de reportes |
 | IA por texto/voz | Pendiente | Proveedor y credenciales por configurar |
-| ML evaluado | Pendiente | Producción contiene siete ventas; se requiere historial adicional o demostración etiquetada |
-| Suscripciones Stripe/QR | Pendiente | Métodos confirmados, precios y credenciales por configurar |
-| Documento ICONIX nuevo | Primera especificación en Markdown | ICONIX.md: requisitos, reglas, dominio, actores, casos iniciales, secuencias y trazabilidad. Word final con dos carátulas e índice aún pendiente |
+| ML evaluado | Pendiente | Demostración con datos sintéticos identificados confirmada; entrenamiento y evaluación temporal definidos, sin resultados fabricados |
+| Suscripciones Stripe/QR | Pendiente | Esencial Bs149, Profesional Bs299, Negocio Bs599 por tienda/mes; Stripe TEST y QR_SIMULATED para entrega académica. Configuración y flujos por implementar |
+| Documento ICONIX nuevo | Especificación objetivo en Word y JSON | `docs/Lumina_SaaS_ICONIX_Grupo18.docx` y `iconix/especificacion.json`: 54 requisitos, 27 casos, 111 diagramas, 59 tablas; dos carátulas, índice navegable, recomendaciones, bibliografía y QR. No acredita implementación de los incrementos pendientes |
 
 ## Verificación del primer incremento
 

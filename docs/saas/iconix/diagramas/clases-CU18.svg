@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1348" viewBox="0 0 1260 1348"><rect width="100%" height="100%" fill="white"/>
+<rect x="25" y="65" width="480" height="203" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="167.75" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">PedidosPantalla</text>
+<text x="37" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- pedido</text>
+<text x="37" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- estadoSolicitado</text>
+<text x="37" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- version</text>
+<polyline points="25,215 505,215" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="37" y="244.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ abrirPedidoAutorizadoYElegirTransicion()</text>
+<rect x="755" y="65" width="480" height="203" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="904.25" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">PedidoServicio</text>
+<text x="767" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- contexto : ContextoTienda</text>
+<text x="767" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- permiso : PoliticaAcceso</text>
+<polyline points="755,186 1235,186" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="767" y="215.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ solicitarPreparacionDespachoOEntrega()</text>
+<text x="767" y="244.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ consultarSoloPedidoAutorizado()</text>
+<rect x="25" y="430" width="480" height="261" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="223.0" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Pedido</text>
+<text x="37" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- PK id : uuid</text>
+<text x="37" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK usuario_id : uuid</text>
+<text x="37" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK vendedor_id : uuid</text>
+<text x="37" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK ubicacion_id : uuid</text>
+<polyline points="25,609 505,609" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="37" y="638.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ validarPropiedadAlcancePagoYEstado</text>
+<text x="37" y="667.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">Actual()</text>
+<rect x="755" y="430" width="480" height="261" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="934.75" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Inventario</text>
+<text x="767" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- PK id : uuid</text>
+<text x="767" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK variante_id : uuid</text>
+<text x="767" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK ubicacion_id : uuid</text>
+<text x="767" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- fisico : integer</text>
+<polyline points="755,609 1235,609" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="767" y="638.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ ejecutarSalidaYCerrarCompromisoSoloAl</text>
+<text x="767" y="667.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">Despachar()</text>
+<rect x="25" y="795" width="480" height="232" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="795" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="172.75" y="824.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">HistorialPedido</text>
+<text x="37" y="875.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- PK id : uuid</text>
+<text x="37" y="904.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK pedido_id : uuid</text>
+<text x="37" y="933.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK actor_id : uuid</text>
+<text x="37" y="962.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- estado_anterior : varchar(25)</text>
+<polyline points="25,974 505,974" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="37" y="1003.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ registrarResponsableFechaYReferencia()</text>
+<polyline points="505,166.5 540,166.5 540,109.125 755,109.125" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="755,109.125 744.8683290659683,113.40860176539516 744.8683290659683,104.84139823460484" fill="#222222"/>
+<polyline points="755,147.375 567,147.375 567,560.5 505,560.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="505,560.5 515.1316709340317,556.2163982346049 515.1316709340317,564.7836017653951" fill="#222222"/>
+<polyline points="755,185.625 668,185.625 668,560.5 755,560.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="755,560.5 744.8683290659683,564.7836017653951 744.8683290659683,556.2163982346049" fill="#222222"/>
+<polyline points="755,223.875 621,223.875 621,911.0 505,911.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="505,911.0 515.1316709340317,906.7163982346049 515.1316709340317,915.2836017653951" fill="#222222"/>
+<rect x="511" y="171.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="188.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="741.0" y="114.125" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="130.885" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="632.0" y="79.125" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="636.0" y="95.885" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R1</text>
+<rect x="741.0" y="152.375" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="169.135" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="511" y="565.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="582.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="671.0" y="121.375" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="138.135" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R2</text>
+<rect x="741.0" y="190.625" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="207.385" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="741.0" y="565.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="582.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="671.0" y="159.625" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="176.385" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R3</text>
+<rect x="741.0" y="228.875" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="245.635" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="511" y="916.0" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="932.76" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="671.0" y="197.875" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="214.635" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R4</text>
+<text x="30" y="1189.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R1 PedidosPantalla → PedidoServicio: solicitud validada</text>
+<text x="30" y="1226.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R2 PedidoServicio → Pedido: operación en el contexto autorizado</text>
+<text x="30" y="1263.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R3 PedidoServicio → Inventario: operación en el contexto autorizado</text>
+<text x="30" y="1300.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R4 PedidoServicio → HistorialPedido: operación en el contexto autorizado</text>
+</svg>

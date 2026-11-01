@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="909" viewBox="0 0 1260 909"><rect width="100%" height="100%" fill="white"/>
+<rect x="25" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="211.75" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">auditoria</text>
+<text x="37" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK actor_id : uuid</text>
+<text x="37" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">accion : varchar(100)</text>
+<text x="37" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">entidad : varchar(60)</text>
+<text x="37" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">entidad_id : uuid</text>
+<rect x="755" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="911.5" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">configuracion</text>
+<text x="767" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="767" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK autor_id : uuid</text>
+<text x="767" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">clave : varchar(100)</text>
+<text x="767" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">version : integer</text>
+<text x="767" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">valor : jsonb</text>
+<rect x="25" y="430" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="219.5" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">usuario</text>
+<text x="37" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">nombres : varchar(100)</text>
+<text x="37" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">apellidos : varchar(120)</text>
+<text x="37" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">correo : varchar(160)</text>
+<text x="37" y="626.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">clave_hash : varchar(255)</text>
+<polyline points="505,496.75 545,496.75 545,173.5 505,173.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="505,580.25 567,580.25 567,173.5 755,173.5" fill="none" stroke="#222222" stroke-width="2"/>
+<rect x="511" y="501.75" width="38.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="518.51" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..1</text>
+<rect x="511" y="178.5" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="195.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="470.75" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="487.51" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R1</text>
+<rect x="511" y="585.25" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="602.01" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="708.0" y="178.5" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="195.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="554.25" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="571.01" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R2</text>
+<text x="30" y="824.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R1 usuario → auditoria [0..1 -&gt; 0..N]: actor_id</text>
+<text x="30" y="861.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R2 usuario → configuracion [1 -&gt; 0..N]: autor_id</text>
+</svg>

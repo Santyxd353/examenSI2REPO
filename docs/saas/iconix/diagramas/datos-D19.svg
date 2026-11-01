@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1020" viewBox="0 0 1260 1020"><rect width="100%" height="100%" fill="white"/>
+<rect x="25" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="168.25" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">consumo_cuota</text>
+<text x="37" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK actor_id : uuid</text>
+<text x="37" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK trabajo_avatar_id : uuid</text>
+<text x="37" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK consulta_analitica_id : uuid</text>
+<text x="37" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">recurso : varchar(40)</text>
+<rect x="755" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="909.0" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">trabajo_avatar</text>
+<text x="767" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="767" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK usuario_id : uuid</text>
+<text x="767" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK captura_id : uuid</text>
+<text x="767" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK avatar_id : uuid</text>
+<text x="767" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">tipo : varchar(15)</text>
+<rect x="25" y="430" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="155.5" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">consulta_analitica</text>
+<text x="37" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK usuario_id : uuid</text>
+<text x="37" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK modelo_id : uuid</text>
+<text x="37" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK definicion_reporte_id : uuid</text>
+<text x="37" y="626.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">tipo : varchar(15)</text>
+<rect x="755" y="430" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="949.5" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">usuario</text>
+<text x="767" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="767" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">nombres : varchar(100)</text>
+<text x="767" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">apellidos : varchar(120)</text>
+<text x="767" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">correo : varchar(160)</text>
+<text x="767" y="626.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">clave_hash : varchar(255)</text>
+<polyline points="755,482.8333333333333 540,482.8333333333333 540,117.83333333333333 505,117.83333333333333" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="755,131.75 567,131.75 567,173.5 505,173.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="505,496.75 597,496.75 597,229.16666666666666 505,229.16666666666666" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="755,538.5 642,538.5 642,215.25 755,215.25" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="755,594.1666666666666 648,594.1666666666666 648,580.25 505,580.25" fill="none" stroke="#222222" stroke-width="2"/>
+<rect x="731.0" y="487.8333333333333" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="735.0" y="504.5933333333333" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="511" y="122.83333333333333" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="139.59333333333333" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="671.0" y="456.8333333333333" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="473.5933333333333" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R1</text>
+<rect x="711.0" y="136.75" width="38.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="715.0" y="153.51" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..1</text>
+<rect x="511" y="178.5" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="195.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="671.0" y="105.75" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="122.51" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R2</text>
+<rect x="511" y="501.75" width="38.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="518.51" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..1</text>
+<rect x="511" y="234.16666666666666" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="250.92666666666665" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="470.75" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="487.51" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R3</text>
+<rect x="731.0" y="543.5" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="735.0" y="560.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="708.0" y="220.25" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="237.01" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="671.0" y="512.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="529.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R4</text>
+<rect x="731.0" y="599.1666666666666" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="735.0" y="615.9266666666666" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="511" y="585.25" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="602.01" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="671.0" y="568.1666666666666" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="584.9266666666666" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R5</text>
+<text x="30" y="824.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R1 usuario → consumo_cuota [1 -&gt; 0..N]: actor_id</text>
+<text x="30" y="861.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R2 trabajo_avatar → consumo_cuota [0..1 -&gt; 0..N]: trabajo_avatar_id</text>
+<text x="30" y="898.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R3 consulta_analitica → consumo_cuota [0..1 -&gt; 0..N]: consulta_analitica_id</text>
+<text x="30" y="935.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R4 usuario → trabajo_avatar [1 -&gt; 0..N]: usuario_id</text>
+<text x="30" y="972.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R5 usuario → consulta_analitica [1 -&gt; 0..N]: usuario_id</text>
+</svg>

@@ -1,5 +1,12 @@
 # Plataforma Lúmina SaaS
 
+Este archivo es el borrador histórico del 20/10/2026. La línea base vigente
+del 31/10 está en [Word ICONIX](../Lumina_SaaS_ICONIX_Grupo18.docx) y en
+[la especificación estructurada](iconix/especificacion.json), para entrega
+el 07/11/2026. Sus 54 RF y 27 CU sustituyen la numeración y alcance del
+borrador que se conserva abajo. La implementación pendiente seguirá el
+documento vigente, con pruebas registradas al ejecutarlas.
+
 ## Propósito de la segunda entrega
 
 Grupo 18 desarrolla una plataforma de moda femenina para tiendas independientes. Cada negocio contrata una suscripción y administra su catálogo, inventario, equipo, ventas y reportes. El vestidor conserva la experiencia 3D web y la prueba AR aproximada de Android. La segunda entrega incorpora trabajo offline, reportes personalizables y análisis con modelos entrenados.

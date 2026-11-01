@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="928" viewBox="0 0 1260 928"><rect width="100%" height="100%" fill="white"/>
+<rect x="19.5" y="22" width="185" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="79.0" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«actor»</text>
+<text x="46.75" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Compradora</text>
+<polyline points="112.0,145 112.0,607" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="278.5" y="22" width="185" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="326.0" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«frontera»</text>
+<text x="299.0" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Perfil Pantalla</text>
+<polyline points="371.0,145 371.0,607" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="537.5" y="22" width="185" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="589.25" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«control»</text>
+<text x="557.5" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Perfil Servicio</text>
+<polyline points="630.0,145 630.0,607" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="796.5" y="22" width="185" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="845.5" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="848.25" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Usuario</text>
+<polyline points="889.0,145 889.0,607" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="1055.5" y="22" width="185" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="1104.5" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="1098.25" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Direccion</text>
+<polyline points="1148.0,145 1148.0,607" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="624.0" y="175" width="12" height="422" fill="#eeeeee" stroke="#777777" stroke-width="1"/>
+<polyline points="112.0,213 371.0,213" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="371.0,213 360.8683290659683,217.28360176539516 360.8683290659683,208.71639823460484" fill="#222222"/>
+<rect x="183.0" y="178" width="117.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="187.0" y="197.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">1. introducir</text>
+<polyline points="371.0,285 630.0,285" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="630.0,285 619.8683290659683,289.28360176539513 619.8683290659683,280.71639823460487" fill="#222222"/>
+<rect x="454.25" y="250" width="92.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="458.25" y="269.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">2. validar</text>
+<polyline points="630.0,357 889.0,357" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="889.0,357 878.8683290659683,361.28360176539513 878.8683290659683,352.71639823460487" fill="#222222"/>
+<rect x="708.0" y="322" width="103.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="341.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">3. guardar</text>
+<polyline points="630.0,429 1148.0,429" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="1148.0,429 1137.8683290659683,433.28360176539513 1137.8683290659683,424.71639823460487" fill="#222222"/>
+<rect x="836.75" y="394" width="104.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="840.75" y="413.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">4. verificar</text>
+<polyline points="630.0,501 1148.0,501" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="1148.0,501 1137.8683290659683,505.28360176539513 1137.8683290659683,496.71639823460487" fill="#222222"/>
+<rect x="832.25" y="466" width="113.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="836.25" y="485.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">5. asegurar</text>
+<polyline points="630.0,573 371.0,573" fill="none" stroke="#222222" stroke-width="2" stroke-dasharray="8 6"/>
+<polygon points="371.0,573 381.1316709340317,568.7163982346049 381.1316709340317,577.2836017653951" fill="#222222"/>
+<rect x="445.5" y="538" width="110.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="449.5" y="557.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">6. devolver</text>
+<text x="35" y="645.86" font-family="Arial" font-size="23" font-weight="bold" fill="#111111">Mensajes de la colaboración</text>
+<text x="35" y="685.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">1. introducirPerfilODireccionPropia()</text>
+<text x="35" y="721.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">2. validarPropiedadYCampos()</text>
+<text x="35" y="757.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">3. guardarContactoPermitido()</text>
+<text x="35" y="793.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">4. verificarPropiedadYPersistirDireccion()</text>
+<text x="35" y="829.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">5. asegurarPredeterminadaUnica()</text>
+<text x="35" y="865.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">6. devolverPerfilYDireccionesVigentes()</text>
+</svg>

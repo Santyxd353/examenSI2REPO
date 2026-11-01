@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1348" viewBox="0 0 1260 1348"><rect width="100%" height="100%" fill="white"/>
+<rect x="25" y="65" width="480" height="203" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="140.015625" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">VestidorWebPantalla</text>
+<text x="37" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- avatarAprobado</text>
+<text x="37" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- modeloPrenda</text>
+<text x="37" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- vista</text>
+<polyline points="25,215 505,215" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="37" y="244.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ elegirVarianteParaPrueba3D()</text>
+<rect x="755" y="65" width="480" height="203" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="880.01171875" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Vestidor3DServicio</text>
+<text x="767" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- contexto : ContextoTienda</text>
+<text x="767" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- permiso : PoliticaAcceso</text>
+<polyline points="755,186 1235,186" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="767" y="215.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ abrirPruebaPropiaConVersiones()</text>
+<text x="767" y="244.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ registrarSeleccionExactaSinDuplicacion()</text>
+<rect x="25" y="430" width="480" height="232" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="226.0078125" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Avatar</text>
+<text x="37" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- PK id : uuid</text>
+<text x="37" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK usuario_id : uuid</text>
+<text x="37" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK plantilla_id : uuid</text>
+<text x="37" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- version : integer</text>
+<polyline points="25,609 505,609" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="37" y="638.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ verificarAprobacionYPropiedad()</text>
+<rect x="755" y="430" width="480" height="232" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="894.51171875" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">RecursoVestidor</text>
+<text x="767" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- id : UUID</text>
+<text x="767" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- varianteId : UUID</text>
+<text x="767" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- formato : GLB o PNG</text>
+<text x="767" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- sha256 : texto</text>
+<polyline points="755,609 1235,609" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="767" y="638.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ verificarContratoYEntregarGLBCompatible()</text>
+<rect x="25" y="795" width="480" height="232" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="795" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="173.51171875" y="824.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">SesionVestidor</text>
+<text x="37" y="875.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- PK id : uuid</text>
+<text x="37" y="904.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK usuario_id : uuid</text>
+<text x="37" y="933.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- FK avatar_id : uuid</text>
+<text x="37" y="962.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">- canal : varchar(10)</text>
+<polyline points="25,974 505,974" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="37" y="1003.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">+ registrarSesionYEventoUUID()</text>
+<polyline points="505,166.5 540,166.5 540,109.125 755,109.125" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="755,109.125 744.8683290659683,113.40860176539516 744.8683290659683,104.84139823460484" fill="#222222"/>
+<polyline points="755,147.375 567,147.375 567,546.0 505,546.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="505,546.0 515.1316709340317,541.7163982346049 515.1316709340317,550.2836017653951" fill="#222222"/>
+<polyline points="755,185.625 668,185.625 668,546.0 755,546.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="755,546.0 744.8683290659683,550.2836017653951 744.8683290659683,541.7163982346049" fill="#222222"/>
+<polyline points="755,223.875 621,223.875 621,911.0 505,911.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="505,911.0 515.1316709340317,906.7163982346049 515.1316709340317,915.2836017653951" fill="#222222"/>
+<rect x="511" y="171.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="188.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="741.0" y="114.125" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="130.885" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="632.0" y="79.125" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="636.0" y="95.885" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R1</text>
+<rect x="741.0" y="152.375" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="169.135" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="511" y="551.0" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="567.76" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="671.0" y="121.375" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="138.135" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R2</text>
+<rect x="741.0" y="190.625" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="207.385" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="741.0" y="551.0" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="567.76" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="671.0" y="159.625" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="176.385" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R3</text>
+<rect x="741.0" y="228.875" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="245.635" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="511" y="916.0" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="932.76" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="671.0" y="197.875" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="214.635" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R4</text>
+<text x="30" y="1189.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R1 VestidorWebPantalla → Vestidor3DServicio: solicitud validada</text>
+<text x="30" y="1226.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R2 Vestidor3DServicio → Avatar: operación en el contexto autorizado</text>
+<text x="30" y="1263.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R3 Vestidor3DServicio → RecursoVestidor: operación en el contexto autorizado</text>
+<text x="30" y="1300.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R4 Vestidor3DServicio → SesionVestidor: operación en el contexto autorizado</text>
+</svg>

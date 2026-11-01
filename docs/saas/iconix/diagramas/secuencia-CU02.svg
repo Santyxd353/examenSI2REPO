@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1144" viewBox="0 0 1260 1144"><rect width="100%" height="100%" fill="white"/>
+<rect x="25.0" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="79.0" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«actor»</text>
+<text x="39.25" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Propietaria de</text>
+<text x="79.75" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">tienda</text>
+<polyline points="112.0,145 112.0,751" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="232.2" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="274.2" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«frontera»</text>
+<text x="256.7" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Suscripcion</text>
+<text x="277.45" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Pantalla</text>
+<polyline points="319.2,145 319.2,751" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="439.4" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="485.65" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«control»</text>
+<text x="463.9" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Suscripcion</text>
+<text x="484.15" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Servicio</text>
+<polyline points="526.4,145 526.4,751" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="646.6" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="690.1" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="710.6" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Plan</text>
+<polyline points="733.6,145 733.6,751" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="853.8" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="897.3" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="878.3" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Suscripcion</text>
+<polyline points="940.8,145 940.8,751" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="1061.0" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="1104.5" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="1121.25" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Pago</text>
+<text x="1085.5" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Suscripcion</text>
+<polyline points="1148.0,145 1148.0,751" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="520.4" y="175" width="12" height="566" fill="#eeeeee" stroke="#777777" stroke-width="1"/>
+<polyline points="112.0,213 319.2,213" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="319.2,213 309.06832906596827,217.28360176539516 309.06832906596827,208.71639823460484" fill="#222222"/>
+<rect x="174.6" y="178" width="82.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="178.6" y="197.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">1. elegir</text>
+<polyline points="319.2,285 526.4,285" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="526.4,285 516.2683290659683,289.28360176539513 516.2683290659683,280.71639823460487" fill="#222222"/>
+<rect x="367.79999999999995" y="250" width="110.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="371.79999999999995" y="269.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">2. preparar</text>
+<polyline points="526.4,357 733.6,357" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,357 723.4683290659683,361.28360176539513 723.4683290659683,352.71639823460487" fill="#222222"/>
+<rect x="572.0" y="322" width="116.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="576.0" y="341.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">3. consultar</text>
+<polyline points="526.4,429 940.8,429" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,429 930.6683290659682,433.28360176539513 930.6683290659682,424.71639823460487" fill="#222222"/>
+<rect x="668.0999999999999" y="394" width="131.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="672.0999999999999" y="413.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">4. comprobar</text>
+<polyline points="526.4,501 1148.0,501" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="1148.0,501 1137.8683290659683,505.28360176539513 1137.8683290659683,496.71639823460487" fill="#222222"/>
+<rect x="784.95" y="466" width="104.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="788.95" y="485.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">5. persistir</text>
+<polyline points="526.4,573 1148.0,573" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="1148.0,573 1137.8683290659683,577.2836017653951 1137.8683290659683,568.7163982346049" fill="#222222"/>
+<rect x="790.95" y="538" width="92.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="794.95" y="557.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">6. validar</text>
+<polyline points="526.4,645 940.8,645" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,645 930.6683290659682,649.2836017653951 930.6683290659682,640.7163982346049" fill="#222222"/>
+<rect x="687.3499999999999" y="610" width="92.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="691.3499999999999" y="629.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">7. aplicar</text>
+<polyline points="526.4,717 319.2,717" fill="none" stroke="#222222" stroke-width="2" stroke-dasharray="8 6"/>
+<polygon points="319.2,717 329.3316709340317,712.7163982346049 329.3316709340317,721.2836017653951" fill="#222222"/>
+<rect x="371.54999999999995" y="682" width="102.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="375.54999999999995" y="701.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">8. mostrar</text>
+<text x="35" y="789.86" font-family="Arial" font-size="23" font-weight="bold" fill="#111111">Mensajes de la colaboración</text>
+<text x="35" y="829.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">1. elegirOperacionPlanYMetodo()</text>
+<text x="35" y="865.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">2. prepararIntencionConOcupacionActual()</text>
+<text x="35" y="901.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">3. consultarPrecioLimitesYCapacidades()</text>
+<text x="35" y="937.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">4. comprobarCompatibilidadYPeriodo()</text>
+<text x="35" y="973.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">5. persistirIntencionDePruebaIdempotente()</text>
+<text x="35" y="1009.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">6. validarYRegistrarEventoDelAdaptador()</text>
+<text x="35" y="1045.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">7. aplicarPlanYPeriodoUnaSolaVez()</text>
+<text x="35" y="1081.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">8. mostrarComprobanteYEstadoEfectivo()</text>
+</svg>

@@ -8,7 +8,16 @@ Repositorio oficial: [Santyxd353/examenSI2REPO](https://github.com/Santyxd353/ex
 
 ## Segunda entrega SaaS
 
-El alcance nuevo y la entrega prevista para el 27/10/2026 están en [alcance SaaS](docs/saas/ALCANCE_Y_ENTREGA.md). La implementación se desarrolla en `desarrollo/saas-offline`. Consulta [estado verificable](docs/saas/ESTADO.md) y [operación de tiendas](docs/saas/OPERACION.md).
+La entrega está prevista para el 07/11/2026. Primero se cierra el
+[documento ICONIX](docs/Lumina_SaaS_ICONIX_Grupo18.docx) y después se implementa
+la ampliación con esa línea base. Incluye SaaS, offline web/Android,
+reportes y ML con datos sintéticos identificados. Los planes por tienda y mes
+son Esencial Bs149, Profesional Bs299 y Negocio Bs599. Consulta
+[alcance](docs/saas/ALCANCE_Y_ENTREGA.md),
+[fuentes documentales](docs/saas/iconix/README.md),
+[estado verificable](docs/saas/ESTADO.md) y
+[operación de tiendas](docs/saas/OPERACION.md).
+La rama de trabajo es `desarrollo/saas-offline`.
 
 La base SaaS separa las bases, archivos, sesiones y eventos de cada negocio. La web incorpora un selector de tienda y la administración por módulos; Android incluye la tienda en su sesión. La suscripción distingue prueba, vigencia y vencimiento. Stripe, QR simulado, sincronización offline, nuevos dashboards, ML e ICONIX tienen avances registrados por separado; no se consideran completos por existir el registro de planes.
 

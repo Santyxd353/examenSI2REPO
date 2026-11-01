@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="740" viewBox="0 0 1260 740"><rect width="100%" height="100%" fill="white"/>
+<ellipse cx="90.0" cy="257.0" rx="17.0" ry="17.0" fill="white" stroke="#222222" stroke-width="2"/>
+<polyline points="90,274 90,342" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="55,298 125,298" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="90,342 60,385" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="90,342 120,385" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="22.25" y="414.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">Propietaria de</text>
+<text x="60.5" y="443.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">tienda</text>
+<ellipse cx="317.0" cy="310.0" rx="42.0" ry="42.0" fill="white" stroke="#222222" stroke-width="2"/>
+<polyline points="260,258 260,362" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="260,310 275,310" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="264.0" y="396.86" font-family="Arial" font-size="23" font-weight="normal" fill="#111111">«frontera»</text>
+<text x="193.25" y="435.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Suscripcion Pantalla</text>
+<ellipse cx="652.0" cy="310.0" rx="42.0" ry="42.0" fill="white" stroke="#222222" stroke-width="2"/>
+<polyline points="664,269 680,255 685,277" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="685,277 678.5775270838365,268.06961133874086 686.9316887289627,266.1709382375758" fill="#222222"/>
+<text x="604.25" y="396.86" font-family="Arial" font-size="23" font-weight="normal" fill="#111111">«control»</text>
+<text x="527.75" y="435.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Suscripcion Servicio</text>
+<polyline points="133,310 255,310" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="363,310 605,310" fill="none" stroke="#222222" stroke-width="2"/>
+<rect x="159.25" y="268" width="71.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="163.25" y="287.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">solicita</text>
+<rect x="401.0" y="268" width="164.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="405.0" y="287.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">valida y coordina</text>
+<ellipse cx="1092.0" cy="150.0" rx="42.0" ry="42.0" fill="white" stroke="#222222" stroke-width="2"/>
+<polyline points="1040,199 1144,199" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="1044.5" y="230.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="1066.75" y="268.68" font-family="Arial" font-size="24" font-weight="bold" fill="#111111">Plan</text>
+<polyline points="698,310 891,310 891,150 1045,150" fill="none" stroke="#222222" stroke-width="2"/>
+<rect x="874.5" y="118" width="181.0" height="27" fill="white" stroke="white" stroke-width="0"/>
+<text x="878.5" y="136.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">1 consulta / registra</text>
+<ellipse cx="1092.0" cy="345.0" rx="42.0" ry="42.0" fill="white" stroke="#222222" stroke-width="2"/>
+<polyline points="1040,394 1144,394" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="1044.5" y="425.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="1023.5" y="463.68" font-family="Arial" font-size="24" font-weight="bold" fill="#111111">Suscripcion</text>
+<polyline points="698,310 863,310 863,345 1045,345" fill="none" stroke="#222222" stroke-width="2"/>
+<rect x="874.5" y="313" width="181.0" height="27" fill="white" stroke="white" stroke-width="0"/>
+<text x="878.5" y="331.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">2 consulta / registra</text>
+<ellipse cx="1092.0" cy="540.0" rx="42.0" ry="42.0" fill="white" stroke="#222222" stroke-width="2"/>
+<polyline points="1040,589 1144,589" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="1044.5" y="620.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="991.0" y="658.68" font-family="Arial" font-size="24" font-weight="bold" fill="#111111">Pago Suscripcion</text>
+<polyline points="698,310 835,310 835,540 1045,540" fill="none" stroke="#222222" stroke-width="2"/>
+<rect x="874.5" y="508" width="181.0" height="27" fill="white" stroke="white" stroke-width="0"/>
+<text x="878.5" y="526.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">3 consulta / registra</text>
+<text x="40" y="704.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">Las entidades pertenecen al contexto de tienda validado por el control.</text>
+</svg>

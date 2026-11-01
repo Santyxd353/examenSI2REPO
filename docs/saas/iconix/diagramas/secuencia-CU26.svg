@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1430" viewBox="0 0 1260 1430"><rect width="100%" height="100%" fill="white"/>
+<rect x="25.0" y="22" width="174" height="190" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="79.0" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«actor»</text>
+<text x="31.0" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Administradora</text>
+<text x="61.75" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">o analista</text>
+<text x="40.75" y="143.04" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">autorizado de</text>
+<text x="42.75" y="172.04" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Profesional o</text>
+<text x="68.75" y="201.04" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Negocio</text>
+<polyline points="112.0,215 112.0,965" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="232.2" y="22" width="174" height="190" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="274.2" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«frontera»</text>
+<text x="258.2" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Laboratorio</text>
+<text x="272.95" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Analitico</text>
+<polyline points="319.2,215 319.2,965" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="439.4" y="22" width="174" height="190" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="485.65" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«control»</text>
+<text x="467.9" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Entrenador</text>
+<text x="480.15" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Analitico</text>
+<polyline points="526.4,215 526.4,965" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="646.6" y="22" width="174" height="190" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="690.1" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="685.1" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Conjunto</text>
+<text x="656.85" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Entrenamiento</text>
+<polyline points="733.6,215 733.6,965" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="853.8" y="22" width="174" height="190" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="897.3" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="902.3" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Modelo</text>
+<text x="894.55" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Analitico</text>
+<polyline points="940.8,215 940.8,965" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="1061.0" y="22" width="174" height="190" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="1104.5" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="1096.5" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Ejecucion</text>
+<text x="1102.5" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Analitica</text>
+<polyline points="1148.0,215 1148.0,965" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="520.4" y="245" width="12" height="710" fill="#eeeeee" stroke="#777777" stroke-width="1"/>
+<polyline points="112.0,283 319.2,283" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="319.2,283 309.06832906596827,287.28360176539513 309.06832906596827,278.71639823460487" fill="#222222"/>
+<rect x="151.35" y="248" width="128.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="155.35" y="267.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">1. Configurar</text>
+<polyline points="319.2,355 526.4,355" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="526.4,355 516.2683290659683,359.28360176539513 516.2683290659683,350.71639823460487" fill="#222222"/>
+<rect x="374.81171874999995" y="320" width="95.9765625" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="378.81171874999995" y="339.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">2. Validar</text>
+<polyline points="526.4,427 733.6,427" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,427 723.4683290659683,431.28360176539513 723.4683290659683,422.71639823460487" fill="#222222"/>
+<rect x="573.0078125" y="392" width="113.984375" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="577.0078125" y="411.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">3. Generar,</text>
+<polyline points="526.4,499 733.6,499" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,499 723.4683290659683,503.28360176539513 723.4683290659683,494.71639823460487" fill="#222222"/>
+<rect x="577.25" y="464" width="105.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="581.25" y="483.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">4. Separar</text>
+<polyline points="526.4,571 940.8,571" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,571 930.6683290659682,575.2836017653951 930.6683290659682,566.7163982346049" fill="#222222"/>
+<rect x="685.3578124999999" y="536" width="96.484375" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="689.3578124999999" y="555.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">5. Ajustar</text>
+<polyline points="526.4,643 940.8,643" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,643 930.6683290659682,647.2836017653951 930.6683290659682,638.7163982346049" fill="#222222"/>
+<rect x="675.8499999999999" y="608" width="115.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="679.8499999999999" y="627.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">6. Congelar</text>
+<polyline points="526.4,715 1148.0,715" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="1148.0,715 1137.8683290659683,719.2836017653951 1137.8683290659683,710.7163982346049" fill="#222222"/>
+<rect x="786.2" y="680" width="102.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="790.2" y="699.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">7. Evaluar</text>
+<polyline points="526.4,787 940.8,787" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,787 930.6683290659682,791.2836017653951 930.6683290659682,782.7163982346049" fill="#222222"/>
+<rect x="679.5999999999999" y="752" width="108.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="683.5999999999999" y="771.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">8. Guardar</text>
+<polyline points="526.4,859 319.2,859" fill="none" stroke="#222222" stroke-width="2" stroke-dasharray="8 6"/>
+<polygon points="319.2,859 329.3316709340317,854.7163982346049 329.3316709340317,863.2836017653951" fill="#222222"/>
+<rect x="367.04999999999995" y="824" width="111.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="371.04999999999995" y="843.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">9. Entregar</text>
+<polyline points="319.2,931 112.0,931" fill="none" stroke="#222222" stroke-width="2" stroke-dasharray="8 6"/>
+<polygon points="112.0,931 122.13167093403173,926.7163982346049 122.13167093403173,935.2836017653951" fill="#222222"/>
+<rect x="158.6" y="896" width="114.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="162.6" y="915.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">10. Mostrar</text>
+<text x="35" y="1003.86" font-family="Arial" font-size="23" font-weight="bold" fill="#111111">Mensajes de la colaboración</text>
+<text x="35" y="1043.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">1. Configurar demostración y protocolo</text>
+<text x="35" y="1079.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">2. Validar plan, fuente y configuración</text>
+<text x="35" y="1115.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">3. Generar, validar y firmar manifest</text>
+<text x="35" y="1151.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">4. Separar temporalmente y construir features pasadas</text>
+<text x="35" y="1187.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">5. Ajustar pipeline y comparar baseline en validación</text>
+<text x="35" y="1223.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">6. Congelar configuración y reajustar sin prueba</text>
+<text x="35" y="1259.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">7. Evaluar horizontes y registrar métricas reales</text>
+<text x="35" y="1295.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">8. Guardar versión, hash y estado</text>
+<text x="35" y="1331.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">9. Entregar ficha marcada y limitaciones</text>
+<text x="35" y="1367.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">10. Mostrar evaluación reproducible sin afirmar exactitud real</text>
+</svg>

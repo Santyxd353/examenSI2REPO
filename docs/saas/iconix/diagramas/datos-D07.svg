@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1311" viewBox="0 0 1260 1311"><rect width="100%" height="100%" fill="white"/>
+<rect x="25" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="171.75" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">consentimiento</text>
+<text x="37" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK usuario_id : uuid</text>
+<text x="37" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">version_texto : varchar(30)</text>
+<text x="37" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">finalidad : varchar(100)</text>
+<text x="37" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">declaracion_adulto : boolean</text>
+<rect x="755" y="65" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="892.25" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">captura_corporal</text>
+<text x="767" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="767" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK usuario_id : uuid</text>
+<text x="767" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK consentimiento_id : uuid</text>
+<text x="767" y="232.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">altura_cm : numeric(5,2)</text>
+<text x="767" y="261.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">estado : varchar(20)</text>
+<rect x="25" y="430" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="181.0" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">foto_temporal</text>
+<text x="37" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK captura_id : uuid</text>
+<text x="37" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">vista : varchar(10)</text>
+<text x="37" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">clave_objeto : varchar(500)</text>
+<text x="37" y="626.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">mime : varchar(40)</text>
+<rect x="755" y="430" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="958.0" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">avatar</text>
+<text x="767" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="767" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK usuario_id : uuid</text>
+<text x="767" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">FK plantilla_id : uuid</text>
+<text x="767" y="597.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">version : integer</text>
+<text x="767" y="626.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">clave_glb : varchar(500)</text>
+<rect x="25" y="795" width="480" height="217" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="795" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="160.0" y="824.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">plantilla_corporal</text>
+<text x="37" y="875.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">PK id : uuid</text>
+<text x="37" y="904.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">nombre : varchar(80)</text>
+<text x="37" y="933.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">version : varchar(30)</text>
+<text x="37" y="962.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">clave_malla : varchar(500)</text>
+<text x="37" y="991.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">esqueleto_version : varchar(40)</text>
+<polyline points="505,173.5 540,173.5 540,131.75 755,131.75" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="755,215.25 567,215.25 567,538.5 505,538.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="505,903.5 594,903.5 594,538.5 755,538.5" fill="none" stroke="#222222" stroke-width="2"/>
+<rect x="511" y="178.5" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="195.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="708.0" y="136.75" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="153.51" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="147.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="164.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R1</text>
+<rect x="731.0" y="220.25" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="735.0" y="237.01" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="511" y="543.5" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="560.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="671.0" y="189.25" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="206.01" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R2</text>
+<rect x="511" y="908.5" width="18.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="925.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">1</text>
+<rect x="708.0" y="543.5" width="41.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="712.0" y="560.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111">0..N</text>
+<rect x="558" y="877.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="894.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R3</text>
+<text x="30" y="1189.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R1 consentimiento → captura_corporal [1 -&gt; 0..N]: consentimiento_id</text>
+<text x="30" y="1226.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R2 captura_corporal → foto_temporal [1 -&gt; 0..N]: captura_id</text>
+<text x="30" y="1263.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R3 plantilla_corporal → avatar [1 -&gt; 0..N]: plantilla_id</text>
+</svg>

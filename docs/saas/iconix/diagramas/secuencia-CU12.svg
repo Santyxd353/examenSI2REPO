@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1252" viewBox="0 0 1260 1252"><rect width="100%" height="100%" fill="white"/>
+<rect x="25.0" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="79.0" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«actor»</text>
+<text x="46.75" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Compradora</text>
+<text x="79.75" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">adulta</text>
+<polyline points="112.0,145 112.0,823" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="232.2" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="274.2" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«frontera»</text>
+<text x="253.715625" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Crear Avatar</text>
+<text x="277.45" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Pantalla</text>
+<polyline points="319.2,145 319.2,823" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="439.4" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="485.65" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«control»</text>
+<text x="466.4" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Generacion</text>
+<text x="447.1578125" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Avatar Servicio</text>
+<polyline points="526.4,145 526.4,823" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="646.6" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="690.1" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="692.1" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Captura</text>
+<text x="687.85" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Corporal</text>
+<polyline points="733.6,145 733.6,823" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="853.8" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="897.3" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="864.3234375" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Trabajo Avatar</text>
+<polyline points="940.8,145 940.8,823" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="1061.0" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="1104.5" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="1114.0078125" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Avatar</text>
+<polyline points="1148.0,145 1148.0,823" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="520.4" y="175" width="12" height="638" fill="#eeeeee" stroke="#777777" stroke-width="1"/>
+<polyline points="112.0,213 319.2,213" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="319.2,213 309.06832906596827,217.28360176539516 309.06832906596827,208.71639823460484" fill="#222222"/>
+<rect x="165.1" y="178" width="101.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="169.1" y="197.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">1. aceptar</text>
+<polyline points="319.2,285 526.4,285" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="526.4,285 516.2683290659683,289.28360176539513 516.2683290659683,280.71639823460487" fill="#222222"/>
+<rect x="376.54999999999995" y="250" width="92.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="380.54999999999995" y="269.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">2. validar</text>
+<polyline points="526.4,357 733.6,357" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,357 723.4683290659683,361.28360176539513 723.4683290659683,352.71639823460487" fill="#222222"/>
+<rect x="578.5" y="322" width="103.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="582.5" y="341.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">3. guardar</text>
+<polyline points="526.4,429 940.8,429" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,429 930.6683290659682,433.28360176539513 930.6683290659682,424.71639823460487" fill="#222222"/>
+<rect x="694.0999999999999" y="394" width="79.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="698.0999999999999" y="413.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">4. crear</text>
+<polyline points="526.4,501 940.8,501" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,501 930.6683290659682,505.28360176539513 930.6683290659682,496.71639823460487" fill="#222222"/>
+<rect x="679.5999999999999" y="466" width="108.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="683.5999999999999" y="485.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">5. registrar</text>
+<polyline points="526.4,573 1148.0,573" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="1148.0,573 1137.8683290659683,577.2836017653951 1137.8683290659683,568.7163982346049" fill="#222222"/>
+<rect x="784.95" y="538" width="104.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="788.95" y="557.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">6. persistir</text>
+<polyline points="526.4,645 940.8,645" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,645 930.6683290659682,649.2836017653951 930.6683290659682,640.7163982346049" fill="#222222"/>
+<rect x="682.0999999999999" y="610" width="103.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="686.0999999999999" y="629.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">7. finalizar</text>
+<polyline points="526.4,717 733.6,717" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,717 723.4683290659683,721.2836017653951 723.4683290659683,712.7163982346049" fill="#222222"/>
+<rect x="584.25" y="682" width="91.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="588.25" y="701.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">8. purgar</text>
+<polyline points="526.4,789 319.2,789" fill="none" stroke="#222222" stroke-width="2" stroke-dasharray="8 6"/>
+<polygon points="319.2,789 329.3316709340317,784.7163982346049 329.3316709340317,793.2836017653951" fill="#222222"/>
+<rect x="371.54999999999995" y="754" width="102.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="375.54999999999995" y="773.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">9. mostrar</text>
+<text x="35" y="861.86" font-family="Arial" font-size="23" font-weight="bold" fill="#111111">Mensajes de la colaboración</text>
+<text x="35" y="901.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">1. aceptarConsentimientoYAdjuntarTresVistasYAltura()</text>
+<text x="35" y="937.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">2. validarCapturaYReservarCuotaConUUID()</text>
+<text x="35" y="973.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">3. guardarConsentimientoYFotosPrivadasConCaducidad()</text>
+<text x="35" y="1009.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">4. crearTrabajoIdempotenteYVersionDeProceso()</text>
+<text x="35" y="1045.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">5. registrarProgresoYParametrosEstimadosDelProceso()</text>
+<text x="35" y="1081.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">6. persistirGLBPropioPendienteDeRevision()</text>
+<text x="35" y="1117.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">7. finalizarYConfirmarConsumoUnico()</text>
+<text x="35" y="1153.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">8. purgarFotosYRegistrarResultado()</text>
+<text x="35" y="1189.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">9. mostrarProgresoResultadoYAccesoARevision()</text>
+</svg>

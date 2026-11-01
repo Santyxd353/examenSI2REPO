@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1430" viewBox="0 0 1260 1430"><rect width="100%" height="100%" fill="white"/>
+<rect x="25.0" y="22" width="174" height="190" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="79.0" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«actor»</text>
+<text x="46.75" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Compradora</text>
+<text x="54.25" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">solicitante;</text>
+<text x="57.5" y="143.04" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">encargada</text>
+<text x="31.25" y="172.04" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">autorizada para</text>
+<text x="69.75" y="201.04" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">resolver</text>
+<polyline points="112.0,215 112.0,965" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="232.2" y="22" width="174" height="190" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="274.2" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«frontera»</text>
+<text x="248.2" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Devoluciones</text>
+<text x="277.45" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Pantalla</text>
+<polyline points="319.2,215 319.2,965" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="439.4" y="22" width="174" height="190" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="485.65" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«control»</text>
+<text x="467.4" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Devolucion</text>
+<text x="484.15" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Servicio</text>
+<polyline points="526.4,215 526.4,965" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="646.6" y="22" width="174" height="190" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="690.1" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="697.1" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Pedido</text>
+<polyline points="733.6,215 733.6,965" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="853.8" y="22" width="174" height="190" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="897.3" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="881.8" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Devolucion</text>
+<polyline points="940.8,215 940.8,965" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="1061.0" y="22" width="174" height="190" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="1104.5" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="1089.0" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Reembolso</text>
+<polyline points="1148.0,215 1148.0,965" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="520.4" y="245" width="12" height="710" fill="#eeeeee" stroke="#777777" stroke-width="1"/>
+<polyline points="112.0,283 319.2,283" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="319.2,283 309.06832906596827,287.28360176539513 309.06832906596827,278.71639823460487" fill="#222222"/>
+<rect x="164.6" y="248" width="102.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="168.6" y="267.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">1. solicitar</text>
+<polyline points="319.2,355 526.4,355" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="526.4,355 516.2683290659683,359.28360176539513 516.2683290659683,350.71639823460487" fill="#222222"/>
+<rect x="376.54999999999995" y="320" width="92.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="380.54999999999995" y="339.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">2. validar</text>
+<polyline points="526.4,427 733.6,427" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,427 723.4683290659683,431.28360176539513 723.4683290659683,422.71639823460487" fill="#222222"/>
+<rect x="564.5" y="392" width="131.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="568.5" y="411.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">3. comprobar</text>
+<polyline points="526.4,499 940.8,499" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,499 930.6683290659682,503.28360176539513 930.6683290659682,494.71639823460487" fill="#222222"/>
+<rect x="681.3499999999999" y="464" width="104.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="685.3499999999999" y="483.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">4. persistir</text>
+<polyline points="112.0,571 319.2,571" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="319.2,571 309.06832906596827,575.2836017653951 309.06832906596827,566.7163982346049" fill="#222222"/>
+<rect x="161.6" y="536" width="108.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="165.6" y="555.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">5. registrar</text>
+<polyline points="319.2,643 526.4,643" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="526.4,643 516.2683290659683,647.2836017653951 516.2683290659683,638.7163982346049" fill="#222222"/>
+<rect x="370.04999999999995" y="608" width="105.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="374.04999999999995" y="627.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">6. resolver</text>
+<polyline points="526.4,715 940.8,715" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,715 930.6683290659682,719.2836017653951 930.6683290659682,710.7163982346049" fill="#222222"/>
+<rect x="682.0999999999999" y="680" width="103.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="686.0999999999999" y="699.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">7. guardar</text>
+<polyline points="526.4,787 733.6,787" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,787 723.4683290659683,791.2836017653951 723.4683290659683,782.7163982346049" fill="#222222"/>
+<rect x="569.75" y="752" width="120.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="573.75" y="771.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">8. actualizar</text>
+<polyline points="526.4,859 1148.0,859" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="1148.0,859 1137.8683290659683,863.2836017653951 1137.8683290659683,854.7163982346049" fill="#222222"/>
+<rect x="786.2" y="824" width="102.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="790.2" y="843.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">9. solicitar</text>
+<polyline points="526.4,931 319.2,931" fill="none" stroke="#222222" stroke-width="2" stroke-dasharray="8 6"/>
+<polygon points="319.2,931 329.3316709340317,926.7163982346049 329.3316709340317,935.2836017653951" fill="#222222"/>
+<rect x="365.79999999999995" y="896" width="114.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="369.79999999999995" y="915.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">10. mostrar</text>
+<text x="35" y="1003.86" font-family="Arial" font-size="23" font-weight="bold" fill="#111111">Mensajes de la colaboración</text>
+<text x="35" y="1043.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">1. solicitarCancelacionODevolucionConLineasYMotivo()</text>
+<text x="35" y="1079.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">2. validarSolicitudEnCompraAutorizada()</text>
+<text x="35" y="1115.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">3. comprobarEstadoPoliticaUnidadesEImporte()</text>
+<text x="35" y="1151.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">4. persistirSolicitudYReservarCantidadesElegibles()</text>
+<text x="35" y="1187.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">5. registrarInspeccionYConfirmarResolucion()</text>
+<text x="35" y="1223.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">6. resolverConIdempotenciaYPermiso()</text>
+<text x="35" y="1259.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">7. guardarResolucionYReintegroFisicoCorrelacionado()</text>
+<text x="35" y="1295.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">8. actualizarCancelacionOLineasDevueltas()</text>
+<text x="35" y="1331.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">9. solicitarYConciliarImporteSinDuplicacion()</text>
+<text x="35" y="1367.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">10. mostrarEstadosFisicoComercialYMonetario()</text>
+</svg>

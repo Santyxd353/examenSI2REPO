@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1040" viewBox="0 0 1260 1040"><rect width="100%" height="100%" fill="white"/>
+<ellipse cx="110.0" cy="227.0" rx="17.0" ry="17.0" fill="white" stroke="#222222" stroke-width="2"/>
+<polyline points="110,244.0 110,312.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="75,268.0 145,268.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="110,312.0 80,355.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="110,312.0 140,355.0" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="58.0" y="384.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">Operadora</text>
+<text x="58.5" y="413.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">plataforma</text>
+<ellipse cx="110.0" cy="487.0" rx="17.0" ry="17.0" fill="white" stroke="#222222" stroke-width="2"/>
+<polyline points="110,504.0 110,572.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="75,528.0 145,528.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="110,572.0 80,615.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="110,572.0 140,615.0" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="36.5" y="644.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">Administradora</text>
+<ellipse cx="110.0" cy="747.0" rx="17.0" ry="17.0" fill="white" stroke="#222222" stroke-width="2"/>
+<polyline points="110,764.0 110,832.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="75,788.0 145,788.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="110,832.0 80,875.0" fill="none" stroke="#222222" stroke-width="2"/>
+<polyline points="110,832.0 140,875.0" fill="none" stroke="#222222" stroke-width="2"/>
+<text x="49.25" y="904.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">Compradora</text>
+<rect x="300" y="30" width="920" height="980" fill="white" stroke="#222222" stroke-width="2"/>
+<text x="629.5" y="67.14" font-family="Arial" font-size="27" font-weight="bold" fill="#111111">Plataforma y acceso</text>
+<polyline points="150,280.0 340,150" fill="none" stroke="#222222" stroke-width="2"/>
+<ellipse cx="760.0" cy="156.0" rx="410.0" ry="46.0" fill="white" stroke="#222222" stroke-width="2"/>
+<text x="642.5" y="145.68" font-family="Arial" font-size="24" font-weight="normal" fill="#111111">CU01 Preparar tienda</text>
+<polyline points="150,540.0 340,268" fill="none" stroke="#222222" stroke-width="2"/>
+<ellipse cx="760.0" cy="274.0" rx="410.0" ry="46.0" fill="white" stroke="#222222" stroke-width="2"/>
+<text x="552.75" y="263.68" font-family="Arial" font-size="24" font-weight="normal" fill="#111111">CU02 Suscribir renovar y cambiar plan</text>
+<polyline points="150,800.0 340,386" fill="none" stroke="#222222" stroke-width="2"/>
+<ellipse cx="760.0" cy="392.0" rx="410.0" ry="46.0" fill="white" stroke="#222222" stroke-width="2"/>
+<text x="580.26171875" y="381.68" font-family="Arial" font-size="24" font-weight="normal" fill="#111111">CU03 Autenticar sesión en tienda</text>
+<polyline points="150,540.0 340,504" fill="none" stroke="#222222" stroke-width="2"/>
+<ellipse cx="760.0" cy="510.0" rx="410.0" ry="46.0" fill="white" stroke="#222222" stroke-width="2"/>
+<text x="572.25" y="499.68" font-family="Arial" font-size="24" font-weight="normal" fill="#111111">CU04 Gestionar equipo y permisos</text>
+<polyline points="150,540.0 340,622" fill="none" stroke="#222222" stroke-width="2"/>
+<ellipse cx="760.0" cy="628.0" rx="410.0" ry="46.0" fill="white" stroke="#222222" stroke-width="2"/>
+<text x="541.5" y="617.68" font-family="Arial" font-size="24" font-weight="normal" fill="#111111">CU05 Gestionar sucursales y almacenes</text>
+</svg>

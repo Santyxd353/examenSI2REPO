@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="946" viewBox="0 0 1260 946"><rect width="100%" height="100%" fill="white"/>
+<rect x="25" y="65" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="224.25390625" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Tienda</text>
+<text x="37" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">id : UUID</text>
+<text x="37" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">slug : texto</text>
+<text x="37" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">estado : EstadoTienda</text>
+<rect x="755" y="65" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="923.0" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Suscripcion</text>
+<text x="767" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">plan : Plan</text>
+<text x="767" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">estado : EstadoSuscripcion</text>
+<text x="767" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">periodo : fechas</text>
+<rect x="25" y="430" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="238.5" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Plan</text>
+<text x="37" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">codigo : texto</text>
+<text x="37" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">precioBOB : decimal</text>
+<text x="37" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">limites : capacidades</text>
+<rect x="755" y="430" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="948.25" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">Usuario</text>
+<text x="767" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">id : UUID</text>
+<text x="767" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">correo : texto</text>
+<text x="767" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">roles : conjunto</text>
+<polyline points="505,117.25 540,117.25 540,117.25 755,117.25" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="755,117.25 744.8683290659683,121.53360176539516 744.8683290659683,112.96639823460484" fill="#222222"/>
+<polyline points="505,509.5 567,509.5 567,171.75 755,171.75" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="755,171.75 744.8683290659683,176.03360176539516 744.8683290659683,167.46639823460484" fill="#222222"/>
+<polyline points="505,171.75 594,171.75 594,509.5 755,509.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="755,509.5 744.8683290659683,513.7836017653951 744.8683290659683,505.21639823460487" fill="#222222"/>
+<rect x="511" y="122.25" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="139.01" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="741.0" y="122.25" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="139.01" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="632.0" y="87.25" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="636.0" y="104.01" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R1</text>
+<rect x="511" y="514.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="531.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="741.0" y="176.75" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="193.51" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="558" y="483.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="500.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R2</text>
+<rect x="511" y="176.75" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="193.51" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="741.0" y="514.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="531.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="558" y="145.75" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="562" y="162.51" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R3</text>
+<text x="30" y="824.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R1 Tienda → Suscripcion: tiene su período y plan</text>
+<text x="30" y="861.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R2 Plan → Suscripcion: define precio y capacidades</text>
+<text x="30" y="898.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R3 Tienda → Usuario: usuarios en su propia base</text>
+</svg>

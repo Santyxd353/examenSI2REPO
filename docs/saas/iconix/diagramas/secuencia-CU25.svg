@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1293" viewBox="0 0 1260 1293"><rect width="100%" height="100%" fill="white"/>
+<rect x="25.0" y="22" width="174" height="161" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="79.0" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«actor»</text>
+<text x="31.0" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Administradora</text>
+<text x="46.0" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">o analista de</text>
+<text x="42.75" y="143.04" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Profesional o</text>
+<text x="68.75" y="172.04" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Negocio</text>
+<polyline points="112.0,186 112.0,864" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="232.2" y="22" width="174" height="161" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="274.2" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«frontera»</text>
+<text x="269.95" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Asistente</text>
+<text x="271.7" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Reportes</text>
+<polyline points="319.2,186 319.2,864" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="439.4" y="22" width="174" height="161" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="485.65" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«control»</text>
+<text x="475.9" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Interprete</text>
+<text x="484.9" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Reporte</text>
+<polyline points="526.4,186 526.4,864" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="646.6" y="22" width="174" height="161" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="690.1" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="686.6" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Consulta</text>
+<text x="688.1" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Analitica</text>
+<polyline points="733.6,186 733.6,864" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="853.8" y="22" width="174" height="161" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="897.3" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="887.8" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Definicion</text>
+<text x="899.3" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Reporte</text>
+<polyline points="940.8,186 940.8,864" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="1061.0" y="22" width="174" height="161" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="1104.5" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="1099.5" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Conjunto</text>
+<text x="1106.5" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Reporte</text>
+<polyline points="1148.0,186 1148.0,864" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="520.4" y="216" width="12" height="638" fill="#eeeeee" stroke="#777777" stroke-width="1"/>
+<polyline points="112.0,254 319.2,254" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="319.2,254 309.06832906596827,258.28360176539513 309.06832906596827,249.71639823460484" fill="#222222"/>
+<rect x="170.35" y="219" width="90.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="174.35" y="238.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">1. Enviar</text>
+<polyline points="319.2,326 526.4,326" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="526.4,326 516.2683290659683,330.28360176539513 516.2683290659683,321.71639823460487" fill="#222222"/>
+<rect x="358.79999999999995" y="291" width="128.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="362.79999999999995" y="310.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">2. Interpretar</text>
+<polyline points="526.4,398 733.6,398" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,398 723.4683290659683,402.28360176539513 723.4683290659683,393.71639823460487" fill="#222222"/>
+<rect x="572.0" y="363" width="116.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="576.0" y="382.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">3. Registrar</text>
+<polyline points="526.4,470 940.8,470" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,470 930.6683290659682,474.28360176539513 930.6683290659682,465.71639823460487" fill="#222222"/>
+<rect x="675.5999999999999" y="435" width="116.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="679.5999999999999" y="454.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">4. Construir</text>
+<polyline points="526.4,542 319.2,542" fill="none" stroke="#222222" stroke-width="2" stroke-dasharray="8 6"/>
+<polygon points="319.2,542 329.3316709340317,537.7163982346049 329.3316709340317,546.2836017653951" fill="#222222"/>
+<rect x="361.79999999999995" y="507" width="122.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="365.79999999999995" y="526.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">5. Presentar</text>
+<polyline points="112.0,614 319.2,614" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="319.2,614 309.06832906596827,618.2836017653951 309.06832906596827,609.7163982346049" fill="#222222"/>
+<rect x="164.6" y="579" width="102.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="168.6" y="598.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">6. Revisar</text>
+<polyline points="319.2,686 526.4,686" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="526.4,686 516.2683290659683,690.2836017653951 516.2683290659683,681.7163982346049" fill="#222222"/>
+<rect x="368.79999999999995" y="651" width="108.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="372.79999999999995" y="670.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">7. Ejecutar</text>
+<polyline points="526.4,758 1148.0,758" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="1148.0,758 1137.8683290659683,762.2836017653951 1137.8683290659683,753.7163982346049" fill="#222222"/>
+<rect x="783.7" y="723" width="107.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="787.7" y="742.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">8. Obtener</text>
+<polyline points="526.4,830 319.2,830" fill="none" stroke="#222222" stroke-width="2" stroke-dasharray="8 6"/>
+<polygon points="319.2,830 329.3316709340317,825.7163982346049 329.3316709340317,834.2836017653951" fill="#222222"/>
+<rect x="366.04999999999995" y="795" width="113.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="370.04999999999995" y="814.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">9. Devolver</text>
+<text x="35" y="902.86" font-family="Arial" font-size="23" font-weight="bold" fill="#111111">Mensajes de la colaboración</text>
+<text x="35" y="942.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">1. Enviar texto o voz revisada</text>
+<text x="35" y="978.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">2. Interpretar con identidad y cuota vigentes</text>
+<text x="35" y="1014.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">3. Registrar consulta idempotente y origen</text>
+<text x="35" y="1050.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">4. Construir y validar DSL permitida</text>
+<text x="35" y="1086.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">5. Presentar interpretación o pedir precisión</text>
+<text x="35" y="1122.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">6. Revisar o ajustar interpretación</text>
+<text x="35" y="1158.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">7. Ejecutar definición autorizada</text>
+<text x="35" y="1194.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">8. Obtener agregados calculados por el motor</text>
+<text x="35" y="1230.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">9. Devolver cifras, cobertura y explicación</text>
+</svg>

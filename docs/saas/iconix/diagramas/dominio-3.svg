@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1274" viewBox="0 0 1260 1274"><rect width="100%" height="100%" fill="white"/>
+<rect x="25" y="65" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="162.75" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">OperacionOffline</text>
+<text x="37" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">id : UUID</text>
+<text x="37" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">versionBase : entero</text>
+<text x="37" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">intencion : JSON</text>
+<rect x="755" y="65" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="65" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="851.0" y="94.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">ComprobanteOperacion</text>
+<text x="767" y="145.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">hash : SHA256</text>
+<text x="767" y="174.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">resultado : JSON</text>
+<text x="767" y="203.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">estado : terminal</text>
+<rect x="25" y="430" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="156.5" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">DefinicionReporte</text>
+<text x="37" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">filtros : JSON</text>
+<text x="37" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">metricas : catálogo</text>
+<text x="37" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">diseno : JSON</text>
+<rect x="755" y="430" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="755" y="430" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="851.5" y="459.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">ConjuntoEntrenamiento</text>
+<text x="767" y="510.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">origen : SINTETICO</text>
+<text x="767" y="539.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">semilla : entero</text>
+<text x="767" y="568.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">hash : SHA256</text>
+<rect x="25" y="795" width="480" height="159" fill="white" stroke="#222222" stroke-width="2"/>
+<rect x="25" y="795" width="480" height="52" fill="#eeeeee" stroke="#222222" stroke-width="2"/>
+<text x="167.5" y="824.5" font-family="Arial" font-size="25" font-weight="bold" fill="#111111">ModeloAnalitico</text>
+<text x="37" y="875.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">algoritmo : texto</text>
+<text x="37" y="904.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">version : texto</text>
+<text x="37" y="933.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">metricas : resultado</text>
+<polyline points="505,144.5 540,144.5 540,144.5 755,144.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="755,144.5 744.8683290659683,148.78360176539516 744.8683290659683,140.21639823460484" fill="#222222"/>
+<polyline points="755,509.5 567,509.5 567,874.5 505,874.5" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="505,874.5 515.1316709340317,870.2163982346049 515.1316709340317,878.7836017653951" fill="#222222"/>
+<rect x="511" y="149.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="166.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="741.0" y="149.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="166.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="632.0" y="114.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="636.0" y="131.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R1</text>
+<rect x="741.0" y="514.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="745.0" y="531.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="511" y="879.5" width="8.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="515" y="896.26" font-family="Arial" font-size="18" font-weight="normal" fill="#111111"></text>
+<rect x="671.0" y="483.5" width="31.0" height="25" fill="white" stroke="white" stroke-width="0"/>
+<text x="675.0" y="500.26" font-family="Arial" font-size="18" font-weight="bold" fill="#111111">R2</text>
+<text x="30" y="1189.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R1 OperacionOffline → ComprobanteOperacion: confirmación idempotente</text>
+<text x="30" y="1226.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">R2 ConjuntoEntrenamiento → ModeloAnalitico: datos de entrenamiento evaluados</text>
+</svg>

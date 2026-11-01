@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1260" height="1252" viewBox="0 0 1260 1252"><rect width="100%" height="100%" fill="white"/>
+<rect x="25.0" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="79.0" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«actor»</text>
+<text x="75.5" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Clienta</text>
+<polyline points="112.0,145 112.0,823" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="232.2" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="274.2" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«frontera»</text>
+<text x="277.45" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Pantalla</text>
+<text x="238.95" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Paquete Offline</text>
+<polyline points="319.2,145 319.2,823" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="439.4" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="485.65" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«control»</text>
+<text x="445.65" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Gestor Paquete</text>
+<text x="491.65" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Offline</text>
+<polyline points="526.4,145 526.4,823" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="646.6" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="690.1" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="653.35" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Paquete Offline</text>
+<polyline points="733.6,145 733.6,823" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="853.8" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="897.3" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="897.05" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Recurso</text>
+<text x="897.0578125" y="114.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Vestidor</text>
+<polyline points="940.8,145 940.8,823" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="1061.0" y="22" width="174" height="120" fill="#f3f3f3" stroke="#222222" stroke-width="2"/>
+<text x="1104.5" y="48.4" font-family="Arial" font-size="20" font-weight="normal" fill="#111111">«entidad»</text>
+<text x="1114.0078125" y="85.03999999999999" font-family="Arial" font-size="22" font-weight="bold" fill="#111111">Avatar</text>
+<polyline points="1148.0,145 1148.0,823" fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="520.4" y="175" width="12" height="638" fill="#eeeeee" stroke="#777777" stroke-width="1"/>
+<polyline points="112.0,213 319.2,213" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="319.2,213 309.06832906596827,217.28360176539516 309.06832906596827,208.71639823460484" fill="#222222"/>
+<rect x="162.85" y="178" width="105.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="166.85" y="197.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">1. Solicitar</text>
+<polyline points="319.2,285 526.4,285" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="526.4,285 516.2683290659683,289.28360176539513 516.2683290659683,280.71639823460487" fill="#222222"/>
+<rect x="366.54999999999995" y="250" width="112.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="370.54999999999995" y="269.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">2. Preparar</text>
+<polyline points="526.4,357 940.8,357" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,357 930.6683290659682,361.28360176539513 930.6683290659682,352.71639823460487" fill="#222222"/>
+<rect x="673.3499999999999" y="322" width="120.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="677.3499999999999" y="341.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">3. Consultar</text>
+<polyline points="526.4,429 1148.0,429" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="1148.0,429 1137.8683290659683,433.28360176539513 1137.8683290659683,424.71639823460487" fill="#222222"/>
+<rect x="783.2078125" y="394" width="107.984375" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="787.2078125" y="413.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">4. Verificar</text>
+<polyline points="526.4,501 733.6,501" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,501 723.4683290659683,505.28360176539513 723.4683290659683,496.71639823460487" fill="#222222"/>
+<rect x="576.0" y="466" width="108.0" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="580.0" y="485.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">5. Guardar</text>
+<polyline points="526.4,573 940.8,573" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="940.8,573 930.6683290659682,577.2836017653951 930.6683290659682,568.7163982346049" fill="#222222"/>
+<rect x="669.8499999999999" y="538" width="127.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="673.8499999999999" y="557.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">6. Descargar</text>
+<polyline points="526.4,645 733.6,645" fill="none" stroke="#222222" stroke-width="2"/>
+<polygon points="733.6,645 723.4683290659683,649.2836017653951 723.4683290659683,640.7163982346049" fill="#222222"/>
+<rect x="581.75" y="610" width="96.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="585.75" y="629.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">7. Marcar</text>
+<polyline points="526.4,717 319.2,717" fill="none" stroke="#222222" stroke-width="2" stroke-dasharray="8 6"/>
+<polygon points="319.2,717 329.3316709340317,712.7163982346049 329.3316709340317,721.2836017653951" fill="#222222"/>
+<rect x="367.04999999999995" y="682" width="111.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="371.04999999999995" y="701.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">8. Entregar</text>
+<polyline points="319.2,789 112.0,789" fill="none" stroke="#222222" stroke-width="2" stroke-dasharray="8 6"/>
+<polygon points="112.0,789 122.13167093403173,784.7163982346049 122.13167093403173,793.2836017653951" fill="#222222"/>
+<rect x="164.35" y="754" width="102.5" height="28" fill="white" stroke="white" stroke-width="0"/>
+<text x="168.35" y="773.22" font-family="Arial" font-size="21" font-weight="normal" fill="#111111">9. Mostrar</text>
+<text x="35" y="861.86" font-family="Arial" font-size="23" font-weight="bold" fill="#111111">Mensajes de la colaboración</text>
+<text x="35" y="901.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">1. Solicitar paquete y preferencias</text>
+<text x="35" y="937.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">2. Preparar manifiesto para identidad y plataforma</text>
+<text x="35" y="973.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">3. Consultar recursos aprobados compatibles</text>
+<text x="35" y="1009.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">4. Verificar propiedad, aprobación y consentimiento</text>
+<text x="35" y="1045.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">5. Guardar manifiesto y avance protegido</text>
+<text x="35" y="1081.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">6. Descargar y verificar hashes</text>
+<text x="35" y="1117.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">7. Marcar completo o parcial</text>
+<text x="35" y="1153.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">8. Entregar recursos locales y estado</text>
+<text x="35" y="1189.04" font-family="Arial" font-size="22" font-weight="normal" fill="#111111">9. Mostrar vestidor offline de la plataforma</text>
+</svg>
