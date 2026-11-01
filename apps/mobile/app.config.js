@@ -7,8 +7,12 @@ module.exports = () => {
     ...config,
     name: 'Lúmina QA',
     slug: `${config.slug}-qa`,
-    android: { ...config.android, package: `${config.android.package}.qa` },
+    android: {
+      ...config.android,
+      package: `${config.android.package}.qa`,
+    },
     ios: { ...config.ios, bundleIdentifier: `${config.ios.bundleIdentifier}.qa` },
     extra: { ...config.extra, variant: 'qa' },
+    plugins: [...(config.plugins ?? []), './plugins/withQaCleartextTraffic'],
   };
 };
