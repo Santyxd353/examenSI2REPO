@@ -17,7 +17,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { PNG } from 'pngjs';
 import { z } from 'zod';
@@ -452,8 +452,9 @@ export class CatalogController {
 
   @Get('ar-resources')
   @UseGuards(AuthGuard)
-  async arResources(@Req() r: AuthRequest) {
+  async arResources(@Req() r: AuthRequest, @Query('offlineLimit') rawOfflineLimit?: string) {
     requirePermission(r.user, 'catalogo:gestionar');
+    const offlineLimit = z.coerce.number().int().min(0).max(10).catch(0).parse(rawOfflineLimit);
     const resources = await this.db.recurso_catalogo.findMany({
       where: { uso: 'AR' },
       include: {
@@ -461,8 +462,9 @@ export class CatalogController {
         variante: { select: { talla: true, color: true } },
       },
       orderBy: { id: 'desc' },
+      ...(offlineLimit ? { take: offlineLimit } : {}),
     });
-    return resources.map((resource) => ({
+    return Promise.all(resources.map(async (resource) => ({
       id: resource.id,
       productoId: resource.producto_id,
       varianteId: resource.variante_id,
@@ -473,7 +475,8 @@ export class CatalogController {
       textoAlternativo: resource.texto_alternativo,
       licencia: resource.licencia,
       imagePath: publicAssetPath(resource.clave_objeto),
-    }));
+      checksum: createHash('sha256').update(await readFile(storedPath(resource.clave_objeto))).digest('hex'),
+    })));
   }
 
   @Post('ar-resources')
