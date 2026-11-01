@@ -30,6 +30,7 @@ import { AdminDashboard } from './AdminDashboard';
 import { AdminNavigator } from './navigation/AdminNavigator';
 import { CatalogScreen } from './CatalogScreen';
 import { connectRealtime } from './realtime';
+import { bootstrapOfflineVault } from './offline/bootstrap';
 import { detectPose, isPoseAvailable } from '../modules/pose-landmarker/src';
 import { garmentImageFrame, garmentKind, garmentOutline, projectTorso } from './pose';
 import type { Layout, Torso } from './pose';
@@ -118,6 +119,7 @@ export function App() {
     restoreSession()
       .then(async (identity) => {
         setUser(identity);
+        if (identity) void bootstrapOfflineVault(identity).catch((reason) => setError(reason.message));
         if (identity && !isAdministrator(identity)) await loadCatalog('');
       })
       .catch((reason) => setError(reason.message))
@@ -155,6 +157,7 @@ export function App() {
           try {
             const identity = await login(correo, clave);
             setUser(identity);
+            void bootstrapOfflineVault(identity).catch((reason) => setError(reason.message));
             setAdminClientMode(false);
             if (!isAdministrator(identity)) await loadCatalog('');
           } catch (reason) {
@@ -166,6 +169,7 @@ export function App() {
           try {
             const identity = await registerClient(nombres, apellidos, correo, clave);
             setUser(identity);
+            void bootstrapOfflineVault(identity).catch((reason) => setError(reason.message));
             setAdminClientMode(false);
             await loadCatalog('');
           } catch (reason) {

@@ -17,5 +17,6 @@ y la proyección en la misma transacción SQLite exclusiva. El vault conserva
 solamente el DEK activo por ámbito dentro de SecureStore; cerrar sesión puede
 bloquear el ámbito sin borrar su cola SQLite. Verificado:
 `npm --prefix apps/mobile run typecheck` y prueba de cola con dos casos
-aprobados. Falta el bootstrap autorizado del DEK y la prueba nativa Android de
-cifrado/reinicio.
+aprobados. El bootstrap de DEK, identidad estable del dispositivo y migración
+formal están implementados. Falta aplicar la migración/configurar el secreto en
+cada entorno y ejecutar la prueba nativa Android de cifrado/reinicio.
