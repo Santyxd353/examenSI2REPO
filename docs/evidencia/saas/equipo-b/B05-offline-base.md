@@ -13,7 +13,9 @@ del sobre/bootstrap autorizado de A01/A07. Esto evita inventar un formato de
 claves incompatible o almacenar una clave maestra en la aplicación.
 
 La persistencia nativa usa `withExclusiveTransactionAsync`: inserta la intención
-y la proyección en la misma transacción SQLite exclusiva. Verificado:
+y la proyección en la misma transacción SQLite exclusiva. El vault conserva
+solamente el DEK activo por ámbito dentro de SecureStore; cerrar sesión puede
+bloquear el ámbito sin borrar su cola SQLite. Verificado:
 `npm --prefix apps/mobile run typecheck` y prueba de cola con dos casos
-aprobados. Falta SecureStore para el DEK, el bootstrap autorizado y la prueba
-nativa Android de cifrado/reinicio.
+aprobados. Falta el bootstrap autorizado del DEK y la prueba nativa Android de
+cifrado/reinicio.
