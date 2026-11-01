@@ -1,7 +1,10 @@
 import { api } from '../api';
 import type { Identity } from '../types';
 import { getOfflineDeviceId } from './device';
+import { openOfflineDatabase } from './db';
 import type { OfflineScope } from './scope';
+import { SQLiteIntentRepository } from './sqliteIntentRepository';
+import { syncOfflineQueue } from './syncQueue';
 import { storeActiveDek } from './vault';
 
 type BootstrapReply = { dek: string; keyVersion: number; rotated: boolean };
@@ -18,5 +21,7 @@ export async function bootstrapOfflineVault(identity: Identity): Promise<Offline
     body: JSON.stringify({ deviceId: scope.deviceId }),
   });
   await storeActiveDek(scope, reply.dek);
+  // El fallo de red no invalida el desbloqueo local: se conservará la cola para el próximo inicio.
+  void syncOfflineQueue(new SQLiteIntentRepository(await openOfflineDatabase()), scope).catch(() => {});
   return scope;
 }

@@ -23,6 +23,7 @@ import { ApiErrors } from './errors';
 import { storedPath, ensureStorage } from './storage';
 import { TenantRegistry, TenantController, PlatformController } from './tenancy/platform';
 import { OfflineKeyController, OfflineKeyService } from './offline-keys';
+import { OfflineSyncController, OfflineSyncService } from './offline-sync';
 import { runForTenant } from './tenancy/context';
 import { HttpException } from '@nestjs/common';
 @Controller('health')
@@ -49,6 +50,7 @@ class HealthController {
     TenantController,
     PlatformController,
     OfflineKeyController,
+    OfflineSyncController,
   ],
   providers: [
     Db,
@@ -59,6 +61,7 @@ class HealthController {
     RealtimeGateway,
     TenantRegistry,
     OfflineKeyService,
+    OfflineSyncService,
   ],
 })
 class AppModule {}

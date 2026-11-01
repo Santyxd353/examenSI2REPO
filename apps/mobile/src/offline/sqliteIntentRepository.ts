@@ -42,4 +42,46 @@ export class SQLiteIntentRepository {
       );
     });
   }
+
+  async listIntents(scope: OfflineIntent['scope']): Promise<OfflineIntent[]> {
+    const rows = await this.database.getAllAsync<{
+      operation_id: string;
+      kind: string;
+      payload: string;
+      base_version: number | null;
+      depends_on: string;
+      state: OfflineIntent['state'];
+    }>(
+      `SELECT operation_id,kind,payload,base_version,depends_on,state FROM offline_intent
+       WHERE tenant_id=? AND actor_id=? AND device_id=? ORDER BY created_at ASC`,
+      scope.tenantId,
+      scope.actorId,
+      scope.deviceId,
+    );
+    return rows.map((row) => ({
+      operationId: row.operation_id,
+      scope,
+      kind: row.kind,
+      payload: row.payload,
+      baseVersion: row.base_version,
+      dependsOn: JSON.parse(row.depends_on) as string[],
+      state: row.state,
+    }));
+  }
+
+  async replaceStates(scope: OfflineIntent['scope'], intents: readonly OfflineIntent[]) {
+    await this.database.withExclusiveTransactionAsync(async (transaction) => {
+      for (const intent of intents) {
+        await transaction.runAsync(
+          `UPDATE offline_intent SET state=?
+           WHERE operation_id=? AND tenant_id=? AND actor_id=? AND device_id=?`,
+          intent.state,
+          intent.operationId,
+          scope.tenantId,
+          scope.actorId,
+          scope.deviceId,
+        );
+      }
+    });
+  }
 }
