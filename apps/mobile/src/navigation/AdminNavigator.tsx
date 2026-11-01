@@ -7,7 +7,7 @@ import type { Identity } from '../types';
 
 type Props = {
   user: Identity;
-  home: ReactNode;
+  home: (onNavigate: (module: MobileBusinessModule) => void) => ReactNode;
 };
 
 /** Navegación de administración; B13 conectará los módulos comerciales reales. */
@@ -15,6 +15,9 @@ export function AdminNavigator({ user, home }: Props) {
   const modules = modulesForIdentity(user);
   const [active, setActive] = useState<MobileBusinessModule>('home');
   const current = modules.find((module) => module.id === active) || modules[0];
+  const navigate = (module: MobileBusinessModule) => {
+    if (modules.some((item) => item.id === module)) setActive(module);
+  };
 
   return (
     <View style={styles.container}>
@@ -29,7 +32,7 @@ export function AdminNavigator({ user, home }: Props) {
             key={module.id}
             accessibilityRole="tab"
             accessibilityState={{ selected: module.id === active }}
-            onPress={() => setActive(module.id)}
+            onPress={() => navigate(module.id)}
             style={[styles.tab, module.id === active && styles.tabActive]}
           >
             <Text style={[styles.tabText, module.id === active && styles.tabTextActive]}>{module.label}</Text>
@@ -37,7 +40,7 @@ export function AdminNavigator({ user, home }: Props) {
         ))}
       </ScrollView>
       {active === 'home' ? (
-        home
+        home(navigate)
       ) : active === 'business' ? (
         <BusinessScreen />
       ) : active === 'sync' ? (

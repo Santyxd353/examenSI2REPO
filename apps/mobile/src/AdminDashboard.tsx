@@ -16,6 +16,7 @@ import { api } from './api';
 import { getOfflineDeviceId } from './offline/device';
 import { openOfflineDatabase } from './offline/db';
 import { loadOfflineDashboard, reportSnapshotKey, saveOfflineDashboard } from './modules/reports/offlineReport';
+import type { MobileBusinessModule } from './modules/registry';
 import type { Identity } from './types';
 
 type Report = {
@@ -40,6 +41,7 @@ type Report = {
 type Props = {
   user: Identity;
   onClientMode: () => Promise<void>;
+  onNavigate: (module: MobileBusinessModule) => void;
   onLogout: () => void;
 };
 
@@ -56,12 +58,17 @@ function isoDaysAgo(days: number) {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+const welcomeDate = () =>
+  new Intl.DateTimeFormat('es-BO', { weekday: 'long', day: 'numeric', month: 'long' }).format(
+    new Date(),
+  );
+
 async function offlineScopeFor(user: Identity) {
   if (!user.tenant) return null;
   return { tenantId: user.tenant.id, actorId: user.id, deviceId: await getOfflineDeviceId() };
 }
 
-export function AdminDashboard({ user, onClientMode, onLogout }: Props) {
+export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Props) {
   const topInset = Platform.OS === 'android' ? NativeStatusBar.currentHeight || 24 : 0;
   const [days, setDays] = useState(30);
   const [report, setReport] = useState<Report | null>(null);
@@ -136,12 +143,27 @@ export function AdminDashboard({ user, onClientMode, onLogout }: Props) {
         }
       >
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>RESUMEN COMERCIAL</Text>
-          <Text style={styles.heroTitle}>Ventas bajo control.</Text>
+          <View style={styles.heroTopline}>
+            <Text style={styles.eyebrow}>CENTRO DE CONTROL</Text>
+            <View style={styles.onlineBadge}>
+              <View style={styles.onlineDot} />
+              <Text style={styles.onlineText}>SESIÓN ACTIVA</Text>
+            </View>
+          </View>
+          <Text style={styles.heroTitle}>Hola, {user.nombres.split(' ')[0]}.</Text>
           <Text style={styles.heroCopy}>
-            Hola, {user.nombres}. Consulta el rendimiento real y cambia al catálogo cuando quieras
-            comprar.
+            Revisa el desempeño de {user.tenant?.name || 'tu tienda'} y gestiona lo importante
+            desde un solo lugar.
           </Text>
+          <View style={styles.heroDetails}>
+            <View>
+              <Text style={styles.heroDetailLabel}>HOY</Text>
+              <Text style={styles.heroDetailValue}>{welcomeDate()}</Text>
+            </View>
+            <View style={styles.roleBadge}>
+              <Text style={styles.roleBadgeText}>{user.roles.includes('Administrador') ? 'ADMIN' : 'EQUIPO'}</Text>
+            </View>
+          </View>
           <Pressable
             disabled={switching}
             style={[styles.clientButton, switching && styles.disabled]}
@@ -151,6 +173,36 @@ export function AdminDashboard({ user, onClientMode, onLogout }: Props) {
               {switching ? 'Abriendo catálogo…' : 'Cambiar a modo cliente  →'}
             </Text>
           </Pressable>
+        </View>
+
+        <View style={styles.quickSection}>
+          <View style={styles.quickHeading}>
+            <Text style={styles.quickTitle}>Accesos rápidos</Text>
+            <Text style={styles.quickHint}>OPERACIÓN DIARIA</Text>
+          </View>
+          <View style={styles.quickGrid}>
+            <QuickAction
+              icon="↻"
+              label="Sincronización"
+              copy="Revisa pendientes"
+              tone="sage"
+              onPress={() => onNavigate('sync')}
+            />
+            <QuickAction
+              icon="⌂"
+              label="Mi negocio"
+              copy="Plan y consumo"
+              tone="sand"
+              onPress={() => onNavigate('business')}
+            />
+            <QuickAction
+              icon="◌"
+              label="Catálogo"
+              copy="Vista de cliente"
+              tone="rose"
+              onPress={() => void switchToClient()}
+            />
+          </View>
         </View>
 
         <View style={styles.sectionHeader}>
@@ -288,6 +340,30 @@ export function AdminDashboard({ user, onClientMode, onLogout }: Props) {
   );
 }
 
+function QuickAction({
+  icon,
+  label,
+  copy,
+  tone,
+  onPress,
+}: {
+  icon: string;
+  label: string;
+  copy: string;
+  tone: 'sage' | 'sand' | 'rose';
+  onPress: () => void;
+}) {
+  return (
+    <Pressable accessibilityRole="button" style={styles.quickAction} onPress={onPress}>
+      <View style={[styles.quickIcon, tone === 'sand' && styles.quickIconSand, tone === 'rose' && styles.quickIconRose]}>
+        <Text style={styles.quickIconText}>{icon}</Text>
+      </View>
+      <Text style={styles.quickLabel}>{label}</Text>
+      <Text style={styles.quickCopy}>{copy}</Text>
+    </Pressable>
+  );
+}
+
 function KpiCard({ label, value, tone }: { label: string; value: string; tone?: 'dark' }) {
   return (
     <View style={[styles.kpi, tone === 'dark' && styles.kpiDark]}>
@@ -349,7 +425,14 @@ const styles = StyleSheet.create({
   avatarText: { color: '#fff', fontSize: 16, fontWeight: '900' },
   content: { padding: 16, paddingBottom: 46 },
   hero: { borderRadius: 18, padding: 20, backgroundColor: green, overflow: 'hidden' },
+  heroTopline: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   eyebrow: { color: '#b9cbbd', fontSize: 9, letterSpacing: 1.8, fontWeight: '700' },
+  onlineBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 10,
+    paddingHorizontal: 8, paddingVertical: 5, backgroundColor: '#ffffff17',
+  },
+  onlineDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#a5e2a6' },
+  onlineText: { color: '#d7e8d6', fontSize: 7, fontWeight: '900', letterSpacing: 0.7 },
   heroTitle: {
     color: '#fff',
     fontSize: 30,
@@ -358,6 +441,14 @@ const styles = StyleSheet.create({
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
   },
   heroCopy: { color: '#d7e2da', fontSize: 11, lineHeight: 17, marginTop: 8, maxWidth: 320 },
+  heroDetails: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: 18, paddingTop: 13, borderTopWidth: 1, borderTopColor: '#ffffff24',
+  },
+  heroDetailLabel: { color: '#adc2b1', fontSize: 7, fontWeight: '900', letterSpacing: 1.1 },
+  heroDetailValue: { color: '#fff', fontSize: 10, marginTop: 3, textTransform: 'capitalize' },
+  roleBadge: { borderWidth: 1, borderColor: '#86aa8d', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5 },
+  roleBadgeText: { color: '#dff0e0', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
   clientButton: {
     alignSelf: 'flex-start',
     minHeight: 42,
@@ -370,6 +461,21 @@ const styles = StyleSheet.create({
   },
   clientButtonText: { color: green, fontWeight: '900', fontSize: 11 },
   disabled: { opacity: 0.55 },
+  quickSection: { marginTop: 22 },
+  quickHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  quickTitle: { color: '#1b2720', fontSize: 16, fontWeight: '900' },
+  quickHint: { color: '#8d968e', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
+  quickGrid: { flexDirection: 'row', gap: 8 },
+  quickAction: {
+    flex: 1, minHeight: 124, backgroundColor: '#fff', borderColor: border, borderWidth: 1,
+    borderRadius: 14, padding: 11, justifyContent: 'flex-end',
+  },
+  quickIcon: { width: 31, height: 31, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e7f0e8', marginBottom: 14 },
+  quickIconSand: { backgroundColor: '#f4ecdd' },
+  quickIconRose: { backgroundColor: '#f4e6e8' },
+  quickIconText: { color: green, fontSize: 18, fontWeight: '900' },
+  quickLabel: { color: '#263129', fontSize: 10, fontWeight: '900' },
+  quickCopy: { color: '#8a918c', fontSize: 8, marginTop: 4 },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -183,16 +183,17 @@ export function App() {
     return (
       <AdminNavigator
         user={user}
-        home={
+        home={(onNavigate) => (
           <AdminDashboard
             user={user}
             onClientMode={async () => {
               await loadCatalog('');
               setAdminClientMode(true);
             }}
+            onNavigate={onNavigate}
             onLogout={closeAccount}
           />
-        }
+        )}
       />
     );
 
