@@ -9,7 +9,7 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "check": "expo install --check",
-    "test:unit": "tsx --test test/pose.test.ts test/checkout.test.ts test/checkoutFlow.test.ts test/sessionScope.test.ts test/apiProblems.test.ts test/offlineIdentity.test.ts test/transportHeaders.test.ts test/moduleRegistry.test.ts"
+    "test:unit": "tsx --test test/pose.test.ts test/checkout.test.ts test/checkoutFlow.test.ts test/sessionScope.test.ts test/apiProblems.test.ts test/offlineIdentity.test.ts test/transportHeaders.test.ts test/moduleRegistry.test.ts test/offlineQueue.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.31",
