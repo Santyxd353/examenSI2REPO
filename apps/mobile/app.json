@@ -32,7 +32,8 @@
           "configureAndroidBackup": true,
           "faceIDPermission": "Permite que Lúmina acceda de forma segura a tu sesión."
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "extra": {
       "eas": {
