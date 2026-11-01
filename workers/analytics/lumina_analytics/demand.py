@@ -8,7 +8,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 import numpy as np
 import pandas as pd
@@ -134,6 +134,7 @@ def run_training(
     *,
     n_estimators: int = 200,
     n_jobs: int = 1,
+    scope: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     started = time.perf_counter()
     panel = pd.read_csv(panel_path)
@@ -195,6 +196,7 @@ def run_training(
         "source": SOURCE,
         "modelType": "RandomForestRegressor",
         "modelVersion": "demand-rf-seed42-v1",
+        "scope": dict(scope or {"tenantId": "demo-local", "jobId": "local-training", "source": SOURCE, "datasetId": DATASET_ID}),
         "trainedAt": datetime.now(timezone.utc).isoformat(),
         "panelSha256": sha256_file(panel_path),
         "selectedParameters": {
@@ -220,6 +222,7 @@ def run_training(
         "selection": {"candidates": candidates, "selectedMaxDepth": selected["maxDepth"]},
         "test": test_results,
         "artifact": artifact,
+        "limitations": metadata["limitations"],
         "totalDurationSeconds": round(time.perf_counter() - started, 3),
     }
     write_json(output_dir / "evaluation.json", evaluation)

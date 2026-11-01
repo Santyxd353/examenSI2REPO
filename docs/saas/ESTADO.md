@@ -17,7 +17,7 @@ ni desplegar la aplicación durante esta actualización documental.
 | Inventario y paquete offline | Pendiente | Requiere contexto de tienda y protocolo durable |
 | Reportes y dashboards offline | Pendiente | Requiere conjunto local y definición común de reportes |
 | IA por texto/voz | Pendiente | Proveedor y credenciales por configurar |
-| ML evaluado | Pendiente | Demostración con datos sintéticos identificados confirmada; entrenamiento y evaluación temporal definidos, sin resultados fabricados |
+| ML evaluado | Parcial, verificado localmente | B01–B03 en `desarrollo/android-ml`: corpus sintético reproducible, demanda con evaluación temporal y anomalías/reposición mediante CLI; falta integración API/UI, datos comerciales autorizados y supervisión de jobs |
 | Suscripciones Stripe/QR | Pendiente | Esencial Bs149, Profesional Bs299, Negocio Bs599 por tienda/mes; Stripe TEST y QR_SIMULATED para entrega académica. Configuración y flujos por implementar |
 | Documento ICONIX nuevo | Especificación objetivo en Word y JSON | `docs/Lumina_SaaS_ICONIX_Grupo18.docx` y `iconix/especificacion.json`: 54 requisitos, 27 casos, 111 diagramas, 59 tablas; dos carátulas, índice navegable, recomendaciones, bibliografía y QR. No acredita implementación de los incrementos pendientes |
 
