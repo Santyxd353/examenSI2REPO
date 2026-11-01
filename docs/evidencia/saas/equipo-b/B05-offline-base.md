@@ -12,6 +12,8 @@ AAD explícito. El DEK no se genera ni queda persistido en esta etapa: depende
 del sobre/bootstrap autorizado de A01/A07. Esto evita inventar un formato de
 claves incompatible o almacenar una clave maestra en la aplicación.
 
-Verificado: `npm --prefix apps/mobile run typecheck` y prueba de cola con dos
-casos aprobados. Falta conectar la interfaz SQLite real, migraciones,
-SecureStore para el DEK y la prueba nativa Android de cifrado/reinicio.
+La persistencia nativa usa `withExclusiveTransactionAsync`: inserta la intención
+y la proyección en la misma transacción SQLite exclusiva. Verificado:
+`npm --prefix apps/mobile run typecheck` y prueba de cola con dos casos
+aprobados. Falta SecureStore para el DEK, el bootstrap autorizado y la prueba
+nativa Android de cifrado/reinicio.
