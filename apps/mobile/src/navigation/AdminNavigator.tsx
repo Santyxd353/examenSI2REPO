@@ -4,6 +4,7 @@ import { modulesForIdentity, type MobileBusinessModule } from '../modules/regist
 import { useSystemBars } from '../systemBars';
 import { BusinessScreen } from '../BusinessScreen';
 import { SyncScreen } from '../SyncScreen';
+import { AdminOperationsScreen } from '../AdminOperationsScreen';
 import type { Identity } from '../types';
 
 type Props = {
@@ -16,7 +17,6 @@ export function AdminNavigator({ user, home }: Props) {
   const insets = useSystemBars();
   const modules = modulesForIdentity(user);
   const [active, setActive] = useState<MobileBusinessModule>('home');
-  const current = modules.find((module) => module.id === active) || modules[0];
   const navigate = (module: MobileBusinessModule) => {
     if (modules.some((item) => item.id === module)) setActive(module);
   };
@@ -49,12 +49,7 @@ export function AdminNavigator({ user, home }: Props) {
       ) : active === 'sync' ? (
         <SyncScreen user={user} />
       ) : (
-        <View style={styles.placeholder}>
-          <Text style={styles.placeholderTitle}>{current?.label}</Text>
-          <Text style={styles.placeholderText}>
-            {current?.description}. Este acceso está protegido por permiso; su flujo comercial y offline se incorpora en los bloques posteriores.
-          </Text>
-        </View>
+        <AdminOperationsScreen module={active} />
       )}
     </SafeAreaView>
   );
@@ -68,7 +63,4 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: '#173e2a', borderColor: '#173e2a' },
   tabText: { color: '#586258', fontSize: 10, fontWeight: '700' },
   tabTextActive: { color: '#fff' },
-  placeholder: { flex: 1, justifyContent: 'center', padding: 28, backgroundColor: '#fbfaf6' },
-  placeholderTitle: { color: '#173e2a', fontSize: 24, fontWeight: '900' },
-  placeholderText: { color: '#59635d', fontSize: 13, lineHeight: 20, marginTop: 10 },
 });
