@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import type { CustomerAddress, CustomerProfile, Identity } from './types';
+import { useSystemBars } from './systemBars';
 
 export type AddressInput = Omit<CustomerAddress, 'id' | 'activa'>;
 
@@ -63,6 +63,7 @@ export function AccountSheet({
   onAdminMode,
   onLogout,
 }: Props) {
+  const insets = useSystemBars();
   const [section, setSection] = useState<'summary' | 'profile' | 'address'>('summary');
   const [nombres, setNombres] = useState(user.nombres);
   const [apellidos, setApellidos] = useState(user.apellidos);
@@ -125,7 +126,7 @@ export function AccountSheet({
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Pressable style={styles.dismiss} onPress={onClose} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
           <View style={styles.handle} />
           <View style={styles.header}>
             <View style={styles.headerCopy}>
@@ -362,7 +363,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 18,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 18,
+    paddingBottom: 18,
   },
   handle: {
     alignSelf: 'center',

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  Dimensions,
   FlatList,
   Image,
   Modal,
@@ -18,6 +17,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { API_URL, api } from './api';
+import { useSystemBars } from './systemBars';
 import { AccountSheet, type AddressInput } from './AccountSheet';
 import { MobileCommerceSheet, type MobileCartLine, type MobileOrder } from './MobileCommerceSheet';
 import { placeOrderAndRefresh } from './checkoutFlow';
@@ -96,10 +96,7 @@ export function CatalogScreen({
   onLogout,
 }: Props) {
   const { width: windowWidth } = useWindowDimensions();
-  const topInset = Platform.OS === 'android' ? NativeStatusBar.currentHeight || 24 : 0;
-  const measuredSystemBars =
-    Dimensions.get('screen').height - Dimensions.get('window').height - topInset;
-  const bottomInset = Platform.OS === 'android' ? Math.max(24, measuredSystemBars) : 12;
+  const { top: topInset, bottom: bottomInset } = useSystemBars();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);

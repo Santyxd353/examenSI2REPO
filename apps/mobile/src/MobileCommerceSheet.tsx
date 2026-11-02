@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   Image,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +11,7 @@ import {
 } from 'react-native';
 import type { CatalogLocation, CustomerAddress } from './types';
 import { checkoutBlocker } from './checkoutBlocker';
+import { useSystemBars } from './systemBars';
 
 export type MobileCartLine = {
   variantId: string;
@@ -83,6 +83,7 @@ export function MobileCommerceSheet({
   onPay,
   onReload,
 }: Props) {
+  const insets = useSystemBars();
   const [tab, setTab] = useState<'cart' | 'orders'>('cart');
   const [address, setAddress] = useState('');
   const [selectedAddressId, setSelectedAddressId] = useState<string>();
@@ -122,7 +123,7 @@ export function MobileCommerceSheet({
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <Pressable style={styles.dismiss} onPress={onClose} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + 12 }]}>
           <View style={styles.handle} />
           <View style={styles.header}>
             <View>
@@ -496,7 +497,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 18,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 18,
+    paddingBottom: 18,
   },
   handle: {
     alignSelf: 'center',

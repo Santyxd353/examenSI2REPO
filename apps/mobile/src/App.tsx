@@ -29,6 +29,7 @@ import {
 } from './api';
 import { AdminDashboard } from './AdminDashboard';
 import { AdminNavigator } from './navigation/AdminNavigator';
+import { useSystemBars } from './systemBars';
 import { CatalogScreen } from './CatalogScreen';
 import { connectRealtime } from './realtime';
 import { bootstrapOfflineVault } from './offline/bootstrap';
@@ -263,6 +264,7 @@ function LoginScreen({
   onClearError: () => void;
 }) {
   const { width } = useWindowDimensions();
+  const insets = useSystemBars();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [nombres, setNombres] = useState('');
   const [apellidos, setApellidos] = useState('');
@@ -316,7 +318,7 @@ function LoginScreen({
 
   return (
     <KeyboardAvoidingView
-      style={styles.login}
+      style={[styles.login, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <StatusBar style="dark" />

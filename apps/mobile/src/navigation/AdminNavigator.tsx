@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { modulesForIdentity, type MobileBusinessModule } from '../modules/registry';
+import { useSystemBars } from '../systemBars';
 import { BusinessScreen } from '../BusinessScreen';
 import { SyncScreen } from '../SyncScreen';
 import type { Identity } from '../types';
@@ -12,6 +13,7 @@ type Props = {
 
 /** Navegación de administración; B13 conectará los módulos comerciales reales. */
 export function AdminNavigator({ user, home }: Props) {
+  const insets = useSystemBars();
   const modules = modulesForIdentity(user);
   const [active, setActive] = useState<MobileBusinessModule>('home');
   const current = modules.find((module) => module.id === active) || modules[0];
@@ -20,7 +22,7 @@ export function AdminNavigator({ user, home }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <ScrollView
         horizontal
         contentContainerStyle={styles.tabs}
@@ -54,7 +56,7 @@ export function AdminNavigator({ user, home }: Props) {
           </Text>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

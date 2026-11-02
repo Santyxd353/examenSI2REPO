@@ -4,7 +4,6 @@ import {
   Platform,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StatusBar as NativeStatusBar,
   StyleSheet,
@@ -71,7 +70,6 @@ async function offlineScopeFor(user: Identity) {
 
 export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Props) {
   const { width } = useWindowDimensions();
-  const topInset = Platform.OS === 'android' ? NativeStatusBar.currentHeight || 24 : 0;
   const isWide = width >= 720;
   const [days, setDays] = useState(30);
   const [report, setReport] = useState<Report | null>(null);
@@ -125,7 +123,7 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { paddingTop: topInset }]}>
+    <View style={styles.safe}>
       <StatusBar style="dark" />
       <NativeStatusBar barStyle="dark-content" backgroundColor="#fbfaf6" />
       <View style={[styles.header, isWide && styles.headerWide]}>
@@ -339,7 +337,7 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
           <Text style={styles.logoutText}>Cerrar sesión</Text>
         </Pressable>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
