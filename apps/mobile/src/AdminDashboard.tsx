@@ -9,6 +9,7 @@ import {
   StatusBar as NativeStatusBar,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -69,7 +70,9 @@ async function offlineScopeFor(user: Identity) {
 }
 
 export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Props) {
+  const { width } = useWindowDimensions();
   const topInset = Platform.OS === 'android' ? NativeStatusBar.currentHeight || 24 : 0;
+  const isWide = width >= 720;
   const [days, setDays] = useState(30);
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
@@ -125,7 +128,7 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
     <SafeAreaView style={[styles.safe, { paddingTop: topInset }]}>
       <StatusBar style="dark" />
       <NativeStatusBar barStyle="dark-content" backgroundColor="#fbfaf6" />
-      <View style={styles.header}>
+      <View style={[styles.header, isWide && styles.headerWide]}>
         <View>
           <Text style={styles.logo}>lúmina°</Text>
           <Text style={styles.logoSub}>{user.tenant?.name || 'Lúmina'} · ADMINISTRACIÓN</Text>
@@ -142,7 +145,7 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
           <RefreshControl refreshing={loading} onRefresh={() => void load()} tintColor="#173e2a" />
         }
       >
-        <View style={styles.hero}>
+        <View style={[styles.hero, isWide && styles.heroWide]}>
           <View style={styles.heroTopline}>
             <Text style={styles.eyebrow}>CENTRO DE CONTROL</Text>
             <View style={styles.onlineBadge}>
@@ -180,7 +183,7 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
             <Text style={styles.quickTitle}>Accesos rápidos</Text>
             <Text style={styles.quickHint}>OPERACIÓN DIARIA</Text>
           </View>
-          <View style={styles.quickGrid}>
+          <View style={[styles.quickGrid, isWide && styles.quickGridWide]}>
             <QuickAction
               icon="↻"
               label="Sincronización"
@@ -239,10 +242,10 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
         ) : report ? (
           <>
             <View style={styles.kpiGrid}>
-              <KpiCard label="Ventas" value={money(report.kpis.ventas)} tone="dark" />
-              <KpiCard label="Pedidos" value={String(report.kpis.pedidos)} />
-              <KpiCard label="Unidades" value={String(report.kpis.unidades)} />
-              <KpiCard label="Ticket promedio" value={money(report.kpis.ticketPromedio)} />
+              <KpiCard label="Ventas" value={money(report.kpis.ventas)} tone="dark" wide={isWide} />
+              <KpiCard label="Pedidos" value={String(report.kpis.pedidos)} wide={isWide} />
+              <KpiCard label="Unidades" value={String(report.kpis.unidades)} wide={isWide} />
+              <KpiCard label="Ticket promedio" value={money(report.kpis.ticketPromedio)} wide={isWide} />
             </View>
 
             <View style={styles.insight}>
@@ -364,9 +367,9 @@ function QuickAction({
   );
 }
 
-function KpiCard({ label, value, tone }: { label: string; value: string; tone?: 'dark' }) {
+function KpiCard({ label, value, tone, wide }: { label: string; value: string; tone?: 'dark'; wide: boolean }) {
   return (
-    <View style={[styles.kpi, tone === 'dark' && styles.kpiDark]}>
+    <View style={[styles.kpi, wide && styles.kpiWide, tone === 'dark' && styles.kpiDark]}>
       <Text style={[styles.kpiLabel, tone === 'dark' && styles.kpiLabelDark]}>{label}</Text>
       <Text
         numberOfLines={1}
@@ -406,6 +409,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: border,
   },
+  headerWide: { paddingHorizontal: 32 },
   logo: {
     color: green,
     fontSize: 27,
@@ -425,6 +429,7 @@ const styles = StyleSheet.create({
   avatarText: { color: '#fff', fontSize: 16, fontWeight: '900' },
   content: { padding: 16, paddingBottom: 46 },
   hero: { borderRadius: 18, padding: 20, backgroundColor: green, overflow: 'hidden' },
+  heroWide: { maxWidth: 760, alignSelf: 'center', width: '100%' },
   heroTopline: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   eyebrow: { color: '#b9cbbd', fontSize: 9, letterSpacing: 1.8, fontWeight: '700' },
   onlineBadge: {
@@ -466,6 +471,7 @@ const styles = StyleSheet.create({
   quickTitle: { color: '#1b2720', fontSize: 16, fontWeight: '900' },
   quickHint: { color: '#8d968e', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
   quickGrid: { flexDirection: 'row', gap: 8 },
+  quickGridWide: { maxWidth: 560 },
   quickAction: {
     flex: 1, minHeight: 124, backgroundColor: '#fff', borderColor: border, borderWidth: 1,
     borderRadius: 14, padding: 11, justifyContent: 'flex-end',
@@ -527,6 +533,7 @@ const styles = StyleSheet.create({
     borderColor: border,
     justifyContent: 'space-between',
   },
+  kpiWide: { width: '23.8%', minHeight: 122 },
   kpiDark: { backgroundColor: green, borderColor: green },
   kpiLabel: { color: '#6f7771', fontSize: 10, fontWeight: '700' },
   kpiLabelDark: { color: '#c9d7cc' },

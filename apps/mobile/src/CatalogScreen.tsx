@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -94,6 +95,7 @@ export function CatalogScreen({
   onAdminMode,
   onLogout,
 }: Props) {
+  const { width: windowWidth } = useWindowDimensions();
   const topInset = Platform.OS === 'android' ? NativeStatusBar.currentHeight || 24 : 0;
   const measuredSystemBars =
     Dimensions.get('screen').height - Dimensions.get('window').height - topInset;
@@ -126,6 +128,10 @@ export function CatalogScreen({
   const favoriteCount = Object.values(favorites).filter(Boolean).length;
   const subtotal = cartLines.reduce((total, line) => total + Number(line.price) * line.quantity, 0);
   const activeFilters = [brand, color, size, category].filter(Boolean).length;
+  const isWide = windowWidth >= 720;
+  const columns = isWide ? 3 : 2;
+  const listPadding = isWide ? 24 : 12;
+  const cardWidth = (windowWidth - listPadding * 2 - (columns - 1) * 9) / columns;
 
   function variantFor(product: Product) {
     return (
@@ -460,12 +466,12 @@ export function CatalogScreen({
       </View>
 
       <FlatList
-        key="catalog-grid"
+        key={`catalog-grid-${columns}`}
         data={loading ? [] : products}
-        numColumns={2}
+        numColumns={columns}
         keyExtractor={(item) => item.id}
         columnWrapperStyle={styles.gridRow}
-        contentContainerStyle={[styles.list, { paddingBottom: 94 + bottomInset }]}
+        contentContainerStyle={[styles.list, { paddingHorizontal: listPadding, paddingBottom: 94 + bottomInset }]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>
@@ -492,7 +498,7 @@ export function CatalogScreen({
               ))}
             </ScrollView>
 
-            <View style={styles.promo}>
+            <View style={[styles.promo, isWide && styles.promoWide]}>
               <View style={styles.promoCopy}>
                 <Text style={styles.promoBadge}>COLECCIÓN FEMENINA</Text>
                 <Text style={styles.promoTitle}>Vestidos y faldas,{`\n`}a tu manera.</Text>
@@ -555,8 +561,8 @@ export function CatalogScreen({
           const favorite = !!favorites[item.id];
           const available = variant.disponible > 0;
           return (
-            <View style={styles.productCard}>
-              <View style={styles.imageStage}>
+            <View style={[styles.productCard, { width: cardWidth, maxWidth: cardWidth }]}>
+              <View style={[styles.imageStage, { height: Math.min(210, cardWidth * 1.18) }]}>
                 {image ? (
                   <Image
                     source={{ uri: image }}
@@ -932,14 +938,14 @@ function FilterSheet({
   );
 }
 
-const green = '#63354e';
-const cream = '#fcf8f7';
-const line = '#eadde3';
+const green = '#173e2a';
+const cream = '#fbfaf6';
+const line = '#e6e2da';
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: cream },
   header: {
-    height: 68,
+    minHeight: 70,
     paddingHorizontal: 18,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -991,9 +997,9 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 45,
     borderWidth: 1,
-    borderColor: '#deded7',
+    borderColor: '#e0e1da',
     backgroundColor: '#fff',
-    borderRadius: 23,
+    borderRadius: 15,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
@@ -1017,7 +1023,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: '#f42169',
+    backgroundColor: '#b45172',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -1034,10 +1040,11 @@ const styles = StyleSheet.create({
     minHeight: 176,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#f7e9ef',
+    backgroundColor: '#e7f0e8',
     flexDirection: 'row',
     marginBottom: 18,
   },
+  promoWide: { maxWidth: 760, alignSelf: 'center', width: '100%' },
   promoCopy: { flex: 1.4, padding: 18, zIndex: 2 },
   promoBadge: {
     alignSelf: 'flex-start',
@@ -1070,7 +1077,7 @@ const styles = StyleSheet.create({
     flex: 0.8,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#e6c4d2',
+    backgroundColor: '#c5d9c8',
     borderTopLeftRadius: 90,
     borderBottomLeftRadius: 90,
     marginLeft: -24,
@@ -1105,10 +1112,10 @@ const styles = StyleSheet.create({
     flex: 1,
     maxWidth: '50%',
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#eeede7',
+    borderColor: line,
     overflow: 'hidden',
   },
   imageStage: {
@@ -1139,7 +1146,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   favoriteIcon: { color: '#26362d', fontSize: 19 },
-  favoriteIconActive: { color: '#f42169' },
+  favoriteIconActive: { color: '#b45172' },
   arBadge: {
     position: 'absolute',
     left: 8,
@@ -1183,7 +1190,7 @@ const styles = StyleSheet.create({
     minHeight: 34,
     borderWidth: 1,
     borderColor: green,
-    borderRadius: 5,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1191,7 +1198,7 @@ const styles = StyleSheet.create({
   addButton: {
     flex: 1.15,
     minHeight: 34,
-    borderRadius: 5,
+    borderRadius: 9,
     backgroundColor: green,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1234,7 +1241,7 @@ const styles = StyleSheet.create({
     minWidth: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#f42169',
+    backgroundColor: '#b45172',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 3,

@@ -24,6 +24,7 @@ export function AdminNavigator({ user, home }: Props) {
       <ScrollView
         horizontal
         contentContainerStyle={styles.tabs}
+        style={styles.tabRail}
         showsHorizontalScrollIndicator={false}
         accessibilityRole="tablist"
       >
@@ -59,12 +60,13 @@ export function AdminNavigator({ user, home }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fbfaf6' },
-  tabs: { gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#e5e4dc' },
-  tab: { borderColor: '#d8d9d4', borderRadius: 16, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7 },
+  tabRail: { flexGrow: 0, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e4dc', shadowColor: '#173e2a', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
+  tabs: { gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  tab: { borderColor: '#d8ded8', borderRadius: 18, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 8, backgroundColor: '#fbfaf6' },
   tabActive: { backgroundColor: '#173e2a', borderColor: '#173e2a' },
   tabText: { color: '#586258', fontSize: 10, fontWeight: '700' },
   tabTextActive: { color: '#fff' },
-  placeholder: { flex: 1, justifyContent: 'center', padding: 28 },
+  placeholder: { flex: 1, justifyContent: 'center', padding: 28, backgroundColor: '#fbfaf6' },
   placeholderTitle: { color: '#173e2a', fontSize: 24, fontWeight: '900' },
   placeholderText: { color: '#59635d', fontSize: 13, lineHeight: 20, marginTop: 10 },
 });

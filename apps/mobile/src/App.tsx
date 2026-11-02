@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -261,6 +262,7 @@ function LoginScreen({
   onRegister: (nombres: string, apellidos: string, correo: string, clave: string) => Promise<void>;
   onClearError: () => void;
 }) {
+  const { width } = useWindowDimensions();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [nombres, setNombres] = useState('');
   const [apellidos, setApellidos] = useState('');
@@ -321,14 +323,29 @@ function LoginScreen({
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.loginContent}
+        contentContainerStyle={[styles.loginContent, width >= 640 && styles.loginContentWide]}
       >
-        <Text style={styles.brand}>lúmina°</Text>
-        <Text style={styles.eyebrow}>MODA FEMENINA · APLICACIÓN MÓVIL</Text>
-        <Text style={styles.loginTitle}>
-          {mode === 'register' ? 'Crea tu cuenta de cliente.' : 'Tu probador, ahora en la cámara.'}
-        </Text>
+        <View style={styles.loginHero}>
+          <View style={styles.brandLine}>
+            <View style={styles.brandMark}><Text style={styles.brandMarkText}>✦</Text></View>
+            <Text style={styles.brand}>lúmina°</Text>
+          </View>
+          <Text style={styles.eyebrow}>MODA FEMENINA · EXPERIENCIA MÓVIL</Text>
+          <Text style={styles.loginTitle}>
+            {mode === 'register' ? 'Tu estilo empieza aquí.' : 'Tu tienda, más cerca.'}
+          </Text>
+          <Text style={styles.loginSubtitle}>
+            {mode === 'register'
+              ? 'Crea tu cuenta para guardar tus prendas y compras.'
+              : 'Ingresa para comprar, probar prendas y gestionar tu experiencia.'}
+          </Text>
+          <View style={styles.loginTrust}>
+            <Text style={styles.loginTrustText}>◆ Sesión protegida</Text>
+            <Text style={styles.loginTrustText}>◌ Probador AR</Text>
+          </View>
+        </View>
 
+        <View style={styles.loginCard}>
         <View style={styles.authTabs}>
           <Pressable
             style={[styles.authTab, mode === 'login' && styles.authTabActive]}
@@ -445,6 +462,7 @@ function LoginScreen({
             web.
           </Text>
         )}
+        </View>
         <Text style={styles.privacy}>La sesión se almacena de forma segura en el dispositivo.</Text>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -684,13 +702,13 @@ const styles = StyleSheet.create({
   brand: {
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
     fontSize: 27,
-    color: '#263025',
+    color: '#173e2a',
   },
   brandSub: { fontSize: 8, letterSpacing: 2, color: '#7d8777' },
   link: { color: '#65745e', fontWeight: '600' },
   list: { padding: 20, paddingBottom: 50 },
   intro: { marginBottom: 22 },
-  eyebrow: { color: '#75816d', fontSize: 10, letterSpacing: 2, marginBottom: 9 },
+  eyebrow: { color: '#6d7d72', fontSize: 9, fontWeight: '800', letterSpacing: 1.7, marginBottom: 10 },
   title: {
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
     fontSize: 31,
@@ -710,7 +728,7 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     borderWidth: 1,
-    borderColor: '#cbd0c5',
+    borderColor: '#dce1da',
     borderRadius: 18,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -753,15 +771,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingTop: 52,
     paddingBottom: 36,
-    gap: 13,
+    gap: 15,
   },
+  loginContentWide: { width: 500, alignSelf: 'center', paddingHorizontal: 0 },
+  loginHero: { paddingTop: 12, paddingHorizontal: 3 },
+  brandLine: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 17 },
+  brandMark: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: '#173e2a' },
+  brandMarkText: { color: '#fff', fontSize: 14 },
   loginTitle: {
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
     fontSize: 32,
     lineHeight: 38,
-    color: '#322631',
-    marginBottom: 14,
+    color: '#173e2a',
+    marginBottom: 8,
   },
+  loginSubtitle: { color: '#5e6d63', lineHeight: 19, fontSize: 12, maxWidth: 310 },
+  loginTrust: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  loginTrustText: { color: '#416553', backgroundColor: '#e6efe8', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 6, fontSize: 8, fontWeight: '800' },
+  loginCard: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e2da', borderRadius: 18, padding: 14, gap: 12, shadowColor: '#173e2a', shadowOpacity: 0.06, shadowRadius: 14, elevation: 2 },
   input: {
     minHeight: 50,
     borderWidth: 1,
@@ -774,8 +801,8 @@ const styles = StyleSheet.create({
   authTabs: {
     flexDirection: 'row',
     borderWidth: 1,
-    borderColor: '#cbd0c5',
-    borderRadius: 8,
+    borderColor: '#dde3db',
+    borderRadius: 12,
     padding: 3,
     backgroundColor: '#e8e9e2',
     marginBottom: 3,
@@ -787,23 +814,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 6,
   },
-  authTabActive: { backgroundColor: '#fff' },
+  authTabActive: { backgroundColor: '#fff', shadowColor: '#173e2a', shadowOpacity: 0.08, shadowRadius: 4, elevation: 1 },
   authTabText: { color: '#6f776d', fontSize: 12, fontWeight: '700' },
   authTabTextActive: { color: '#303a2e' },
   primary: {
     minHeight: 50,
-    backgroundColor: '#63354e',
+    backgroundColor: '#173e2a',
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
     marginTop: 4,
   },
   primaryDisabled: { opacity: 0.45 },
-  primaryText: { color: '#fff', fontWeight: '600' },
+  primaryText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   clientNotice: {
     color: '#566052',
-    backgroundColor: '#e4eadf',
-    borderRadius: 6,
+    backgroundColor: '#eef3ec',
+    borderRadius: 10,
     padding: 10,
     fontSize: 10,
     lineHeight: 15,
