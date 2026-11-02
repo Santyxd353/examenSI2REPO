@@ -14,7 +14,8 @@ contraseñas ni se conectó a la VM. npm ci raíz y móvil desde sus locks actua
 
 El primer ensayo dio 92/100: faltaban reference.glb, el intérprete avatar y
 dependencias Expo en el nuevo worktree. Se copió únicamente la referencia GLB
-pública de pruebas, se configuró el intérprete local existente en el `.env`+ignorado y se instalaron dependencias móviles sin modificar sus manifests.
+pública de pruebas, se configuró el intérprete local existente en el `.env`
+ignorado y se instalaron dependencias móviles sin modificar sus manifests.
 No se cambiaron las pruebas para ocultar esos fallos.
 
 Verificación observada:

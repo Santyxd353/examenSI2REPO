@@ -1,11 +1,12 @@
 # Estado de Lúmina SaaS
 
-Actualización documental: 31/10/2026. Entrega prevista: 07/11/2026.
+Actualización de desarrollo: 02/11/2026. Entrega prevista: 07/11/2026.
 
-La prioridad confirmada es terminar primero el documento ICONIX y desarrollar
-la ampliación según esa especificación. La evidencia técnica del primer
-incremento que figura abajo corresponde al 20/10; no se ha vuelto a ejecutar
-ni desplegar la aplicación durante esta actualización documental.
+El documento ICONIX v2.0 es la base del desarrollo. El equipo A inició ejecución
+en desarrollo/servidor-web con worktree aislado. A00 volvió a verificar100pruebas,
+build y administración en Chromium; A01 publica contratos/fixtures compartidos.
+Las evidencias nuevas están en docs/evidencia/saas/equipo-a. No se ha desplegado
+esta ampliación; las verificaciones históricas del20/10 se conservan abajo.
 
 | Área | Estado | Evidencia |
 | --- | --- | --- |
@@ -20,6 +21,7 @@ ni desplegar la aplicación durante esta actualización documental.
 | ML evaluado | Pendiente | Demostración con datos sintéticos identificados confirmada; entrenamiento y evaluación temporal definidos, sin resultados fabricados |
 | Suscripciones Stripe/QR | Pendiente | Esencial Bs149, Profesional Bs299, Negocio Bs599 por tienda/mes; Stripe TEST y QR_SIMULATED para entrega académica. Configuración y flujos por implementar |
 | Documento ICONIX nuevo | Especificación objetivo en Word y JSON | `docs/Lumina_SaaS_ICONIX_Grupo18.docx` y `iconix/especificacion.json`: 54 requisitos, 27 casos, 111 diagramas, 59 tablas; dos carátulas, índice navegable, recomendaciones, bibliografía y QR. No acredita implementación de los incrementos pendientes |
+| Contratos compartidos A01/G0a | Verificado localmente | Esquemas/DTO/planes, hash canónico, dinero exacto y fixtures.11pruebas de contrato; paridad API/Vite/WebCrypto. Motor reporting y validación Android pendientes |
 
 ## Verificación del primer incremento
 

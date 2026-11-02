@@ -10,7 +10,9 @@
     "dev:web": "vite --config apps/web/vite.config.ts",
     "build:api": "tsc -p apps/api/tsconfig.json",
     "build:web": "tsc -p apps/web/tsconfig.json && vite build --config apps/web/vite.config.ts",
-    "build": "npm run build:api && npm run build:web",
+    "build": "npm run build:shared && npm run build:api && npm run build:web",
+    "build:shared": "npm --prefix packages/contracts run build && npm --prefix packages/reporting run build",
+    "test:shared": "node scripts/test-shared.cjs",
     "mobile:start": "npm --prefix apps/mobile start",
     "mobile:typecheck": "npm --prefix apps/mobile run typecheck",
     "mobile:check": "npm --prefix apps/mobile run check",
@@ -26,6 +28,8 @@
     "tenant:migrate": "tsx scripts/migrate-tenants.ts"
   },
   "dependencies": {
+    "@lumina/contracts": "file:packages/contracts",
+    "@lumina/reporting": "file:packages/reporting",
     "@nestjs/common": "11.2.5",
     "@nestjs/core": "11.2.5",
     "@nestjs/platform-express": "11.2.5",

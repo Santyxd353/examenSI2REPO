@@ -4,6 +4,7 @@ import { resolve } from 'path';
 export default defineConfig({
   root: resolve(__dirname),
   plugins: [react()],
+  optimizeDeps: { include: ['@lumina/contracts', '@lumina/reporting'] },
   server: {
     host: '127.0.0.1',
     port: 5173,
@@ -15,6 +16,7 @@ export default defineConfig({
     },
   },
   build: {
+    commonjsOptions: { include: [/node_modules/, /packages[\\/](contracts|reporting)[\\/]dist/] },
     outDir: '../../dist/web',
     emptyOutDir: true,
     chunkSizeWarningLimit: 800,

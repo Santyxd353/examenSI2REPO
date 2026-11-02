@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1.0",
+  "jobId": "00000000-0000-4000-8000-000000000010",
+  "tenantId": "00000000-0000-4000-8000-000000000001",
+  "actorId": "00000000-0000-4000-8000-000000000002",
+  "source": "DEMOSTRACION_SINTETICA",
+  "action": "GENERATE_DATASET",
+  "datasetId": "demo-femenino-seed42-v1",
+  "workDir": ".local/analytics/tenant-001/job-010",
+  "parameters": {
+    "seed": 42
+  }
+}

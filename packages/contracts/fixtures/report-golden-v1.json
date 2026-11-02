@@ -1,0 +1,401 @@
+{
+  "definition": {
+    "schemaVersion": "1.0",
+    "id": "golden-report-v1",
+    "title": "Golden de paridad — DEMOSTRACIÓN",
+    "source": "DEMOSTRACION_SINTETICA",
+    "datasetId": "golden-report-v1",
+    "timezone": "America/La_Paz",
+    "currency": "BOB",
+    "fact": "ventas_confirmadas",
+    "metrics": [
+      "ventas_confirmadas_bob",
+      "unidades_vendidas",
+      "pedidos_distintos",
+      "ticket_promedio_bob"
+    ],
+    "dimensions": [
+      "categoria",
+      "canal"
+    ],
+    "period": {
+      "from": "2026-09-01",
+      "to": "2026-09-30",
+      "inclusive": true
+    },
+    "filters": [
+      {
+        "field": "ubicacion",
+        "operator": "in",
+        "value": [
+          "demo-ubicacion-01"
+        ]
+      },
+      {
+        "field": "canal",
+        "operator": "in",
+        "value": [
+          "WEB",
+          "APP",
+          "TIENDA"
+        ]
+      }
+    ],
+    "order": [
+      {
+        "metric": "ventas_confirmadas_bob",
+        "direction": "desc"
+      }
+    ],
+    "limit": 20,
+    "chart": "bar",
+    "dashboard": {
+      "widgets": [
+        {
+          "id": "categorias",
+          "chart": "bar",
+          "dimension": "categoria",
+          "metric": "ventas_confirmadas_bob"
+        },
+        {
+          "id": "canales",
+          "chart": "donut",
+          "dimension": "canal",
+          "metric": "unidades_vendidas"
+        }
+      ],
+      "crossFilter": true,
+      "detailAvailableColumns": [
+        "dia",
+        "producto",
+        "variante",
+        "talla",
+        "color",
+        "canal",
+        "ubicacion",
+        "unidades",
+        "importe_bob"
+      ]
+    }
+  },
+  "dataset": {
+    "datasetId": "golden-report-v1",
+    "tenantId": "00000000-0000-4000-8000-000000000001",
+    "ownerId": "00000000-0000-4000-8000-000000000002",
+    "source": "DEMOSTRACION_SINTETICA",
+    "schemaVersion": "1.0",
+    "semanticsVersion": "1.0",
+    "asOf": "2026-09-30T23:59:59.000Z",
+    "periodFrom": "2026-09-01",
+    "periodTo": "2026-09-30",
+    "authorizedLocationIds": [
+      "demo-ubicacion-01"
+    ],
+    "downloadedLocationIds": [
+      "demo-ubicacion-01"
+    ],
+    "availableColumns": [
+      "dia",
+      "semana",
+      "mes",
+      "ubicacion",
+      "canal",
+      "vendedor",
+      "categoria",
+      "marca",
+      "producto",
+      "variante",
+      "talla",
+      "color",
+      "estado_pedido",
+      "estado_pago",
+      "metodo_pago",
+      "periodo",
+      "periodo_comparacion",
+      "con_devolucion",
+      "precio_unitario",
+      "disponible_al_corte",
+      "ventas_confirmadas_bob",
+      "unidades_vendidas",
+      "pedidos_distintos",
+      "ticket_promedio_bob",
+      "unidades_devueltas",
+      "reembolsos_confirmados_bob",
+      "fisico_al_corte",
+      "reservado_al_corte",
+      "comprometido_al_corte"
+    ],
+    "rowCount": 15,
+    "rowLimit": 50000,
+    "complete": true,
+    "omittedCoverage": [],
+    "sha256": "cfe55b9a8a4c7583402133451582707ee985b2d3ea19fd2768e8d0d5e5ba4b56",
+    "sales": [
+      {
+        "id": "L1",
+        "orderId": "O1",
+        "occurredAt": "2026-09-10T15:00:00.000Z",
+        "quantity": 2,
+        "amountMinor": 10000,
+        "unitPriceMinor": 5000,
+        "dimensions": {
+          "ubicacion": "demo-ubicacion-01",
+          "canal": "APP",
+          "categoria": "Vestidos",
+          "marca": "Marca demo",
+          "producto": "L1",
+          "variante": "L1-M",
+          "talla": "M",
+          "color": "Negro",
+          "vendedor": "demo-vendedora-01"
+        },
+        "orderStatus": "PAGADO"
+      },
+      {
+        "id": "L2",
+        "orderId": "O1",
+        "occurredAt": "2026-09-10T15:00:00.000Z",
+        "quantity": 1,
+        "amountMinor": 5000,
+        "unitPriceMinor": 5000,
+        "dimensions": {
+          "ubicacion": "demo-ubicacion-01",
+          "canal": "APP",
+          "categoria": "Faldas",
+          "marca": "Marca demo",
+          "producto": "L2",
+          "variante": "L2-M",
+          "talla": "M",
+          "color": "Negro",
+          "vendedor": "demo-vendedora-01"
+        },
+        "orderStatus": "PAGADO"
+      },
+      {
+        "id": "L3",
+        "orderId": "O2",
+        "occurredAt": "2026-09-10T15:00:00.000Z",
+        "quantity": 1,
+        "amountMinor": 7000,
+        "unitPriceMinor": 7000,
+        "dimensions": {
+          "ubicacion": "demo-ubicacion-01",
+          "canal": "APP",
+          "categoria": "Vestidos",
+          "marca": "Marca demo",
+          "producto": "L3",
+          "variante": "L3-M",
+          "talla": "M",
+          "color": "Negro",
+          "vendedor": "demo-vendedora-01"
+        },
+        "orderStatus": "PAGADO"
+      },
+      {
+        "id": "L4",
+        "orderId": "O3",
+        "occurredAt": "2026-09-10T15:00:00.000Z",
+        "quantity": 1,
+        "amountMinor": 50000,
+        "unitPriceMinor": 50000,
+        "dimensions": {
+          "ubicacion": "demo-ubicacion-01",
+          "canal": "APP",
+          "categoria": "Faldas",
+          "marca": "Marca demo",
+          "producto": "L4",
+          "variante": "L4-M",
+          "talla": "M",
+          "color": "Negro",
+          "vendedor": "demo-vendedora-01"
+        },
+        "orderStatus": "CANCELADO"
+      },
+      {
+        "id": "L5",
+        "orderId": "O4",
+        "occurredAt": "2026-09-10T15:00:00.000Z",
+        "quantity": 1,
+        "amountMinor": 80000,
+        "unitPriceMinor": 80000,
+        "dimensions": {
+          "ubicacion": "demo-ubicacion-01",
+          "canal": "APP",
+          "categoria": "Faldas",
+          "marca": "Marca demo",
+          "producto": "L5",
+          "variante": "L5-M",
+          "talla": "M",
+          "color": "Negro",
+          "vendedor": "demo-vendedora-01"
+        },
+        "orderStatus": "PENDIENTE_PAGO"
+      }
+    ],
+    "orders": [
+      {
+        "id": "O1",
+        "status": "PAGADO",
+        "confirmedAt": "2026-09-10T15:00:00.000Z",
+        "dimensions": {
+          "ubicacion": "demo-ubicacion-01",
+          "canal": "APP",
+          "categoria": "Vestidos",
+          "marca": "Marca demo",
+          "producto": "O1",
+          "variante": "O1-M",
+          "talla": "M",
+          "color": "Negro",
+          "vendedor": "demo-vendedora-01"
+        }
+      },
+      {
+        "id": "O2",
+        "status": "PAGADO",
+        "confirmedAt": "2026-09-10T15:00:00.000Z",
+        "dimensions": {
+          "ubicacion": "demo-ubicacion-01",
+          "canal": "APP",
+          "categoria": "Vestidos",
+          "marca": "Marca demo",
+          "producto": "O2",
+          "variante": "O2-M",
+          "talla": "M",
+          "color": "Negro",
+          "vendedor": "demo-vendedora-01"
+        }
+      },
+      {
+        "id": "O3",
+        "status": "CANCELADO",
+        "confirmedAt": null,
+        "dimensions": {
+          "ubicacion": "demo-ubicacion-01",
+          "canal": "APP",
+          "categoria": "Vestidos",
+          "marca": "Marca demo",
+          "producto": "O3",
+          "variante": "O3-M",
+          "talla": "M",
+          "color": "Negro",
+          "vendedor": "demo-vendedora-01"
+        }
+      },
+      {
+        "id": "O4",
+        "status": "PENDIENTE_PAGO",
+        "confirmedAt": null,
+        "dimensions": {
+          "ubicacion": "demo-ubicacion-01",
+          "canal": "APP",
+          "categoria": "Vestidos",
+          "marca": "Marca demo",
+          "producto": "O4",
+          "variante": "O4-M",
+          "talla": "M",
+          "color": "Negro",
+          "vendedor": "demo-vendedora-01"
+        }
+      }
+    ],
+    "payments": [
+      {
+        "id": "P1",
+        "orderId": "O1",
+        "status": "CONFIRMADO",
+        "method": "EFECTIVO",
+        "amountMinor": 10000,
+        "occurredAt": "2026-09-10T15:00:00.000Z"
+      },
+      {
+        "id": "P2",
+        "orderId": "O1",
+        "status": "CONFIRMADO",
+        "method": "TARJETA",
+        "amountMinor": 5000,
+        "occurredAt": "2026-09-10T15:00:00.000Z"
+      },
+      {
+        "id": "P3",
+        "orderId": "O2",
+        "status": "CONFIRMADO",
+        "method": "EFECTIVO",
+        "amountMinor": 7000,
+        "occurredAt": "2026-09-10T15:00:00.000Z"
+      }
+    ],
+    "returns": [
+      {
+        "id": "R1",
+        "orderId": "O1",
+        "lineId": "L1",
+        "quantity": 1,
+        "status": "ACEPTADA",
+        "occurredAt": "2026-09-11T15:00:00.000Z",
+        "dimensions": {
+          "ubicacion": "demo-ubicacion-01",
+          "canal": "APP",
+          "categoria": "Vestidos",
+          "marca": "Marca demo",
+          "producto": "L1",
+          "variante": "L1-M",
+          "talla": "M",
+          "color": "Negro",
+          "vendedor": "demo-vendedora-01"
+        }
+      }
+    ],
+    "refunds": [
+      {
+        "id": "RF1",
+        "orderId": "O1",
+        "returnId": "R1",
+        "amountMinor": 5000,
+        "status": "CONFIRMADO",
+        "occurredAt": "2026-09-11T15:00:00.000Z",
+        "dimensions": {
+          "ubicacion": "demo-ubicacion-01",
+          "canal": "APP",
+          "categoria": "Vestidos",
+          "marca": "Marca demo",
+          "producto": "L1",
+          "variante": "L1-M",
+          "talla": "M",
+          "color": "Negro",
+          "vendedor": "demo-vendedora-01"
+        }
+      }
+    ],
+    "stock": [
+      {
+        "id": "S1",
+        "variantId": "L1-M",
+        "locationId": "demo-ubicacion-01",
+        "physical": 10,
+        "reserved": 2,
+        "committed": 1,
+        "version": 1,
+        "dimensions": {
+          "ubicacion": "demo-ubicacion-01",
+          "canal": "APP",
+          "categoria": "Vestidos",
+          "marca": "Marca demo",
+          "producto": "L1",
+          "variante": "L1-M",
+          "talla": "M",
+          "color": "Negro",
+          "vendedor": "demo-vendedora-01"
+        }
+      }
+    ]
+  },
+  "expected": {
+    "salesMinor": 22000,
+    "units": 4,
+    "orders": 2,
+    "ticketMinor": 11000,
+    "returnedUnits": 1,
+    "refundedMinor": 5000,
+    "available": 7
+  }
+}
