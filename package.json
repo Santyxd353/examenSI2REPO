@@ -20,6 +20,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx scripts/seed.ts",
+    "db:seed:reports": "tsx scripts/seed-reports.ts",
     "db:prepare-test": "tsx scripts/prepare-test.ts",
     "user:grant-admin": "tsx scripts/grant-admin.ts",
     "tenant:create": "tsx scripts/create-tenant.ts",

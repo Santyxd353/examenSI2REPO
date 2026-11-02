@@ -16,6 +16,8 @@ import { api } from './api';
 import { getOfflineDeviceId } from './offline/device';
 import { openOfflineDatabase } from './offline/db';
 import { loadOfflineDashboard, reportSnapshotKey, saveOfflineDashboard } from './modules/reports/offlineReport';
+import { shareReportCsv, shareReportPdf } from './modules/reports/reportExport';
+import { ReportAssistant } from './modules/reports/ReportAssistant';
 import type { MobileBusinessModule } from './modules/registry';
 import type { Identity } from './types';
 
@@ -76,6 +78,7 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -119,6 +122,22 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
       setError((reason as Error).message);
     } finally {
       setSwitching(false);
+    }
+  }
+
+  async function exportReport(kind: 'csv' | 'pdf') {
+    if (!report) return;
+    setExporting(true);
+    setError('');
+    try {
+      const from = isoDaysAgo(days);
+      const to = today();
+      if (kind === 'csv') await shareReportCsv(report, from, to);
+      else await shareReportPdf(report, from, to);
+    } catch (reason) {
+      setError((reason as Error).message);
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -230,6 +249,8 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
           ))}
         </View>
 
+        {report ? <View style={styles.exports}><Pressable disabled={exporting} style={styles.exportButton} onPress={() => void exportReport('csv')}><Text style={styles.exportText}>{exporting ? 'Preparando…' : 'Exportar CSV'}</Text></Pressable><Pressable disabled={exporting} style={[styles.exportButton, styles.exportPdf]} onPress={() => void exportReport('pdf')}><Text style={[styles.exportText, styles.exportPdfText]}>Exportar PDF</Text></Pressable></View> : null}
+
         {!!error && <Text style={styles.error}>{error}</Text>}
 
         {loading && !report ? (
@@ -255,6 +276,7 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
                 <Text style={styles.insightText}>{report.summary}</Text>
               </View>
             </View>
+            <ReportAssistant />
 
             <View style={styles.panel}>
               <View style={styles.panelHeader}>
@@ -500,6 +522,11 @@ const styles = StyleSheet.create({
   },
   refreshText: { color: green, fontSize: 22 },
   periods: { flexDirection: 'row', gap: 7, marginVertical: 15 },
+  exports: { flexDirection: 'row', gap: 8, marginBottom: 2 },
+  exportButton: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e7f0e8' },
+  exportPdf: { backgroundColor: '#173e2a' },
+  exportText: { color: '#173e2a', fontSize: 10, fontWeight: '900' },
+  exportPdfText: { color: '#fff' },
   period: {
     paddingHorizontal: 13,
     paddingVertical: 8,

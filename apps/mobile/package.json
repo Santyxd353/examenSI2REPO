@@ -9,17 +9,21 @@
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
     "check": "expo install --check",
-    "test:unit": "tsx --test test/pose.test.ts test/checkout.test.ts test/checkoutFlow.test.ts test/sessionScope.test.ts test/apiProblems.test.ts test/offlineIdentity.test.ts test/transportHeaders.test.ts test/moduleRegistry.test.ts test/offlineQueue.test.ts test/offlineCatalog.test.ts test/stockProjection.test.ts test/syncDependencies.test.ts test/syncQueue.test.ts test/offlineArCatalog.test.ts test/offlineReport.test.ts test/offlineReportAssistant.test.ts"
+    "test:unit": "tsx --test test/pose.test.ts test/checkout.test.ts test/checkoutFlow.test.ts test/sessionScope.test.ts test/apiProblems.test.ts test/offlineIdentity.test.ts test/transportHeaders.test.ts test/moduleRegistry.test.ts test/offlineQueue.test.ts test/offlineCatalog.test.ts test/stockProjection.test.ts test/syncDependencies.test.ts test/syncQueue.test.ts test/offlineArCatalog.test.ts test/offlineReport.test.ts test/offlineReportAssistant.test.ts test/reportExport.test.ts"
   },
   "dependencies": {
     "expo": "~57.0.31",
+    "expo-asset": "~57.0.20",
+    "expo-audio": "~57.0.5",
     "expo-camera": "~57.0.6",
     "expo-crypto": "~57.0.4",
     "expo-dev-client": "~57.0.20",
     "expo-file-system": "~57.0.7",
     "expo-modules-core": "~57.0.24",
     "expo-network": "~57.0.3",
+    "expo-print": "~57.0.2",
     "expo-secure-store": "~57.0.4",
+    "expo-sharing": "~57.0.24",
     "expo-sqlite": "~57.0.4",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",

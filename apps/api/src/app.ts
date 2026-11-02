@@ -12,6 +12,7 @@ import { CatalogController } from './catalog';
 import { AvatarsController } from './avatars';
 import { FittingController } from './fitting';
 import { AvatarJobs } from './avatar-jobs';
+import { AnalyticsJobs } from './analytics-jobs';
 import { LocationsController, StaffController } from './locations';
 import { AnalyticsController, CommercialAnalytics, ReportsController } from './reports';
 import { SalesController } from './sales';
@@ -57,6 +58,7 @@ class HealthController {
     AuthService,
     AuthGuard,
     AvatarJobs,
+    AnalyticsJobs,
     CommercialAnalytics,
     RealtimeGateway,
     TenantRegistry,

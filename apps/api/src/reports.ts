@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Inject,
+  Param,
   Injectable,
   Post,
   Query,
@@ -13,6 +14,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { AuthGuard, AuthRequest, Identity, requirePermission } from './auth';
 import { Db } from './db';
+import { AnalyticsJobs } from './analytics-jobs';
 import { can, requireLocationScope } from './locations';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -517,7 +519,10 @@ export class ReportsController {
 @Controller('analytics')
 @UseGuards(AuthGuard)
 export class AnalyticsController {
-  constructor(@Inject(CommercialAnalytics) private analytics: CommercialAnalytics) {}
+  constructor(
+    @Inject(CommercialAnalytics) private analytics: CommercialAnalytics,
+    @Inject(AnalyticsJobs) private worker: AnalyticsJobs,
+  ) {}
 
   @Post('run')
   run(@Req() req: AuthRequest, @Body() body: unknown) {
@@ -527,5 +532,15 @@ export class AnalyticsController {
   @Post('query')
   query(@Req() req: AuthRequest, @Body() body: unknown) {
     return this.analytics.query(req.user, body);
+  }
+
+  @Post('ml/demo/train')
+  trainDemo(@Req() req: AuthRequest) {
+    return this.worker.scheduleDemoTraining(req.user);
+  }
+
+  @Get('ml/executions/:id')
+  workerStatus(@Req() req: AuthRequest, @Param('id') id: string) {
+    return this.worker.status(req.user, z.string().uuid().parse(id));
   }
 }
