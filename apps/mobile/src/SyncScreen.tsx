@@ -45,7 +45,7 @@ export function SyncScreen({ user }: { user: Identity }) {
       <Text style={styles.heroLabel}>COLA DEL DISPOSITIVO</Text>
       <Text style={styles.heroNumber}>{pending}</Text>
       <Text style={styles.heroCopy}>{pending === 1 ? 'operación pendiente de sincronizar' : 'operaciones pendientes de sincronizar'}</Text>
-      <Pressable accessibilityRole="button" disabled={busy} onPress={() => void send()} style={[styles.button, busy && styles.buttonBusy]}>{busy ? <ActivityIndicator color="#173e2a" /> : <Text style={styles.buttonText}>Sincronizar ahora  →</Text>}</Pressable>
+      <Pressable testID="qa-sync-now" accessibilityLabel="Sincronizar ahora" accessibilityRole="button" disabled={busy} onPress={() => void send()} style={[styles.button, busy && styles.buttonBusy]}>{busy ? <ActivityIndicator color="#173e2a" /> : <Text style={styles.buttonText}>Sincronizar ahora  →</Text>}</Pressable>
     </View>
     <View style={styles.sectionHeading}><Text style={styles.section}>Estado de la cola</Text><Text style={styles.sectionHint}>{items.length} REGISTROS</Text></View>
     <View style={styles.stats}>

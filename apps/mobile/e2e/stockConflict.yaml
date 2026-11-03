@@ -1,0 +1,13 @@
+appId: bo.edu.grupo18.vestidorar.qa
+name: B15 conflicto de stock permanece visible
+---
+# Precondición manual: con esta sesión, crear un conteo offline; desde una segunda
+# sesión actualizar la misma variante para causar un conflicto al sincronizar.
+- launchApp:
+    clearState: false
+- tapOn:
+    id: qa-admin-tab-sync
+- assertVisible: Sincronización
+- tapOn:
+    id: qa-sync-now
+- assertVisible: Conflicto detectado

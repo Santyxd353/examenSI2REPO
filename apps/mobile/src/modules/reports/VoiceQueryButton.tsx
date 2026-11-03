@@ -19,5 +19,5 @@ export function VoiceQueryButton({ onText, onError }: { onText: (text: string) =
       setBusy(false);
     }
   };
-  return <Pressable accessibilityRole="button" disabled={busy} onPress={() => void dictate()} style={{ minHeight: 40, borderRadius: 9, backgroundColor: '#e7f0e8', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#173e2a', fontWeight: '900', fontSize: 10 }}>{busy ? 'Escuchando…' : 'Dictar consulta'}</Text></Pressable>;
+  return <Pressable testID="qa-report-voice" accessibilityLabel="Dictar consulta" accessibilityRole="button" disabled={busy} onPress={() => void dictate()} style={{ minHeight: 40, borderRadius: 9, backgroundColor: '#e7f0e8', alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#173e2a', fontWeight: '900', fontSize: 10 }}>{busy ? 'Escuchando…' : 'Dictar consulta'}</Text></Pressable>;
 }

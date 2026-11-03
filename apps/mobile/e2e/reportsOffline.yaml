@@ -1,0 +1,16 @@
+appId: bo.edu.grupo18.vestidorar.qa
+name: B15 dashboard y asistente de solo lectura
+---
+# Precondición: una sesión administradora de QA ya iniciada y datos de reporte.
+- launchApp:
+    clearState: false
+- assertVisible: Inicio
+- assertVisible:
+    id: qa-report-assistant
+- tapOn:
+    id: qa-report-question
+- inputText: ventas de los ultimos siete dias
+- tapOn:
+    id: qa-report-submit
+- assertVisible:
+    id: qa-report-answer

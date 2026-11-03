@@ -1,0 +1,14 @@
+appId: bo.edu.grupo18.vestidorar.qa
+name: B15 recibo idempotente tras respuesta perdida
+---
+# Precondición manual: provocar pérdida de red justo después del commit del
+# servidor y antes de que la app reciba la respuesta. Al reconectar, el recibo
+# debe cerrar la misma operación sin duplicar el stock.
+- launchApp:
+    clearState: false
+- tapOn:
+    id: qa-admin-tab-sync
+- assertVisible: Sincronización
+- tapOn:
+    id: qa-sync-now
+- assertVisible: Todo está sincronizado

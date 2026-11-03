@@ -368,6 +368,7 @@ function LoginScreen({
         </View>
 
         <TextInput
+          testID="qa-login-store"
           accessibilityLabel="Identificador de tienda"
           autoCapitalize="none"
           autoCorrect={false}
@@ -406,6 +407,7 @@ function LoginScreen({
           </>
         )}
         <TextInput
+          testID="qa-login-email"
           accessibilityLabel="Correo"
           autoCapitalize="none"
           autoCorrect={false}
@@ -419,6 +421,7 @@ function LoginScreen({
           onChangeText={setCorreo}
         />
         <TextInput
+          testID="qa-login-password"
           accessibilityLabel="Contraseña"
           placeholder={mode === 'register' ? 'Contraseña (mínimo 10 caracteres)' : 'Contraseña'}
           placeholderTextColor="#626a61"
@@ -444,6 +447,8 @@ function LoginScreen({
         )}
         {!!(localError || error) && <Text style={styles.error}>{localError || error}</Text>}
         <Pressable
+          testID="qa-login-submit"
+          accessibilityLabel={mode === 'register' ? 'Crear cuenta de cliente' : 'Ingresar'}
           style={[styles.primary, disabled && styles.primaryDisabled]}
           disabled={disabled}
           onPress={() => void submit()}

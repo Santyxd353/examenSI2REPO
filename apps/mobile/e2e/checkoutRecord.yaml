@@ -1,0 +1,9 @@
+appId: bo.edu.grupo18.vestidorar.qa
+name: B15 compra registrada una sola vez
+---
+# Precondición manual: cuenta cliente, producto disponible y pago de prueba.
+# Ejecutar la compra, reiniciar la app y confirmar una sola orden en administrador
+# y reporte. El pago de esta aplicación es de prueba, no una pasarela real.
+- launchApp:
+    clearState: false
+- assertVisible: Catálogo

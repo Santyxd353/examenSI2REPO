@@ -1,0 +1,27 @@
+appId: bo.edu.grupo18.vestidorar.qa
+name: B15 cambio de negocio no conserva datos anteriores
+env:
+  QA_SECOND_STORE: ${QA_SECOND_STORE}
+  QA_SECOND_EMAIL: ${QA_SECOND_EMAIL}
+  QA_SECOND_PASSWORD: ${QA_SECOND_PASSWORD}
+---
+# Precondición: cerrar sesión desde la interfaz y dejar la pantalla de ingreso.
+- launchApp:
+    clearState: false
+- assertVisible: Identificador de tienda
+- tapOn:
+    id: qa-login-store
+- inputText: ${QA_SECOND_STORE}
+- tapOn:
+    id: qa-login-email
+- inputText: ${QA_SECOND_EMAIL}
+- tapOn:
+    id: qa-login-password
+- inputText: ${QA_SECOND_PASSWORD}
+- tapOn:
+    id: qa-login-submit
+- assertVisible: Inicio
+- tapOn:
+    id: qa-admin-tab-sync
+- assertVisible: Sincronización
+- assertNotVisible: Conflicto detectado

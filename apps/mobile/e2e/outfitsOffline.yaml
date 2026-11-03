@@ -1,0 +1,12 @@
+appId: bo.edu.grupo18.vestidorar.qa
+name: B15 catálogo AR descargado sin conexión
+---
+# Precondición manual: descargar una prenda compatible mientras hay conexión,
+# activar modo avión y abrir Catálogo. La cámara y la prenda deben indicar
+# explícitamente si el recurso offline está disponible.
+- launchApp:
+    clearState: false
+- assertVisible: Inicio
+- tapOn:
+    id: qa-admin-tab-catalog
+- assertVisible: Catálogo

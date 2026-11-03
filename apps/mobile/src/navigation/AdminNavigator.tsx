@@ -33,6 +33,8 @@ export function AdminNavigator({ user, home }: Props) {
         {modules.map((module) => (
           <Pressable
             key={module.id}
+            testID={`qa-admin-tab-${module.id}`}
+            accessibilityLabel={`Abrir ${module.label}`}
             accessibilityRole="tab"
             accessibilityState={{ selected: module.id === active }}
             onPress={() => navigate(module.id)}

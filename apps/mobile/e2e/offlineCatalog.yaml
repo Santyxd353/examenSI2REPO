@@ -1,0 +1,32 @@
+appId: bo.edu.grupo18.vestidorar.qa
+name: B15 catálogo disponible después de reinicio
+env:
+  QA_STORE: ${QA_STORE}
+  QA_ADMIN_EMAIL: ${QA_ADMIN_EMAIL}
+  QA_ADMIN_PASSWORD: ${QA_ADMIN_PASSWORD}
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: qa-login-store
+- inputText: ${QA_STORE}
+- tapOn:
+    id: qa-login-email
+- inputText: ${QA_ADMIN_EMAIL}
+- tapOn:
+    id: qa-login-password
+- inputText: ${QA_ADMIN_PASSWORD}
+- tapOn:
+    id: qa-login-submit
+- assertVisible: Inicio
+- tapOn:
+    id: qa-admin-tab-catalog
+- assertVisible: Catálogo
+- assertVisible: Prendas publicadas
+- stopApp
+- launchApp:
+    clearState: false
+- assertVisible: Inicio
+- tapOn:
+    id: qa-admin-tab-catalog
+- assertVisible: Catálogo
