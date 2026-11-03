@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, Clock3, PackageCheck, RefreshCw, Truck } from 'lucide-react';
 import { api } from './api';
+import { useOperationIdentity } from './useOperationIdentity';
 
 type Order = {
   id: string;
@@ -83,6 +84,7 @@ function addressText(value: Record<string, unknown>) {
 }
 
 export function OrdersAdmin() {
+  const refundIdentity = useOperationIdentity();
   const [orders, setOrders] = useState<Order[]>([]);
   const [status, setStatus] = useState('');
   const [channel, setChannel] = useState('');
@@ -155,10 +157,12 @@ export function OrdersAdmin() {
     setError('');
     setMessage('');
     try {
+      const payload = { orderId: order.id, reason };
       await api(`/admin/orders/${order.id}/cancel`, {
         method: 'PATCH',
-        body: JSON.stringify({ reason, idempotency: crypto.randomUUID() }),
+        body: JSON.stringify({ reason, idempotency: refundIdentity.forPayload(payload) }),
       });
+      refundIdentity.complete(payload);
       setMessage(`${order.numero} fue cancelado; el stock y el reembolso quedaron registrados.`);
       await load();
     } catch (reasonValue) {
@@ -196,15 +200,22 @@ export function OrdersAdmin() {
     setError('');
     setMessage('');
     try {
+      const payload = {
+        returnId,
+        decision,
+        resolution,
+        items: decision === 'APROBAR' ? items : [],
+      };
       await api(`/admin/orders/returns/${returnId}/review`, {
         method: 'PATCH',
         body: JSON.stringify({
           decision,
           resolution,
-          idempotency: crypto.randomUUID(),
+          idempotency: refundIdentity.forPayload(payload),
           items: decision === 'APROBAR' ? items : [],
         }),
       });
+      refundIdentity.complete(payload);
       setMessage(
         decision === 'APROBAR'
           ? 'Devolución resuelta con reintegro y reembolso simulado.'
@@ -378,6 +389,7 @@ export function OrdersAdmin() {
                         Resolución de la revisión
                         <input
                           value={returnResolutions[returnRequest.id] || ''}
+                          maxLength={400}
                           onChange={(event) =>
                             setReturnResolutions((current) => ({
                               ...current,

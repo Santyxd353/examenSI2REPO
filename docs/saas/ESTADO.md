@@ -12,16 +12,17 @@ esta ampliación; las verificaciones históricas del20/10 se conservan abajo.
 | --- | --- | --- |
 | Alcance y prioridades | Definidos inicialmente | ALCANCE_Y_ENTREGA.md; decisiones del usuario sobre SaaS, offline web/Android, Stripe y QR simulado |
 | Base SaaS y aislamiento | Implementado en rama de trabajo | Contexto por petición, base y archivos por tienda, tokens vinculados, cookies y claves móviles separadas; pruebas HTTP, ORM, SQL, transacciones, eventos y purga |
-| Provisión y planes | A03 verificado localmente | Portal global y CLI, autenticación de control separada, planes149/299/599BOB, consumo/entitlements, cuotas transaccionales y períodos por aniversario. Checkout/proveedores pendientes A04 |
+| Provisión y planes | A03 verificado localmente | Portal global y CLI, autenticación de control separada, planes149/299/599BOB, consumo/entitlements, cuotas transaccionales y períodos por aniversario. Checkout TEST y QR verificados en A04; cuenta Stripe externa pendiente |
 | Administración por módulos | Implementado en web | Inicio, catálogo, inventario, ubicaciones, ventas, pedidos, equipo, reportes y negocio; prueba de administradora, vendedora y analista |
 | Identidad de tienda Android | Implementado en código | Selector en inicio de sesión, tokens y WebSocket por tienda; tipos y compatibilidad Expo aprobados. No se ha generado un APK nuevo |
-| Inventario y paquete offline | Pendiente | Requiere contexto de tienda y protocolo durable |
+| Catálogo y comercio A05 | Verificado localmente | Edición/archivo/versiones/precios/promociones/fotos; inventario transaccional y transferencia con comprobante; compras WEB/APP/POS, devoluciones y reportes sin duplicación. 29 suites/160 pruebas, build y Chromium aprobados; ver equipo-a/A05-catalogo-comercio.md y A05-handoff.md |
+| Inventario y paquete offline | Dominio preparado; sincronización pendiente | A05 publica dominio y DTO. Bootstrap, recibos de cola, cifrado y paquetes corresponden a A07–A09 |
 | Reportes y dashboards offline | Pendiente | Requiere conjunto local y definición común de reportes |
 | IA por texto/voz | Pendiente | Proveedor y credenciales por configurar |
 | ML evaluado | Pendiente | Demostración con datos sintéticos identificados confirmada; entrenamiento y evaluación temporal definidos, sin resultados fabricados |
 | Suscripciones Stripe/QR | A04 verificado localmente | QR real de simulación, renovación/cambio/cancelación idempotentes y UI móvil. Stripe probado con eventos firmados del SDK; sesión externa pendiente de cuenta TEST configurada.135pruebas generales aprobadas. No desplegado |
 | Documento ICONIX nuevo | Especificación objetivo en Word y JSON | `docs/Lumina_SaaS_ICONIX_Grupo18.docx` y `iconix/especificacion.json`: 54 requisitos, 27 casos, 111 diagramas, 59 tablas; dos carátulas, índice navegable, recomendaciones, bibliografía y QR. No acredita implementación de los incrementos pendientes |
-| Contratos compartidos A01/G0a | Verificado localmente | Esquemas/DTO/planes, hash canónico, dinero exacto y fixtures.11pruebas de contrato; paridad API/Vite/WebCrypto. Motor reporting y validación Android pendientes |
+| Contratos compartidos A01/G0a | Verificado localmente | Esquemas/DTO/planes, hash canónico, dinero exacto y fixtures.12pruebas de contrato tras A05; paridad API/Vite/WebCrypto. Motor reporting y validación Android pendientes |
 | Esquema A02 | Migrado y verificado solo en local | Seis tablas y ampliaciones ICONIX, Prisma regenerado, migración control versionada,19suites/108tests y ensayo real de respaldo/restauración. Servicios y despliegue pendientes |
 
 ## Verificación del primer incremento

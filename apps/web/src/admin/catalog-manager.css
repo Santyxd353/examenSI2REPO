@@ -1,0 +1,148 @@
+.catalog-manager {
+  margin: 28px 0;
+  min-width: 0;
+}
+.catalog-manager-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.catalog-manager-title h2,
+.catalog-manager-title h3 {
+  margin: 8px 0;
+}
+.catalog-management-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.catalog-management-list .admin-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+  min-width: 0;
+}
+.catalog-management-list h3 {
+  overflow-wrap: anywhere;
+}
+.catalog-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.catalog-card-actions button,
+.catalog-editor button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+}
+.catalog-editor {
+  margin: 20px 0;
+}
+.catalog-editor fieldset {
+  border: 1px solid #e6d6db;
+  padding: 20px;
+  border-radius: 12px;
+  margin: 20px 0;
+  min-width: 0;
+}
+.catalog-editor legend {
+  padding: 0 8px;
+  font-weight: 600;
+}
+.catalog-variant-editor {
+  padding: 16px 0 24px;
+  border-bottom: 1px solid #e6d6db;
+  margin-bottom: 20px;
+}
+.catalog-variant-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.catalog-price-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.catalog-price-grid > div {
+  background: #faf4f6;
+  padding: 14px;
+  border-radius: 12px;
+  min-width: 0;
+}
+.catalog-editor input,
+.catalog-editor select,
+.catalog-editor textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.catalog-editor .catalog-checkbox {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.catalog-editor .catalog-checkbox input {
+  width: 18px;
+  height: 18px;
+}
+.catalog-editor input[type='color'] {
+  width: 70px;
+  height: 42px;
+}
+.catalog-editor textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+.catalog-search {
+  margin-top: 20px;
+}
+.catalog-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 190px));
+  gap: 16px;
+}
+.catalog-photo-grid figure {
+  margin: 0;
+}
+.catalog-photo-grid img {
+  width: 100%;
+  height: 180px;
+  object-fit: contain;
+  background: #faf4f6;
+  border-radius: 10px;
+}
+.catalog-photo-grid figcaption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+}
+.catalog-photo-editor fieldset {
+  border: 1px solid #e6d6db;
+  border-radius: 12px;
+  padding: 18px;
+  margin: 18px 0;
+  min-width: 0;
+}
+@media (max-width: 650px) {
+  .catalog-price-grid,
+  .catalog-variant-fields {
+    grid-template-columns: 1fr;
+  }
+  .catalog-editor fieldset {
+    padding: 12px;
+  }
+  .catalog-manager button {
+    min-height: 44px;
+  }
+}

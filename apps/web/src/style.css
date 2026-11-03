@@ -414,7 +414,8 @@ h1 em {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.location-filter select {
+.location-filter select,
+.location-filter input {
   width: 100%;
   border: 0;
   border-bottom: 1px solid #dacbd3;

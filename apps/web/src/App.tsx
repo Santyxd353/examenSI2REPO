@@ -1,3 +1,4 @@
+import { moneyToMinor } from '@lumina/contracts';
 import { useEffect, useState, useRef, FormEvent, lazy, Suspense } from 'react';
 import {
   ArrowUpRight,
@@ -70,7 +71,8 @@ const money = (n: number) =>
   new Intl.NumberFormat('es-BO', {
     style: 'currency',
     currency: 'BOB',
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(n);
 function GarmentArt({ color = '#d5c6b0' }: { color?: string }) {
   return (
@@ -134,6 +136,10 @@ function StoreApp() {
     [category, setCategory] = useState(''),
     [color, setColor] = useState(''),
     [size, setSize] = useState(''),
+    [minPrice, setMinPrice] = useState(''),
+    [maxPrice, setMaxPrice] = useState(''),
+    [priceSort, setPriceSort] = useState('featured'),
+    [catalogMore, setCatalogMore] = useState(false),
     [catalogVersion, setCatalogVersion] = useState(0),
     [catalogLoading, setCatalogLoading] = useState(true),
     [galleryIndex, setGalleryIndex] = useState<Record<string, number>>({}),
@@ -170,9 +176,24 @@ function StoreApp() {
         if (category) params.set('category', category);
         if (color) params.set('color', color);
         if (size) params.set('size', size);
+        try {
+          if (minPrice) params.set('minPriceMinor', String(moneyToMinor(minPrice)));
+          if (maxPrice) params.set('maxPriceMinor', String(moneyToMinor(maxPrice)));
+        } catch {
+          if (active) {
+            setError('Indica precios con hasta dos decimales.');
+            setCatalogLoading(false);
+          }
+          return;
+        }
+        params.set('sort', priceSort);
+
         void api(`/catalog${params.size ? `?${params}` : ''}`)
           .then((data) => {
-            if (active) setVisibleProducts(data.products);
+            if (active) {
+              setVisibleProducts(data.products);
+              setCatalogMore(Boolean(data.hasMore));
+            }
           })
           .catch((reason) => {
             if (active) setError(reason.message);
@@ -187,7 +208,18 @@ function StoreApp() {
       active = false;
       clearTimeout(timer);
     };
-  }, [catalogLocation, query, brand, category, color, size, catalogVersion]);
+  }, [
+    catalogLocation,
+    query,
+    brand,
+    category,
+    color,
+    size,
+    minPrice,
+    maxPrice,
+    priceSort,
+    catalogVersion,
+  ]);
   useEffect(() => {
     const epoch = accountEpoch.current;
     void api('/platform/stores')
@@ -706,6 +738,41 @@ function StoreApp() {
                       ))}
                     </select>
                   </label>
+                  <label className="location-filter">
+                    <span>Precio mínimo (Bs)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="1000000"
+                      step="0.01"
+                      value={minPrice}
+                      onChange={(event) => setMinPrice(event.target.value)}
+                    />
+                  </label>
+                  <label className="location-filter">
+                    <span>Precio máximo (Bs)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="1000000"
+                      step="0.01"
+                      value={maxPrice}
+                      onChange={(event) => setMaxPrice(event.target.value)}
+                    />
+                  </label>
+                  <label className="location-filter">
+                    <span>Ordenar colección</span>
+                    <select
+                      value={priceSort}
+                      onChange={(event) => setPriceSort(event.target.value)}
+                    >
+                      <option value="featured">Orden de colección</option>
+                      <option value="newest">Novedades</option>
+                      <option value="name_asc">Nombre A–Z</option>
+                      <option value="price_asc">Menor precio</option>
+                      <option value="price_desc">Mayor precio</option>
+                    </select>
+                  </label>
                   <label className="search">
                     <Search size={17} />
                     <input
@@ -715,7 +782,15 @@ function StoreApp() {
                       onChange={(e) => setQuery(e.target.value)}
                     />
                   </label>
-                  {(catalogLocation || category || brand || color || size || query) && (
+                  {(catalogLocation ||
+                    category ||
+                    brand ||
+                    color ||
+                    size ||
+                    query ||
+                    minPrice ||
+                    maxPrice ||
+                    priceSort !== 'featured') && (
                     <button
                       className="clear-catalog-filters"
                       onClick={() => {
@@ -725,6 +800,9 @@ function StoreApp() {
                         setColor('');
                         setSize('');
                         setQuery('');
+                        setMinPrice('');
+                        setMaxPrice('');
+                        setPriceSort('featured');
                       }}
                     >
                       Limpiar filtros
@@ -732,6 +810,11 @@ function StoreApp() {
                   )}
                 </div>
               </div>
+              {catalogMore && (
+                <p role="status">
+                  Se muestran hasta 60 prendas. Afina los filtros para encontrar más opciones.
+                </p>
+              )}
               <div className="product-grid">
                 {filtered.map((p, i) => {
                   const images = p.imagenes || [];

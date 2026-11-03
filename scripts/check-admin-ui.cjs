@@ -6,6 +6,7 @@ const { hash } = require('bcryptjs');
 const { randomUUID } = require('crypto');
 const { mkdirSync, writeFileSync } = require('fs');
 const { resolve } = require('path');
+const { PNG } = require('pngjs');
 
 async function main() {
   const url = new URL(process.env.DATABASE_URL);
@@ -48,6 +49,39 @@ async function main() {
       },
     });
     const variant = await db.variante.findUniqueOrThrow({ where: { sku: 'G18-W21-S' } });
+    const category = await db.categoria.findFirstOrThrow({ where: { activa: true } });
+    const catalogName = `Vestido UI ${randomUUID().slice(0, 8)}`;
+    const catalogProduct = await db.producto.create({
+      data: {
+        categoria_id: category.id,
+        nombre: catalogName,
+        descripcion: 'Vestido femenino para comprobación visual local.',
+        material: 'Algodón',
+        marca: 'QA',
+        coleccion: 'Primavera',
+        estado: 'PUBLICADO',
+        creado_en: new Date(),
+      },
+    });
+    const catalogVariant = await db.variante.create({
+      data: {
+        producto_id: catalogProduct.id,
+        sku: `QA-${randomUUID()}`,
+        talla: 'S',
+        color: 'Rosa',
+        activa: true,
+      },
+    });
+    await db.precio_canal.createMany({
+      data: ['WEB', 'APP', 'TIENDA'].map((canal) => ({
+        variante_id: catalogVariant.id,
+        canal,
+        moneda: 'BOB',
+        importe: 50,
+        descuento_pct: 0,
+        desde: new Date(),
+      })),
+    });
     const location = await db.ubicacion.create({
       data: { nombre: `Prueba UI ${randomUUID()}`, tipo: 'TIENDA', activa: true },
     });
@@ -101,6 +135,60 @@ async function main() {
           0,
         );
     }
+    await nav.getByRole('button', { name: 'Catálogo y vestidor', exact: true }).click();
+    const manager = page.locator('.catalog-manager');
+    await manager.getByLabel('Buscar prenda, marca o código').fill(catalogName);
+    await manager.getByRole('button', { name: 'Editar', exact: true }).click();
+    const editor = manager.locator('.catalog-editor');
+    await editor.getByLabel('Colección', { exact: true }).fill('Colección actualizada');
+    await editor.getByLabel('Precio web (Bs)', { exact: true }).fill('59.90');
+    await editor.getByLabel('Código de barras', { exact: true }).fill(`QA-${randomUUID()}`);
+    await page.setViewportSize({ width: 390, height: 844 });
+    if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1))
+      throw Error('El editor de catálogo desborda en móvil.');
+    await editor.screenshot({ path: '.local/catalog-editor-mobile.png' });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await editor.screenshot({ path: '.local/catalog-editor-desktop.png' });
+    await editor.getByRole('button', { name: 'Guardar prenda', exact: true }).click();
+    await expect(manager.getByRole('status')).toContainText('Prenda actualizada');
+    expect(
+      (await db.producto.findUniqueOrThrow({ where: { id: catalogProduct.id } })).coleccion,
+    ).toBe('Colección actualizada');
+    const updatedPrice = await db.precio_canal.findFirstOrThrow({
+      where: { variante_id: catalogVariant.id, canal: 'WEB', hasta: null },
+      orderBy: { desde: 'desc' },
+    });
+    expect(Number(updatedPrice.importe)).toBe(59.9);
+    await manager.getByRole('button', { name: 'Fotos', exact: true }).click();
+    const photoPanel = manager.locator('.catalog-photo-editor');
+    const png = new PNG({ width: 300, height: 300 });
+    for (let i = 0; i < png.data.length; i += 4) {
+      png.data[i] = 217;
+      png.data[i + 1] = 143;
+      png.data[i + 2] = 172;
+      png.data[i + 3] = 255;
+    }
+    await photoPanel
+      .locator('input[type=file]')
+      .setInputFiles({
+        name: 'galeria-qa.png',
+        mimeType: 'image/png',
+        buffer: PNG.sync.write(png),
+      });
+    await photoPanel
+      .getByLabel('Licencia o autorización de las imágenes')
+      .fill('Imagen sintética QA');
+    await photoPanel.getByRole('button', { name: 'Subir fotos', exact: true }).click();
+    await expect(photoPanel.locator('figure')).toHaveCount(1);
+    await photoPanel.getByRole('button', { name: 'Ocultar', exact: true }).click();
+    await expect(photoPanel.getByRole('button', { name: 'Mostrar', exact: true })).toBeVisible();
+    await photoPanel.getByRole('button', { name: 'Cerrar fotos', exact: true }).click();
+    page.once('dialog', (dialog) => dialog.accept('Fin de prueba de catálogo'));
+    await manager.getByRole('button', { name: 'Archivar', exact: true }).click();
+    await expect(manager.locator('.catalog-management-list .status')).toHaveText('ARCHIVADO');
+    expect((await db.producto.findUniqueOrThrow({ where: { id: catalogProduct.id } })).estado).toBe(
+      'RETIRADO',
+    );
     await nav.getByRole('button', { name: 'Inicio', exact: true }).click();
     await expect(page.locator('.business-kpis')).toBeVisible();
     const secondTab = await page.context().newPage();
@@ -186,6 +274,9 @@ async function main() {
           tabIsolation: true,
           mobileOverflow: false,
           saleRecorded: true,
+          catalogEdited: true,
+          catalogPhotoManaged: true,
+          catalogArchived: true,
           order: sale.numero,
           errors,
         },

@@ -11,15 +11,28 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
+import { TenantRegistry } from './tenancy/platform';
+import { runForTenant } from './tenancy/context';
 import { randomUUID } from 'crypto';
 import * as timers from 'node:timers';
 import { z } from 'zod';
 import { AuthGuard, AuthRequest } from './auth';
 import { Db } from './db';
 import { RealtimeGateway } from './realtime';
+import {
+  lockOperation,
+  requestHash,
+  assertRequestHash,
+  auditedReplay,
+  recordAuditedOperation,
+} from './commerce/idempotency';
+import { claimedQuantity } from './commerce/returns';
 
-const uuid = z.string().uuid();
+const uuid = z
+  .string()
+  .uuid()
+  .transform((value) => value.toLowerCase());
 const cartItem = z.object({ variantId: uuid, quantity: z.number().int().min(0).max(100) }).strict();
 const checkout = z
   .object({
@@ -35,9 +48,11 @@ const paymentDecision = z
 const returnRequest = z
   .object({
     reason: z.string().trim().min(10).max(500),
+    idempotency: uuid.optional(),
     items: z
       .array(z.object({ detailId: uuid, quantity: z.number().int().min(1).max(100) }).strict())
-      .min(1),
+      .min(1)
+      .max(100),
   })
   .strict();
 
@@ -57,36 +72,67 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(Db) private db: Db,
     @Inject(RealtimeGateway) private realtime: RealtimeGateway,
+    @Inject(TenantRegistry) private registry: TenantRegistry,
   ) {}
   private expiryTimer?: ReturnType<typeof timers.setInterval>;
+  private expirySweep: Promise<void> | null = null;
+  private closing = false;
   onModuleInit() {
-    const timer = timers.setInterval(
-      () =>
-        void this.releaseExpired().catch((error) =>
-          console.error('No se pudieron liberar reservas:', error),
-        ),
-      60_000,
-    );
-    this.expiryTimer = timer;
+    this.expiryTimer = timers.setInterval(() => {
+      if (!this.expirySweep && !this.closing)
+        this.expirySweep = this.expireAcrossTenants()
+          .catch((error) =>
+            console.error(
+              'Fallo al liberar reservas:',
+              error instanceof Error ? error.name : 'desconocido',
+            ),
+          )
+          .finally(() => {
+            this.expirySweep = null;
+          });
+    }, 60_000);
   }
-  onModuleDestroy() {
+  async onModuleDestroy() {
+    this.closing = true;
     if (this.expiryTimer) timers.clearInterval(this.expiryTimer);
+    await this.expirySweep;
+  }
+  private async expireAcrossTenants() {
+    for (const tenant of await this.registry.listForMaintenance()) {
+      if (this.closing) break;
+      // One bounded connection per tenant, released immediately; never fill the interactive pool cache.
+      const url = new URL(tenant.databaseUrl);
+      url.searchParams.set('connection_limit', '1');
+      const client = new PrismaClient({ datasources: { db: { url: url.toString() } } });
+      try {
+        await runForTenant(tenant, () => this.releaseExpired(client));
+      } catch (error) {
+        console.error(
+          'Reserva pendiente de revisión:',
+          tenant.id,
+          error instanceof Error ? error.name : 'desconocido',
+        );
+      } finally {
+        await client.$disconnect();
+      }
+    }
   }
 
-  private async activeCart(userId: string, channel: CommerceChannel) {
+  private async activeCart(userId: string, channel: CommerceChannel, tx: Prisma.TransactionClient) {
+    await lockOperation(tx, 'cart', `${userId}:${channel}`);
     return (
-      (await this.db.carrito.findFirst({
+      (await tx.carrito.findFirst({
         where: { usuario_id: userId, canal: channel, estado: 'ACTIVO' },
         orderBy: { actualizado_en: 'desc' },
       })) ??
-      this.db.carrito.create({
+      tx.carrito.create({
         data: { usuario_id: userId, canal: channel, estado: 'ACTIVO', actualizado_en: new Date() },
       })
     );
   }
 
-  private async releaseExpired() {
-    const expired = await this.db.pedido.findMany({
+  private async releaseExpired(database: PrismaClient = this.db) {
+    const expired = await database.pedido.findMany({
       where: {
         canal: { in: ['WEB', 'APP'] },
         estado: 'PENDIENTE_PAGO',
@@ -97,20 +143,35 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
       select: { id: true },
       take: 50,
     });
-    for (const { id } of expired) await this.closePending(id, 'CANCELADO');
+    for (const { id } of expired) await this.closePending(id, 'CANCELADO', undefined, database);
   }
 
   private async closePending(
     orderId: string,
     nextState: 'CANCELADO' | 'CONFIRMADO',
     event?: { id: string; decision: 'APROBAR' | 'RECHAZAR' },
+    database: PrismaClient = this.db,
   ) {
-    const changed = await this.db.$transaction(async (tx) => {
+    const changed = await database.$transaction(async (tx) => {
+      if (event) await lockOperation(tx, 'payment-event', event.id);
+      await lockOperation(tx, 'order', orderId);
       const order = await tx.pedido.findUnique({
         where: { id: orderId },
         include: { detalle_pedido: { include: { reserva_stock: true } }, pago: true },
       });
       if (!order || order.estado !== 'PENDIENTE_PAGO') return null;
+      if (
+        event &&
+        (await tx.evento_pago.findUnique({
+          where: {
+            proveedor_evento_externo: {
+              proveedor: order.pago[0]?.proveedor ?? '',
+              evento_externo: event.id,
+            },
+          },
+        }))
+      )
+        throw new BadRequestException('Este identificador de pago ya fue utilizado.');
       const reservations = order.detalle_pedido
         .flatMap((line) => line.reserva_stock)
         .filter((row) => row.estado === 'ACTIVA');
@@ -126,7 +187,9 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
       });
       if (claimed.count !== 1) return null;
       const now = new Date();
-      for (const reservation of reservations) {
+      for (const reservation of reservations.sort((a, b) =>
+        a.inventario_id.localeCompare(b.inventario_id),
+      )) {
         const updated = await tx.inventario.updateMany({
           where: {
             id: reservation.inventario_id,
@@ -217,7 +280,9 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
 
   @Get('cart')
   async getCart(@Req() req: AuthRequest) {
-    const cart = await this.activeCart(req.user.id, requestChannel(req));
+    const cart = await this.db.$transaction((tx) =>
+      this.activeCart(req.user.id, requestChannel(req), tx),
+    );
     return this.db.carrito.findUniqueOrThrow({
       where: { id: cart.id },
       include: { item_carrito: { include: { variante: { include: { producto: true } } } } },
@@ -227,30 +292,32 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
   @Post('cart/items')
   async setItem(@Req() req: AuthRequest, @Body() body: unknown) {
     const input = cartItem.parse(body);
-    const cart = await this.activeCart(req.user.id, requestChannel(req));
-    if (input.quantity > 0) {
-      const variant = await this.db.variante.findFirst({
-        where: { id: input.variantId, activa: true, producto: { estado: 'PUBLICADO' } },
-      });
-      if (!variant) throw new BadRequestException('La prenda no está publicada.');
-      await this.db.item_carrito.upsert({
-        where: { carrito_id_variante_id: { carrito_id: cart.id, variante_id: input.variantId } },
-        create: { carrito_id: cart.id, variante_id: input.variantId, cantidad: input.quantity },
-        update: { cantidad: input.quantity },
-      });
-    } else {
-      await this.db.item_carrito.deleteMany({
-        where: { carrito_id: cart.id, variante_id: input.variantId },
-      });
-    }
-    await this.db.carrito.update({ where: { id: cart.id }, data: { actualizado_en: new Date() } });
+    await this.db.$transaction(async (tx) => {
+      const cart = await this.activeCart(req.user.id, requestChannel(req), tx);
+      if (input.quantity > 0) {
+        const variant = await tx.variante.findFirst({
+          where: { id: input.variantId, activa: true, producto: { estado: 'PUBLICADO' } },
+        });
+        if (!variant) throw new BadRequestException('La prenda no está publicada.');
+        await tx.item_carrito.upsert({
+          where: { carrito_id_variante_id: { carrito_id: cart.id, variante_id: input.variantId } },
+          create: { carrito_id: cart.id, variante_id: input.variantId, cantidad: input.quantity },
+          update: { cantidad: input.quantity },
+        });
+      } else {
+        await tx.item_carrito.deleteMany({
+          where: { carrito_id: cart.id, variante_id: input.variantId },
+        });
+      }
+      await tx.carrito.update({ where: { id: cart.id }, data: { actualizado_en: new Date() } });
+    });
     return this.getCart(req);
   }
 
   @Get('orders')
   async orders(@Req() req: AuthRequest) {
     await this.releaseExpired();
-    return this.db.pedido.findMany({
+    const orders = await this.db.pedido.findMany({
       where: { usuario_id: req.user.id, canal: requestChannel(req) },
       orderBy: { creado_en: 'desc' },
       take: 20,
@@ -260,6 +327,29 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
         devolucion: { include: { detalle_devolucion: true } },
       },
     });
+    return orders.map((order) => ({
+      ...order,
+      detalle_pedido: order.detalle_pedido.map((line) => ({
+        ...line,
+        returnEligible: Math.max(
+          0,
+          line.cantidad -
+            order.devolucion.reduce(
+              (sum, r) =>
+                sum +
+                (r.estado === 'RECHAZADA'
+                  ? 0
+                  : r.detalle_devolucion
+                      .filter((d) => d.detalle_pedido_id === line.id)
+                      .reduce(
+                        (n, d) => n + (r.estado === 'RESUELTA' ? d.cantidad_apta : d.cantidad),
+                        0,
+                      )),
+              0,
+            ),
+        ),
+      })),
+    }));
   }
 
   @Post('checkout')
@@ -267,18 +357,40 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
     const input = checkout.parse(body);
     const channel = requestChannel(req);
     await this.releaseExpired();
-    const previous = await this.db.pedido.findUnique({
-      where: { idempotencia: input.idempotency },
-      include: { detalle_pedido: true, pago: true },
-    });
-    if (previous) {
-      if (previous.usuario_id !== req.user.id || previous.canal !== channel)
-        throw new BadRequestException('Este identificador ya fue utilizado.');
-      return previous;
-    }
-    const cart = await this.activeCart(req.user.id, channel);
+    const hash = requestHash({ actorId: req.user.id, channel, ...input });
     const order = await this.db.$transaction(
       async (tx) => {
+        await lockOperation(tx, 'order-intent', input.idempotency);
+        const previous = await tx.pedido.findUnique({
+          where: { idempotencia: input.idempotency },
+          include: { detalle_pedido: { include: { reserva_stock: true } }, pago: true },
+        });
+        if (previous) {
+          if (previous.usuario_id !== req.user.id || previous.canal !== channel)
+            throw new BadRequestException('Este identificador ya fue utilizado.');
+          const stored = previous.reglas_snapshot as { requestHash?: string };
+          if (stored.requestHash) assertRequestHash(stored.requestHash, hash);
+          else {
+            const address = previous.direccion_snapshot as {
+              detalle?: string;
+              direccionId?: string;
+            };
+            assertRequestHash(
+              requestHash({
+                locationId: previous.ubicacion_id,
+                address: input.addressId ? null : address.detalle,
+                addressId: address.direccionId ?? null,
+              }),
+              requestHash({
+                locationId: input.locationId,
+                address: input.addressId ? null : input.address,
+                addressId: input.addressId ?? null,
+              }),
+            );
+          }
+          return previous;
+        }
+        const cart = await this.activeCart(req.user.id, channel, tx);
         const location = await tx.ubicacion.findFirst({
           where: { id: input.locationId, activa: true },
         });
@@ -292,6 +404,7 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
           throw new BadRequestException('La dirección guardada no está disponible.');
         const items = await tx.item_carrito.findMany({
           where: { carrito_id: cart.id },
+          orderBy: { variante_id: 'asc' },
           include: { variante: { include: { producto: true } } },
         });
         if (!items.length) throw new BadRequestException('El carrito está vacío.');
@@ -329,9 +442,11 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
             throw new BadRequestException(
               `No disponible para compra en ${channel === 'APP' ? 'la aplicación' : 'la web'}: ${item.variante.sku}.`,
             );
-          const unit = Number(
-            (Number(price.importe) * (1 - Number(price.descuento_pct) / 100)).toFixed(2),
-          );
+          const unit = price.importe
+            .mul(new Prisma.Decimal(100).minus(price.descuento_pct))
+            .div(100)
+            .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+            .toNumber();
           lines.push({ item, inventory, unit, security: availability.stock_seguridad });
         }
         const total = Number(
@@ -366,6 +481,7 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
               tipo: channel === 'APP' ? 'COMPRA_APP' : 'COMPRA_WEB',
               pago: 'SIMULADO',
               reservaMinutos: 15,
+              requestHash: hash,
             },
             estado: 'PENDIENTE_PAGO',
             creado_en: now,
@@ -452,7 +568,7 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
           include: { detalle_pedido: { include: { reserva_stock: true } }, pago: true },
         });
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
     this.realtime.inventoryChanged(input.locationId, {
       variantIds: order.detalle_pedido.map((line) => line.variante_id),
@@ -486,21 +602,18 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
     if (!prior) {
       if (order.estado !== 'PENDIENTE_PAGO')
         throw new BadRequestException('Este pedido ya no admite pagos.');
-      if (input.decision === 'APROBAR') {
-        if (
-          !(await this.closePending(id, 'CONFIRMADO', {
-            id: input.idempotency,
-            decision: input.decision,
-          }))
-        )
-          throw new BadRequestException('El pedido ya fue procesado.');
-      } else {
-        if (
-          !(await this.closePending(id, 'CANCELADO', {
-            id: input.idempotency,
-            decision: input.decision,
-          }))
-        )
+      const changed = await this.closePending(
+        id,
+        input.decision === 'APROBAR' ? 'CONFIRMADO' : 'CANCELADO',
+        { id: input.idempotency, decision: input.decision },
+      );
+      if (!changed) {
+        const replay = await this.db.evento_pago.findUnique({
+          where: {
+            proveedor_evento_externo: { proveedor: provider, evento_externo: input.idempotency },
+          },
+        });
+        if (!replay || replay.pago_id !== payment.id || replay.tipo !== input.decision)
           throw new BadRequestException('El pedido ya fue procesado.');
       }
     }
@@ -517,8 +630,21 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
     const channel = requestChannel(req);
     if (new Set(input.items.map((item) => item.detailId)).size !== input.items.length)
       throw new BadRequestException('Cada prenda debe aparecer una sola vez.');
+    const context = input.idempotency
+      ? {
+          actorId: req.user.id,
+          operationId: input.idempotency,
+          action: 'RETURN_REQUEST',
+          entityId: id,
+        }
+      : null;
     return this.db.$transaction(
       async (tx) => {
+        if (context) {
+          const replay = await auditedReplay<any>(tx, context, input);
+          if (replay) return replay.value;
+        }
+        await lockOperation(tx, 'order', id);
         const order = await tx.pedido.findFirst({
           where: {
             id,
@@ -532,17 +658,11 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
         for (const item of input.items) {
           const detail = order.detalle_pedido.find((row) => row.id === item.detailId);
           if (!detail) throw new BadRequestException('La prenda no pertenece al pedido.');
-          const claimed = await tx.detalle_devolucion.aggregate({
-            where: {
-              detalle_pedido_id: item.detailId,
-              devolucion: { estado: { not: 'RECHAZADA' } },
-            },
-            _sum: { cantidad: true },
-          });
-          if (item.quantity + (claimed._sum.cantidad ?? 0) > detail.cantidad)
+          const claimed = await claimedQuantity(tx, item.detailId);
+          if (item.quantity + claimed > detail.cantidad)
             throw new BadRequestException('La cantidad supera lo comprado o ya solicitado.');
         }
-        return tx.devolucion.create({
+        const created = await tx.devolucion.create({
           data: {
             pedido_id: id,
             usuario_id: req.user.id,
@@ -560,8 +680,11 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
           },
           include: { detalle_devolucion: true },
         });
+        if (context)
+          await recordAuditedOperation(tx, context, input, JSON.parse(JSON.stringify(created)));
+        return created;
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
   }
 }

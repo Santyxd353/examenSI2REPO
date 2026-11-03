@@ -17,6 +17,7 @@ import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { AuthGuard, AuthRequest, AuthService } from './auth';
 import { Db } from './db';
+import { lockOperation } from './commerce/idempotency';
 
 const uuid = z.string().uuid();
 const phone = z
@@ -45,6 +46,7 @@ const addressFields = z.object({
 });
 const addressCreate = addressFields.strict();
 const addressUpdate = addressFields
+  .extend({ predeterminada: z.boolean().optional() })
   .partial()
   .strict()
   .refine((value) => Object.keys(value).length > 0, 'No hay cambios para guardar.');
@@ -135,6 +137,7 @@ export class ProfileController {
     const input = addressCreate.parse(body);
     await this.db.$transaction(
       async (tx) => {
+        await lockOperation(tx, 'addresses', req.user.id);
         const count = await tx.direccion.count({
           where: { usuario_id: req.user.id, activa: true },
         });
@@ -162,7 +165,7 @@ export class ProfileController {
           predeterminada: address.predeterminada,
         });
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
     return this.response(req.user.id);
   }
@@ -173,6 +176,7 @@ export class ProfileController {
     const input = addressUpdate.parse(body);
     await this.db.$transaction(
       async (tx) => {
+        await lockOperation(tx, 'addresses', req.user.id);
         const current = await tx.direccion.findFirst({
           where: { id, usuario_id: req.user.id, activa: true },
         });
@@ -191,7 +195,7 @@ export class ProfileController {
           campos: Object.keys(input),
         });
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
     return this.response(req.user.id);
   }
@@ -201,6 +205,7 @@ export class ProfileController {
     const id = uuid.parse(rawId);
     await this.db.$transaction(
       async (tx) => {
+        await lockOperation(tx, 'addresses', req.user.id);
         const address = await tx.direccion.findFirst({
           where: { id, usuario_id: req.user.id, activa: true },
         });
@@ -214,7 +219,7 @@ export class ProfileController {
           predeterminada: true,
         });
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
     return this.response(req.user.id);
   }
@@ -224,6 +229,7 @@ export class ProfileController {
     const id = uuid.parse(rawId);
     await this.db.$transaction(
       async (tx) => {
+        await lockOperation(tx, 'addresses', req.user.id);
         const address = await tx.direccion.findFirst({
           where: { id, usuario_id: req.user.id, activa: true },
         });
@@ -247,7 +253,7 @@ export class ProfileController {
           activa: false,
         });
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
     return this.response(req.user.id);
   }

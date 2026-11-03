@@ -16,6 +16,7 @@ import { AuthGuard, AuthRequest, requirePermission } from './auth';
 import { Db } from './db';
 import { can, requireLocationScope } from './locations';
 import { RealtimeGateway } from './realtime';
+import { lockOperation, requestHash, assertRequestHash } from './commerce/idempotency';
 
 const discountedUnitPrice = (price: { importe: Prisma.Decimal; descuento_pct: Prisma.Decimal }) =>
   price.importe
@@ -26,14 +27,26 @@ const discountedUnitPrice = (price: { importe: Prisma.Decimal; descuento_pct: Pr
 
 const saleSchema = z
   .object({
-    locationId: z.string().uuid(),
+    locationId: z
+      .string()
+      .uuid()
+      .transform((value) => value.toLowerCase()),
     customerName: z.string().trim().min(2).max(160).optional(),
     paymentMethod: z.enum(['EFECTIVO', 'TARJETA', 'QR']),
-    idempotency: z.string().uuid(),
+    idempotency: z
+      .string()
+      .uuid()
+      .transform((value) => value.toLowerCase()),
     items: z
       .array(
         z
-          .object({ variantId: z.string().uuid(), quantity: z.number().int().min(1).max(100) })
+          .object({
+            variantId: z
+              .string()
+              .uuid()
+              .transform((value) => value.toLowerCase()),
+            quantity: z.number().int().min(1).max(100),
+          })
           .strict(),
       )
       .min(1)
@@ -129,7 +142,13 @@ export class SalesController {
   @Get()
   async recent(@Req() req: AuthRequest, @Query('location') location?: string) {
     requirePermission(req.user, 'ventas:registrar');
-    const locationId = location && z.string().uuid().parse(location);
+    const locationId =
+      location &&
+      z
+        .string()
+        .uuid()
+        .transform((value) => value.toLowerCase())
+        .parse(location);
     if (locationId) await requireLocationScope(this.db, req.user, locationId);
     const scope = await this.locationIds(req);
     return this.db.pedido.findMany({
@@ -153,18 +172,39 @@ export class SalesController {
     requirePermission(req.user, 'ventas:registrar');
     const input = saleSchema.parse(body);
     await requireLocationScope(this.db, req.user, input.locationId);
-    const previous = await this.db.pedido.findUnique({
-      where: { idempotencia: input.idempotency },
-      include: { ubicacion: true, detalle_pedido: true, pago: true },
-    });
-    if (previous) {
-      if (previous.vendedor_id !== req.user.id)
-        throw new BadRequestException('El identificador de venta ya fue utilizado.');
-      return previous;
-    }
+    input.items.sort((a, b) => a.variantId.localeCompare(b.variantId));
+    const hash = requestHash({ actorId: req.user.id, ...input });
     const now = new Date();
     const number = `VTA-${now.toISOString().slice(0, 10).replaceAll('-', '')}-${randomUUID().slice(0, 8)}`;
     const sale = await this.db.$transaction(async (tx) => {
+      await lockOperation(tx, 'order-intent', input.idempotency);
+      const previous = await tx.pedido.findUnique({
+        where: { idempotencia: input.idempotency },
+        include: { ubicacion: true, detalle_pedido: true, pago: true },
+      });
+      if (previous) {
+        if (previous.vendedor_id !== req.user.id || previous.canal !== 'TIENDA')
+          throw new BadRequestException('El identificador de venta ya fue utilizado.');
+        const stored = previous.reglas_snapshot as { requestHash?: string; metodoPago?: string };
+        if (stored.requestHash) assertRequestHash(stored.requestHash, hash);
+        else
+          assertRequestHash(
+            requestHash({
+              locationId: previous.ubicacion_id,
+              paymentMethod: stored.metodoPago,
+              items: previous.detalle_pedido
+                .map((line) => ({ variantId: line.variante_id, quantity: line.cantidad }))
+                .sort((a, b) => a.variantId.localeCompare(b.variantId)),
+            }),
+            requestHash({
+              locationId: input.locationId,
+              paymentMethod: input.paymentMethod,
+              items: input.items,
+            }),
+          );
+        return previous;
+      }
+
       const location = await tx.ubicacion.findFirst({
         where: { id: input.locationId, activa: true },
       });
@@ -228,7 +268,11 @@ export class SalesController {
           entrega: 0,
           total,
           direccion_snapshot: { cliente: input.customerName ?? 'Cliente de mostrador' },
-          reglas_snapshot: { tipo: 'VENTA_MOSTRADOR', metodoPago: input.paymentMethod },
+          reglas_snapshot: {
+            tipo: 'VENTA_MOSTRADOR',
+            metodoPago: input.paymentMethod,
+            requestHash: hash,
+          },
           estado: 'CONFIRMADO',
           creado_en: now,
           idempotencia: input.idempotency,

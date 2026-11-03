@@ -12,6 +12,8 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { api } from './api';
+import { CatalogManager } from './admin/CatalogManager';
+import { useOperationIdentity, webDeviceId } from './useOperationIdentity';
 
 type Location = {
   id: string;
@@ -99,6 +101,7 @@ export function Admin({
   onCatalogChanged: () => Promise<void>;
   module?: 'all' | 'catalog' | 'inventory' | 'locations' | 'team';
 }) {
+  const transferIdentity = useOperationIdentity();
   const [locations, setLocations] = useState<Location[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [message, setMessage] = useState('');
@@ -282,10 +285,17 @@ export function Admin({
     setMessage('');
     try {
       const values = Object.fromEntries(new FormData(form)) as Record<string, string>;
-      await api(path, {
-        method: 'POST',
-        body: JSON.stringify(transform ? transform(values) : values),
-      });
+      const payload = transform ? transform(values) : values;
+      const body =
+        path === '/locations/transfers'
+          ? {
+              ...(payload as object),
+              operationId: transferIdentity.forPayload(payload),
+              deviceId: webDeviceId(),
+            }
+          : payload;
+      await api(path, { method: 'POST', body: JSON.stringify(body) });
+      if (path === '/locations/transfers') transferIdentity.complete(payload);
       form.reset();
       await reload();
       await onCatalogChanged();
@@ -494,6 +504,7 @@ export function Admin({
       </div>
       {error && <div className="message error">{error}</div>}
       {message && <div className="message">{message}</div>}
+      {managesCatalog && <CatalogManager onChanged={onCatalogChanged} />}
       {['all', 'inventory'].includes(module) && alerts.length > 0 && (
         <div className="stock-alerts" role="status">
           <div>

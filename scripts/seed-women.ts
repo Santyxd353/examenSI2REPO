@@ -161,7 +161,7 @@ export async function seedWomen(client: PrismaClient) {
           fisico: 8 + sizeIndex,
           reservado: 0,
           comprometido: 0,
-          version: 0,
+          version: 1,
         },
       });
 

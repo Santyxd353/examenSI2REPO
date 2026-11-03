@@ -16,7 +16,7 @@ export async function assignAssortment(
       fisico: 0,
       reservado: 0,
       comprometido: 0,
-      version: 0,
+      version: 1,
     })),
     skipDuplicates: true,
   });

@@ -77,6 +77,7 @@ afterAll(async () => {
     if (resource) await removeStored(resource.clave_objeto);
   }
   if (adminId) {
+    await db.auditoria.deleteMany({ where: { actor_id: adminId } });
     await db.sesion.deleteMany({ where: { usuario_id: adminId } });
     await db.usuario_rol.deleteMany({ where: { usuario_id: adminId } });
     await db.usuario.delete({ where: { id: adminId } });
@@ -137,7 +138,9 @@ test('el catálogo entrega la categoría de la prenda como tipo explícito para 
   });
   const response = await request(app.getHttpServer()).get('/api/catalog');
   expect(response.status).toBe(200);
-  const product = response.body.products.find((item: { id: string }) => item.id === variant.producto_id);
+  const product = response.body.products.find(
+    (item: { id: string }) => item.id === variant.producto_id,
+  );
   expect(product.tipoPrenda).toBe(variant.producto.categoria.nombre);
 });
 
@@ -148,7 +151,10 @@ test('publicar vuelve a validar el PNG y conserva el borrador si el archivo ya n
     .field('varianteId', variantId)
     .field('textoAlternativo', 'Prenda de prueba frontal')
     .field('licencia', 'Geometría de prueba propia')
-    .attach('imagen', pngFixture('transparent'), { filename: 'prenda.png', contentType: 'image/png' });
+    .attach('imagen', pngFixture('transparent'), {
+      filename: 'prenda.png',
+      contentType: 'image/png',
+    });
   expect(upload.status).toBe(201);
   rejectedResourceIds.push(upload.body.id);
   const resource = await db.recurso_catalogo.findUniqueOrThrow({ where: { id: upload.body.id } });
@@ -158,7 +164,9 @@ test('publicar vuelve a validar el PNG y conserva el borrador si el archivo ya n
     .auth(adminToken, { type: 'bearer' })
     .send({ estado: 'PUBLICADO' });
   expect(publish.status).toBe(400);
-  expect((await db.recurso_catalogo.findUniqueOrThrow({ where: { id: resource.id } })).estado).toBe('BORRADOR');
+  expect((await db.recurso_catalogo.findUniqueOrThrow({ where: { id: resource.id } })).estado).toBe(
+    'BORRADOR',
+  );
 });
 
 test('imagen AR se carga como borrador y solo aparece en catálogo al publicarse', async () => {

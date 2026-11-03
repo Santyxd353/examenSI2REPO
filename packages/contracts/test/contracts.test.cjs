@@ -21,6 +21,57 @@ const intent = () => ({
 });
 const digest = (v) => createHash('sha256').update(c.canonicalIntentJson(v)).digest('hex');
 
+test('contratos de catálogo respetan SKU/barcode de la BD y descuentos vigentes; transferir es solo online', () => {
+  c.CatalogProductSchema.parse(JSON.parse(fs.readFileSync(path.join(__dirname,'../fixtures/catalog-product-v1.json'),'utf8')));
+  c.OnlineTransferSchema.parse(JSON.parse(fs.readFileSync(path.join(__dirname,'../fixtures/online-transfer-v1.json'),'utf8')));
+  assert.equal(c.CatalogProductPatchSchema.safeParse({}).success, false);
+  const variant = {
+    id: id(8),
+    sku: 'VESTIDO-S',
+    talla: 'S',
+    color: 'Rosa',
+    prices: { WEB: 5000, APP: 4500, TIENDA: 4900 },
+    barcode: '784000000001',
+    discounts: {
+      WEB: {
+        basisPoints: 1500,
+        startsAt: '2026-11-03T12:00:00.000Z',
+        endsAt: '2026-11-10T12:00:00.000Z',
+      },
+    },
+  };
+  assert.equal(c.CatalogVariantSchema.safeParse(variant).success, true);
+  assert.equal(
+    c.CatalogVariantSchema.safeParse({ ...variant, sku: 'a'.repeat(61) }).success,
+    false,
+  );
+  assert.equal(
+    c.CatalogVariantSchema.safeParse({ ...variant, barcode: 'a'.repeat(81) }).success,
+    false,
+  );
+  assert.equal(
+    c.CatalogVariantSchema.safeParse({
+      ...variant,
+      discounts: { WEB: { ...variant.discounts.WEB, endsAt: variant.discounts.WEB.startsAt } },
+    }).success,
+    false,
+  );
+  const transfer = {
+    origenId: id(1),
+    destinoId: id(2),
+    varianteId: id(3),
+    cantidad: 3,
+    motivo: 'Reposición tienda',
+    operationId: id(4),
+    deviceId: id(5),
+  };
+  assert.equal(c.OnlineTransferSchema.safeParse(transfer).success, true);
+  assert.equal(
+    c.OnlineTransferSchema.safeParse({ ...transfer, deviceId: undefined }).success,
+    false,
+  );
+});
+
 test('dinero BOB usa centavos exactos, signo y rango seguro', () => {
   assert.equal(c.moneyToMinor('149.00'), 14900);
   assert.equal(c.moneyToMinor('0.10'), 10);

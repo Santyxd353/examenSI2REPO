@@ -61,6 +61,7 @@ afterAll(async () => {
   }
   await db.categoria.deleteMany({ where: { nombre: type } });
   for (const userId of [customerId, adminId].filter(Boolean)) {
+    await db.auditoria.deleteMany({ where: { actor_id: userId } });
     await db.sesion.deleteMany({ where: { usuario_id: userId } });
     await db.usuario_rol.deleteMany({ where: { usuario_id: userId } });
     await db.usuario.delete({ where: { id: userId } });
@@ -124,7 +125,11 @@ test('cliente filtra talla, color y marca; prenda y fotos son comunes con stock 
     where: { variante: { producto_id: productId }, canal: 'TIENDA' },
   });
   const storeAvailability = await db.disponibilidad_canal.findMany({
-    where: { variante: { producto_id: productId }, ubicacion_id: firstLocation.id, canal: 'TIENDA' },
+    where: {
+      variante: { producto_id: productId },
+      ubicacion_id: firstLocation.id,
+      canal: 'TIENDA',
+    },
   });
   expect(storePrices).toHaveLength(2);
   expect(storeAvailability).toHaveLength(2);

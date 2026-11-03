@@ -15,8 +15,19 @@ import { z } from 'zod';
 import { AuthGuard, AuthRequest, requirePermission } from './auth';
 import { Db } from './db';
 import { RealtimeGateway } from './realtime';
+import {
+  lockOperation,
+  auditedReplay,
+  recordAuditedOperation,
+  assertRequestHash,
+} from './commerce/idempotency';
+import { claimedQuantity, minor, proportionalRefund } from './commerce/returns';
+import { lockActiveLocations, requireLocationScope } from './inventory/scope';
 
-const uuid = z.string().uuid();
+const uuid = z
+  .string()
+  .uuid()
+  .transform((value) => value.toLowerCase());
 const status = z.enum([
   'PENDIENTE_PAGO',
   'CONFIRMADO',
@@ -40,7 +51,7 @@ const cancellation = z
 const returnReview = z
   .object({
     decision: z.enum(['APROBAR', 'RECHAZAR']),
-    resolution: z.string().trim().min(10).max(500),
+    resolution: z.string().trim().min(10).max(400),
     locationId: uuid.optional(),
     idempotency: uuid,
     items: z
@@ -115,6 +126,7 @@ export class OrdersController {
     const input = transition.parse(body);
     return this.db.$transaction(
       async (tx) => {
+        await lockOperation(tx, 'order', id);
         const order = await tx.pedido.findUnique({ where: { id } });
         if (!order) throw new BadRequestException('Pedido no encontrado.');
         if (!allowedTransitions[order.estado]?.includes(input.status))
@@ -158,7 +170,7 @@ export class OrdersController {
           },
         });
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
   }
 
@@ -167,17 +179,32 @@ export class OrdersController {
     requirePermission(req.user, 'pedidos:gestionar');
     const id = uuid.parse(rawId);
     const input = cancellation.parse(body);
-    const previous = await this.db.reembolso.findUnique({
-      where: { idempotencia: input.idempotency },
-      include: { devolucion: true },
-    });
-    if (previous) {
-      if (previous.devolucion?.pedido_id !== id)
-        throw new BadRequestException('Este identificador ya fue utilizado.');
-      return this.db.pedido.findUniqueOrThrow({ where: { id } });
-    }
+    const context = {
+      actorId: req.user.id,
+      operationId: input.idempotency,
+      action: 'ORDER_CANCEL',
+      entityId: id,
+    };
     const changed = await this.db.$transaction(
       async (tx) => {
+        const replay = await auditedReplay<{ locationId: string; variantIds: string[] }>(
+          tx,
+          context,
+          input,
+        );
+        if (replay) return replay.value;
+        await lockOperation(tx, 'order', id);
+        const previous = await tx.reembolso.findUnique({
+          where: { idempotencia: input.idempotency },
+          include: { devolucion: true },
+        });
+        if (previous) {
+          if (previous.devolucion?.pedido_id !== id)
+            throw new BadRequestException('Este identificador ya fue utilizado.');
+          assertRequestHash(previous.motivo, input.reason);
+          const oldOrder = await tx.pedido.findUniqueOrThrow({ where: { id } });
+          return { locationId: oldOrder.ubicacion_id!, variantIds: [] };
+        }
         const order = await tx.pedido.findUnique({
           where: { id },
           include: {
@@ -197,6 +224,16 @@ export class OrdersController {
           throw new BadRequestException('El pedido ya tiene una cancelación o devolución activa.');
         const payment = order.pago.find((item) => item.estado === 'CONFIRMADO');
         if (!payment) throw new BadRequestException('El pedido no tiene un pago confirmado.');
+        const refunded = await tx.reembolso.aggregate({
+          where: { pago_id: payment.id, estado: 'CONFIRMADO' },
+          _sum: { monto: true },
+        });
+        const remainingMinor = minor(payment.monto) - minor(refunded._sum.monto ?? 0);
+        if (remainingMinor <= 0)
+          throw new BadRequestException('El pago no tiene saldo pendiente de reembolso.');
+        await requireLocationScope(tx, req.user, order.ubicacion_id);
+        await lockActiveLocations(tx, [order.ubicacion_id]);
+
         const now = new Date();
         const refundRequest = await tx.devolucion.create({
           data: {
@@ -262,7 +299,7 @@ export class OrdersController {
             devolucion_id: refundRequest.id,
             idempotencia: input.idempotency,
             referencia: `CANCEL-${order.numero}`,
-            monto: payment.monto,
+            monto: remainingMinor / 100,
             estado: 'CONFIRMADO',
             motivo: input.reason,
             creado_en: now,
@@ -281,9 +318,11 @@ export class OrdersController {
             creado_en: now,
           },
         });
-        return { locationId: order.ubicacion_id, variantIds };
+        const result = { locationId: order.ubicacion_id, variantIds };
+        await recordAuditedOperation(tx, context, input, result);
+        return result;
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
     this.realtime.inventoryChanged(changed.locationId, {
       variantIds: changed.variantIds,
@@ -297,19 +336,46 @@ export class OrdersController {
     requirePermission(req.user, 'pedidos:gestionar');
     const id = uuid.parse(rawId);
     const input = returnReview.parse(body);
-    const prior = await this.db.reembolso.findUnique({
-      where: { idempotencia: input.idempotency },
-    });
-    if (prior) {
-      if (prior.devolucion_id !== id)
-        throw new BadRequestException('Este identificador ya fue utilizado.');
-      return this.db.devolucion.findUniqueOrThrow({
-        where: { id },
-        include: { detalle_devolucion: true, reembolso: true },
-      });
-    }
+    if (new Set(input.items.map((item) => item.returnDetailId)).size !== input.items.length)
+      throw new BadRequestException('No repitas una prenda en la revisión.');
+    const context = {
+      actorId: req.user.id,
+      operationId: input.idempotency,
+      action: 'RETURN_REVIEW',
+      entityId: id,
+    };
     const changed = await this.db.$transaction(
       async (tx) => {
+        const replay = await auditedReplay<{ locationId: string | null; variantIds: string[] }>(
+          tx,
+          context,
+          input,
+        );
+        if (replay) return replay.value;
+        const link = await tx.devolucion.findUnique({ where: { id }, select: { pedido_id: true } });
+        if (!link) throw new BadRequestException('Solicitud de devolución no encontrada.');
+        await lockOperation(tx, 'order', link.pedido_id);
+        const prior = await tx.reembolso.findUnique({
+          where: { idempotencia: input.idempotency },
+          include: { devolucion: { include: { detalle_devolucion: true } } },
+        });
+        if (prior) {
+          if (prior.devolucion_id !== id)
+            throw new BadRequestException('Este identificador ya fue utilizado.');
+          assertRequestHash(prior.motivo, input.resolution);
+          if (
+            input.decision !== 'APROBAR' ||
+            input.items.length !== prior.devolucion?.detalle_devolucion.length ||
+            input.items.some(
+              (item) =>
+                prior.devolucion?.detalle_devolucion.find(
+                  (detail) => detail.id === item.returnDetailId,
+                )?.cantidad_apta !== item.acceptedQuantity,
+            )
+          )
+            assertRequestHash('legacy-review', 'different-review');
+          return { locationId: null, variantIds: [] as string[] };
+        }
         const request = await tx.devolucion.findUnique({
           where: { id },
           include: {
@@ -333,20 +399,33 @@ export class OrdersController {
             },
           });
           if (claimed.count !== 1) throw new BadRequestException('La devolución ya fue revisada.');
-          return { locationId: null as string | null, variantIds: [] as string[] };
+          const result = { locationId: null as string | null, variantIds: [] as string[] };
+          await recordAuditedOperation(tx, context, input, result);
+          return result;
         }
         const locationId = input.locationId || request.pedido.ubicacion_id;
         if (!locationId)
           throw new BadRequestException('Selecciona una ubicación para recibir la devolución.');
+        await requireLocationScope(tx, req.user, locationId);
+        await lockActiveLocations(tx, [locationId]);
         if (input.items.length !== request.detalle_devolucion.length)
           throw new BadRequestException('Revisa la cantidad de cada prenda solicitada.');
         const inputs = new Map(input.items.map((item) => [item.returnDetailId, item]));
-        let refundAmount = 0;
+        let refundMinor = 0;
         const variantIds: string[] = [];
-        for (const detail of request.detalle_devolucion) {
+        for (const detail of request.detalle_devolucion.sort((a, b) =>
+          a.detalle_pedido.variante_id.localeCompare(b.detalle_pedido.variante_id),
+        )) {
           const reviewed = inputs.get(detail.id);
           if (!reviewed || reviewed.acceptedQuantity > detail.cantidad)
             throw new BadRequestException('Una cantidad aceptada supera lo solicitado.');
+          const acceptedBefore = await claimedQuantity(tx, detail.detalle_pedido_id, false);
+          const amount = proportionalRefund(
+            detail.detalle_pedido.total_linea,
+            detail.detalle_pedido.cantidad,
+            acceptedBefore,
+            reviewed.acceptedQuantity,
+          );
           await tx.detalle_devolucion.update({
             where: { id: detail.id },
             data: {
@@ -390,13 +469,10 @@ export class OrdersController {
               creado_en: now,
             },
           });
-          refundAmount +=
-            (Number(detail.detalle_pedido.total_linea) / detail.detalle_pedido.cantidad) *
-            reviewed.acceptedQuantity;
+          refundMinor += amount;
           variantIds.push(detail.detalle_pedido.variante_id);
         }
-        refundAmount = Number(refundAmount.toFixed(2));
-        if (refundAmount <= 0)
+        if (refundMinor <= 0)
           throw new BadRequestException('Acepta al menos una unidad o rechaza la solicitud.');
         const payment = request.pedido.pago.find((item) =>
           ['CONFIRMADO', 'REEMBOLSADO'].includes(item.estado),
@@ -406,8 +482,8 @@ export class OrdersController {
           where: { pago_id: payment.id, estado: 'CONFIRMADO' },
           _sum: { monto: true },
         });
-        const refundedBefore = Number(previousRefunds._sum.monto || 0);
-        if (refundedBefore + refundAmount > Number(payment.monto))
+        const refundedBefore = minor(previousRefunds._sum.monto || 0);
+        if (refundedBefore + refundMinor > minor(payment.monto))
           throw new BadRequestException('El reembolso supera el pago confirmado.');
         await tx.reembolso.create({
           data: {
@@ -415,14 +491,14 @@ export class OrdersController {
             devolucion_id: request.id,
             idempotencia: input.idempotency,
             referencia: `DEV-${request.id}`,
-            monto: refundAmount,
+            monto: refundMinor / 100,
             estado: 'CONFIRMADO',
             motivo: input.resolution,
             creado_en: now,
             confirmado_en: now,
           },
         });
-        if (refundedBefore + refundAmount === Number(payment.monto))
+        if (refundedBefore + refundMinor === minor(payment.monto))
           await tx.pago.update({ where: { id: payment.id }, data: { estado: 'REEMBOLSADO' } });
         const claimed = await tx.devolucion.updateMany({
           where: { id, estado: 'SOLICITADA' },
@@ -434,9 +510,11 @@ export class OrdersController {
           },
         });
         if (claimed.count !== 1) throw new BadRequestException('La devolución ya fue revisada.');
-        return { locationId, variantIds };
+        const result = { locationId, variantIds };
+        await recordAuditedOperation(tx, context, input, result);
+        return result;
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
     if (changed.locationId && changed.variantIds.length)
       this.realtime.inventoryChanged(changed.locationId, {

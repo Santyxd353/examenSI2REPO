@@ -30,22 +30,45 @@ export type LocalState = z.infer<typeof LocalStateSchema>;
 export type OperationKind = (typeof OPERATION_KINDS)[number];
 export const ResourceReferenceSchema = z.strictObject({
   clientResourceId: UuidSchema,
+  variantId: UuidSchema.optional(),
   sha256: HashSchema,
   bytes: MinorSchema.positive().max(50 * 1024 * 1024),
   mime: z.enum(['image/png', 'image/jpeg', 'image/webp', 'model/gltf-binary']),
   usage: z.enum(['GALLERY', 'ANDROID_AR', 'WEB_3D']),
   license: z.string().trim().min(3).max(255),
 });
+export const DiscountWindowSchema = z
+  .strictObject({
+    basisPoints: SafeIntegerSchema.min(1).max(10000),
+    startsAt: TimestampSchema,
+    endsAt: TimestampSchema,
+  })
+  .refine(
+    (value) => new Date(value.startsAt) < new Date(value.endsAt),
+    'El descuento necesita una vigencia positiva.',
+  );
 export const CatalogVariantSchema = z.strictObject({
   id: UuidSchema,
-  sku: z.string().trim().min(1).max(80),
+  sku: z.string().trim().min(1).max(60),
+  barcode: z.string().trim().min(1).max(80).nullable().optional(),
   talla: z.string().trim().min(1).max(20),
   color: z.string().trim().min(1).max(50),
   colorHex: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
     .optional(),
-  prices: z.strictObject({ WEB: MinorSchema, APP: MinorSchema, TIENDA: MinorSchema }),
+  prices: z.strictObject({
+    WEB: MinorSchema.positive().max(100000000),
+    APP: MinorSchema.positive().max(100000000),
+    TIENDA: MinorSchema.positive().max(100000000),
+  }),
+  discounts: z
+    .strictObject({
+      WEB: DiscountWindowSchema.optional(),
+      APP: DiscountWindowSchema.optional(),
+      TIENDA: DiscountWindowSchema.optional(),
+    })
+    .optional(),
   active: z.boolean().default(true),
   baseVersion: SafeIntegerSchema.positive().nullable().default(null),
 });
@@ -55,11 +78,16 @@ export const CatalogProductSchema = z.strictObject({
   descripcion: z.string().trim().min(1).max(3000),
   material: z.string().trim().min(2).max(150),
   marca: z.string().trim().min(2).max(100),
+  coleccion: z.string().trim().max(100).nullable().optional(),
   categoriaId: UuidSchema,
   variants: z.array(CatalogVariantSchema).min(1).max(100),
   resources: z.array(ResourceReferenceSchema).max(30).default([]),
 });
-const productPatch = CatalogProductSchema.omit({ id: true })
+export const CatalogProductPatchSchema = CatalogProductSchema.omit({ id: true })
+  .extend({
+    estado: z.enum(['BORRADOR', 'PUBLICADO']),
+    resources: z.array(ResourceReferenceSchema).max(30).optional(),
+  })
   .partial()
   .refine((v) => Object.keys(v).length > 0, 'El parche está vacío.');
 const base = ScopeSchema.extend({
@@ -79,7 +107,7 @@ const union = z.discriminatedUnion('kind', [
   }),
   base.extend({
     kind: z.literal('CATALOG_UPDATE'),
-    payload: z.strictObject({ patch: productPatch }),
+    payload: z.strictObject({ patch: CatalogProductPatchSchema }),
   }),
   base.extend({ kind: z.literal('CATALOG_ARCHIVE'), payload: z.strictObject({ reason }) }),
   base.extend({
@@ -87,7 +115,9 @@ const union = z.discriminatedUnion('kind', [
     payload: z.strictObject({
       variantId: UuidSchema,
       locationId: UuidSchema,
-      deltaFisico: SafeIntegerSchema.refine((n) => n !== 0),
+      deltaFisico: SafeIntegerSchema.min(-1000000)
+        .max(1000000)
+        .refine((n) => n !== 0),
       reason,
     }),
   }),
@@ -96,7 +126,7 @@ const union = z.discriminatedUnion('kind', [
     payload: z.strictObject({
       variantId: UuidSchema,
       locationId: UuidSchema,
-      observedPhysical: MinorSchema,
+      observedPhysical: MinorSchema.max(1000000),
       reason,
     }),
   }),

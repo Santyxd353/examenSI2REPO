@@ -5,3 +5,5 @@ export * from './offline';
 export * from './canonical';
 export * from './reports';
 export * from './analytics';
+export * from './inventory';
+export * from './catalog';

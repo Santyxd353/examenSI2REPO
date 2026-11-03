@@ -86,7 +86,7 @@ export class CommercialAnalytics {
           FROM pedido o JOIN detalle_pedido dp ON dp.pedido_id=o.id
           WHERE o.creado_en>=${from} AND o.creado_en<${end}
             AND o.estado NOT IN ('CANCELADO','PENDIENTE_PAGO')
-            AND EXISTS (SELECT 1 FROM pago pg WHERE pg.pedido_id=o.id AND pg.estado='CONFIRMADO')
+            AND EXISTS (SELECT 1 FROM pago pg WHERE pg.pedido_id=o.id AND pg.estado IN ('CONFIRMADO','REEMBOLSADO'))
             ${orderScope}`,
         this.db.$queryRaw<
           {
@@ -102,7 +102,7 @@ export class CommercialAnalytics {
           JOIN variante v ON v.id=dp.variante_id JOIN producto p ON p.id=v.producto_id
           WHERE o.creado_en>=${from} AND o.creado_en<${end}
             AND o.estado NOT IN ('CANCELADO','PENDIENTE_PAGO')
-            AND EXISTS (SELECT 1 FROM pago pg WHERE pg.pedido_id=o.id AND pg.estado='CONFIRMADO')
+            AND EXISTS (SELECT 1 FROM pago pg WHERE pg.pedido_id=o.id AND pg.estado IN ('CONFIRMADO','REEMBOLSADO'))
             ${orderScope}
           GROUP BY p.nombre,v.id,v.sku ORDER BY ventas DESC LIMIT 20`,
         this.db.$queryRaw<
@@ -113,7 +113,7 @@ export class CommercialAnalytics {
           LEFT JOIN ubicacion u ON u.id=o.ubicacion_id
           WHERE o.creado_en>=${from} AND o.creado_en<${end}
             AND o.estado NOT IN ('CANCELADO','PENDIENTE_PAGO')
-            AND EXISTS (SELECT 1 FROM pago pg WHERE pg.pedido_id=o.id AND pg.estado='CONFIRMADO')
+            AND EXISTS (SELECT 1 FROM pago pg WHERE pg.pedido_id=o.id AND pg.estado IN ('CONFIRMADO','REEMBOLSADO'))
             ${orderScope}
           GROUP BY u.id,u.nombre ORDER BY ventas DESC`,
         this.db.$queryRaw<
@@ -124,7 +124,7 @@ export class CommercialAnalytics {
           LEFT JOIN usuario ve ON ve.id=o.vendedor_id
           WHERE o.creado_en>=${from} AND o.creado_en<${end}
             AND o.estado NOT IN ('CANCELADO','PENDIENTE_PAGO')
-            AND EXISTS (SELECT 1 FROM pago pg WHERE pg.pedido_id=o.id AND pg.estado='CONFIRMADO')
+            AND EXISTS (SELECT 1 FROM pago pg WHERE pg.pedido_id=o.id AND pg.estado IN ('CONFIRMADO','REEMBOLSADO'))
             ${orderScope}
           GROUP BY ve.id,ve.nombres,ve.apellidos ORDER BY ventas DESC`,
         this.db.$queryRaw<
@@ -191,7 +191,7 @@ export class CommercialAnalytics {
       FROM pedido o JOIN detalle_pedido dp ON dp.pedido_id=o.id
       WHERE o.creado_en>=${from} AND o.creado_en<${end} AND o.ubicacion_id IS NOT NULL
         AND o.estado NOT IN ('CANCELADO','PENDIENTE_PAGO')
-        AND EXISTS (SELECT 1 FROM pago pg WHERE pg.pedido_id=o.id AND pg.estado='CONFIRMADO')
+        AND EXISTS (SELECT 1 FROM pago pg WHERE pg.pedido_id=o.id AND pg.estado IN ('CONFIRMADO','REEMBOLSADO'))
         ${orderScope}
       GROUP BY semana,dp.variante_id,o.ubicacion_id,o.canal ORDER BY semana`;
     const [demandModel, anomalyModel] = await Promise.all([
@@ -279,7 +279,7 @@ export class CommercialAnalytics {
       estado: string;
     }[] = [];
     const weeklyDemand = new Map<string, number>();
-    const firstForecast = addDays(to, ((8 - to.getUTCDay()) % 7) || 7);
+    const firstForecast = addDays(to, (8 - to.getUTCDay()) % 7 || 7);
     for (const rows of grouped.values()) {
       const recent = rows.slice(-4);
       const weights = recent.map((_, index) => index + 1);
@@ -308,8 +308,7 @@ export class CommercialAnalytics {
         const history = rows.slice(index - 4, index).map((row) => number(row.cantidad));
         const expected = history.reduce((sum, quantity) => sum + quantity, 0) / history.length;
         const historicDeviation = Math.sqrt(
-          history.reduce((sum, quantity) => sum + (quantity - expected) ** 2, 0) /
-            history.length,
+          history.reduce((sum, quantity) => sum + (quantity - expected) ** 2, 0) / history.length,
         );
         const scale = Math.max(1, historicDeviation, Math.sqrt(expected));
         const row = rows[index];

@@ -19,7 +19,7 @@ import { Prisma } from '@prisma/client';
 import { hash } from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
-import { AuthGuard, AuthRequest, Identity, requirePermission } from './auth';
+import { AuthGuard, AuthRequest, requirePermission } from './auth';
 import { Db } from './db';
 import { assignAssortment } from './assortment';
 import { RealtimeGateway } from './realtime';
@@ -49,24 +49,20 @@ const staffInput = z
   })
   .strict();
 
-export function can(user: Identity, permission: string) {
-  return user.permissions.includes(permission);
-}
+export { can, requireLocationScope } from './inventory/scope';
+import { can, requireLocationScope, lockActiveLocations } from './inventory/scope';
+import { applyStockDelta, applyStockCount } from './inventory/inventory.service';
+import { onlineTransfer } from './inventory/online-transfer';
+import { OnlineTransferSchema } from '@lumina/contracts';
 
-export async function requireLocationScope(db: Db, user: Identity, locationId: string) {
-  if (can(user, 'ubicaciones:gestionar') || user.roles.includes('Administrador')) return;
-  const assignment = await db.usuario_ubicacion.findUnique({
-    where: { usuario_id_ubicacion_id: { usuario_id: user.id, ubicacion_id: locationId } },
-  });
-  if (!assignment) throw new ForbiddenException('No tienes acceso a esta ubicación.');
-}
-
-async function lockActiveLocations(tx: Prisma.TransactionClient, ids: string[]) {
-  const uniqueIds = [...new Set(ids)].sort();
-  const rows = await tx.$queryRaw<{ id: string; activa: boolean }[]>`
-    SELECT id, activa FROM ubicacion WHERE id=ANY(${uniqueIds}::uuid[]) ORDER BY id FOR SHARE`;
-  if (rows.length !== uniqueIds.length || rows.some((row) => !row.activa))
-    throw new NotFoundException('La ubicación no existe o está inactiva.');
+// Preserve the existing online 400 response while offline domain consumers receive 409.
+function legacyStockError(error: unknown): never {
+  if (
+    error instanceof ConflictException &&
+    (error.getResponse() as { code?: string }).code === 'INSUFFICIENT_STOCK'
+  )
+    throw new BadRequestException(error.getResponse());
+  throw error;
 }
 
 @Controller('locations')
@@ -337,110 +333,20 @@ export class LocationsController {
 
   @Post('transfers')
   async transfer(@Req() req: AuthRequest, @Body() body: unknown) {
-    requirePermission(req.user, 'inventario:gestionar');
-    const data = z
-      .object({
-        origenId: z.string().uuid(),
-        destinoId: z.string().uuid(),
-        varianteId: z.string().uuid(),
-        cantidad: z.number().int().min(1).max(100000),
-        motivo: z.string().trim().min(5).max(400),
-      })
-      .strict()
-      .refine((value) => value.origenId !== value.destinoId, {
-        message: 'El origen y el destino deben ser diferentes.',
-      })
-      .parse(body);
-    await Promise.all([
-      requireLocationScope(this.db, req.user, data.origenId),
-      requireLocationScope(this.db, req.user, data.destinoId),
-    ]);
-    const [origin, destination, variant] = await Promise.all([
-      this.db.ubicacion.findFirst({ where: { id: data.origenId, activa: true } }),
-      this.db.ubicacion.findFirst({ where: { id: data.destinoId, activa: true } }),
-      this.db.variante.findFirst({ where: { id: data.varianteId, activa: true } }),
-    ]);
-    if (!origin || !destination || !variant)
-      throw new NotFoundException('Ubicación o variante no encontrada.');
-    return this.db.$transaction(
-      async (tx) => {
-        await lockActiveLocations(tx, [data.origenId, data.destinoId]);
-        const source = await tx.inventario.findUnique({
-          where: {
-            variante_id_ubicacion_id: {
-              variante_id: data.varianteId,
-              ubicacion_id: data.origenId,
-            },
-          },
-        });
-        if (!source) throw new BadRequestException('La ubicación de origen no tiene esa variante.');
-        const changed = await tx.$queryRaw<{ id: string }[]>`
-          UPDATE inventario
-          SET fisico = fisico - ${data.cantidad}, version = version + 1
-          WHERE id = ${source.id}::uuid
-            AND (fisico - reservado - comprometido) >= ${data.cantidad}
-          RETURNING id`;
-        if (changed.length !== 1)
-          throw new BadRequestException('No hay stock disponible suficiente para transferir.');
-        const target = await tx.inventario.upsert({
-          where: {
-            variante_id_ubicacion_id: {
-              variante_id: data.varianteId,
-              ubicacion_id: data.destinoId,
-            },
-          },
-          update: { fisico: { increment: data.cantidad }, version: { increment: 1 } },
-          create: {
-            variante_id: data.varianteId,
-            ubicacion_id: data.destinoId,
-            fisico: data.cantidad,
-            reservado: 0,
-            comprometido: 0,
-            version: 1,
-          },
-        });
-        const group = randomUUID();
-        const createdAt = new Date();
-        await tx.movimiento_stock.createMany({
-          data: [
-            {
-              inventario_id: source.id,
-              grupo_operacion: group,
-              tipo: 'TRANSFERENCIA',
-              delta_fisico: -data.cantidad,
-              delta_reservado: 0,
-              delta_comprometido: 0,
-              motivo: data.motivo,
-              actor_id: req.user.id,
-              creado_en: createdAt,
-            },
-            {
-              inventario_id: target.id,
-              grupo_operacion: group,
-              tipo: 'TRANSFERENCIA',
-              delta_fisico: data.cantidad,
-              delta_reservado: 0,
-              delta_comprometido: 0,
-              motivo: data.motivo,
-              actor_id: req.user.id,
-              creado_en: createdAt,
-            },
-          ],
-        });
-        const [sourceAfter, targetAfter] = await Promise.all([
-          tx.inventario.findUniqueOrThrow({ where: { id: source.id } }),
-          tx.inventario.findUniqueOrThrow({ where: { id: target.id } }),
-        ]);
-        return { grupoOperacion: group, origen: sourceAfter, destino: targetAfter };
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
+    const data = OnlineTransferSchema.parse(body);
+    const result = await this.db
+      .$transaction((tx) => onlineTransfer(tx, req.user, data))
+      .catch(legacyStockError);
+    for (const locationId of [data.origenId, data.destinoId])
+      this.realtime.inventoryChanged(locationId, {
+        variantIds: [data.varianteId],
+        reason: 'TRANSFERENCIA',
+      });
+    return result;
   }
 
   @Post(':id/inventory/counts')
   async count(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: unknown) {
-    requirePermission(req.user, 'inventario:gestionar');
-    await requireLocationScope(this.db, req.user, id);
     const data = z
       .object({
         varianteId: z.string().uuid(),
@@ -450,66 +356,23 @@ export class LocationsController {
       })
       .strict()
       .parse(body);
-    const [location, variant] = await Promise.all([
-      this.db.ubicacion.findFirst({ where: { id, activa: true } }),
-      this.db.variante.findFirst({ where: { id: data.varianteId, activa: true } }),
-    ]);
-    if (!location || !variant) throw new NotFoundException('Ubicación o variante no encontrada.');
-    return this.db.$transaction(
-      async (tx) => {
-        await lockActiveLocations(tx, [id]);
-        let inventory = await tx.inventario.findUnique({
-          where: { variante_id_ubicacion_id: { variante_id: data.varianteId, ubicacion_id: id } },
-        });
-        if ((inventory?.version ?? 0) !== data.expectedVersion)
-          throw new ConflictException(
-            'El inventario cambió desde la consulta. Revisa el saldo actualizado y confirma nuevamente el conteo.',
-          );
-        const previousPhysical = inventory?.fisico ?? 0;
-        if (!inventory) {
-          inventory = await tx.inventario.create({
-            data: {
-              variante_id: data.varianteId,
-              ubicacion_id: id,
-              fisico: data.conteoObservado,
-              reservado: 0,
-              comprometido: 0,
-              version: 1,
-            },
-          });
-        } else {
-          if (data.conteoObservado < inventory.reservado + inventory.comprometido)
-            throw new BadRequestException(
-              'El conteo no puede ser menor que las unidades reservadas y comprometidas.',
-            );
-          const changed = await tx.inventario.updateMany({
-            where: { id: inventory.id, version: data.expectedVersion },
-            data: { fisico: data.conteoObservado, version: { increment: 1 } },
-          });
-          if (changed.count !== 1)
-            throw new ConflictException(
-              'El inventario cambió durante el conteo. Revisa el saldo actualizado antes de confirmar.',
-            );
-          inventory = await tx.inventario.findUniqueOrThrow({ where: { id: inventory.id } });
-        }
-        await tx.movimiento_stock.create({
-          data: {
-            inventario_id: inventory.id,
-            grupo_operacion: randomUUID(),
-            tipo: 'CONTEO',
-            delta_fisico: data.conteoObservado - previousPhysical,
-            delta_reservado: 0,
-            delta_comprometido: 0,
-            conteo_observado: data.conteoObservado,
-            motivo: data.motivo,
-            actor_id: req.user.id,
-            creado_en: new Date(),
+    const result = await this.db
+      .$transaction((tx) =>
+        applyStockCount(
+          tx,
+          { actor: req.user, operationId: randomUUID() },
+          {
+            variantId: data.varianteId,
+            locationId: id,
+            observedPhysical: data.conteoObservado,
+            baseVersion: data.expectedVersion,
+            reason: data.motivo,
           },
-        });
-        return inventory;
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
+        ),
+      )
+      .catch(legacyStockError);
+    this.realtime.inventoryChanged(id, { variantIds: [data.varianteId], reason: 'CONTEO' });
+    return result;
   }
 
   @Patch(':id/inventory/:variantId/threshold')
@@ -563,8 +426,6 @@ export class LocationsController {
 
   @Post(':id/inventory/adjustments')
   async adjust(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: unknown) {
-    requirePermission(req.user, 'inventario:gestionar');
-    await requireLocationScope(this.db, req.user, id);
     const data = z
       .object({
         varianteId: z.string().uuid(),
@@ -578,67 +439,25 @@ export class LocationsController {
       })
       .strict()
       .parse(body);
-    const [location, variant] = await Promise.all([
-      this.db.ubicacion.findFirst({ where: { id, activa: true } }),
-      this.db.variante.findFirst({ where: { id: data.varianteId, activa: true } }),
-    ]);
-    if (!location || !variant) throw new NotFoundException('Ubicación o variante no encontrada.');
-    const updated = await this.db.$transaction(async (tx) => {
-      await lockActiveLocations(tx, [id]);
-      let inventory = await tx.inventario.findUnique({
-        where: { variante_id_ubicacion_id: { variante_id: data.varianteId, ubicacion_id: id } },
-      });
-      if (!inventory) {
-        if (data.delta < 0)
-          throw new BadRequestException('No existe stock para realizar la salida.');
-        inventory = await tx.inventario.create({
-          data: {
-            variante_id: data.varianteId,
-            ubicacion_id: id,
-            fisico: data.delta,
-            reservado: 0,
-            comprometido: 0,
-            version: 1,
+    const result = await this.db
+      .$transaction((tx) =>
+        applyStockDelta(
+          tx,
+          { actor: req.user, operationId: randomUUID() },
+          {
+            variantId: data.varianteId,
+            locationId: id,
+            deltaFisico: data.delta,
+            reason: data.motivo,
           },
-        });
-      } else {
-        if (data.delta < 0) {
-          const changed = await tx.$queryRaw<{ id: string }[]>`
-            UPDATE inventario
-            SET fisico = fisico + ${data.delta}, version = version + 1
-            WHERE id = ${inventory.id}::uuid
-              AND (fisico - reservado - comprometido) >= ${-data.delta}
-            RETURNING id`;
-          if (changed.length !== 1)
-            throw new BadRequestException('El ajuste supera el stock disponible.');
-        } else {
-          await tx.inventario.update({
-            where: { id: inventory.id },
-            data: { fisico: { increment: data.delta }, version: { increment: 1 } },
-          });
-        }
-        inventory = await tx.inventario.findUniqueOrThrow({ where: { id: inventory.id } });
-      }
-      await tx.movimiento_stock.create({
-        data: {
-          inventario_id: inventory.id,
-          grupo_operacion: randomUUID(),
-          tipo: 'AJUSTE',
-          delta_fisico: data.delta,
-          delta_reservado: 0,
-          delta_comprometido: 0,
-          motivo: data.motivo,
-          actor_id: req.user.id,
-          creado_en: new Date(),
-        },
-      });
-      return inventory;
-    });
+        ),
+      )
+      .catch(legacyStockError);
     this.realtime.inventoryChanged(id, {
       variantIds: [data.varianteId],
       reason: 'stock-adjustment',
     });
-    return updated;
+    return result;
   }
 
   @Post(':id/assignments')
