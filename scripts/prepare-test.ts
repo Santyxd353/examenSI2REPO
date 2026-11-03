@@ -37,6 +37,9 @@ async function main() {
         ),
       );
   }
+  await client.query(
+    readFileSync('prisma/migrations/202611010001_saas_offline_analytics/migration.sql', 'utf8'),
+  );
   const db = new PrismaClient({ datasources: { db: { url: url.toString() } } });
   await seed(db);
   await db.$disconnect();

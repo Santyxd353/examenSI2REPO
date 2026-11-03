@@ -10,7 +10,6 @@ async function main() {
   const registry = new TenantRegistry();
   try {
     for (const tenant of await registry.listForMaintenance()) {
-      if (tenant.slug === 'lumina') continue;
       console.log(`Aplicando migraciones: ${tenant.slug}`);
       await promisify(execFile)(
         process.execPath,

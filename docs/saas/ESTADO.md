@@ -22,6 +22,7 @@ esta ampliación; las verificaciones históricas del20/10 se conservan abajo.
 | Suscripciones Stripe/QR | Pendiente | Esencial Bs149, Profesional Bs299, Negocio Bs599 por tienda/mes; Stripe TEST y QR_SIMULATED para entrega académica. Configuración y flujos por implementar |
 | Documento ICONIX nuevo | Especificación objetivo en Word y JSON | `docs/Lumina_SaaS_ICONIX_Grupo18.docx` y `iconix/especificacion.json`: 54 requisitos, 27 casos, 111 diagramas, 59 tablas; dos carátulas, índice navegable, recomendaciones, bibliografía y QR. No acredita implementación de los incrementos pendientes |
 | Contratos compartidos A01/G0a | Verificado localmente | Esquemas/DTO/planes, hash canónico, dinero exacto y fixtures.11pruebas de contrato; paridad API/Vite/WebCrypto. Motor reporting y validación Android pendientes |
+| Esquema A02 | Migrado y verificado solo en local | Seis tablas y ampliaciones ICONIX, Prisma regenerado, migración control versionada,19suites/108tests y ensayo real de respaldo/restauración. Servicios y despliegue pendientes |
 
 ## Verificación del primer incremento
 

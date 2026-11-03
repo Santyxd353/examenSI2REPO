@@ -12,6 +12,7 @@ import { Pool } from 'pg';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { currentTenant, TenantContext } from './context';
+import { applyControlMigrations } from './migrations';
 
 export const DEFAULT_TENANT_ID = '00000000-0000-4000-8000-000000000018';
 export const validTenantSlug = (slug: string) =>
@@ -67,6 +68,7 @@ export class TenantRegistry implements OnModuleDestroy {
       await connection.query('BEGIN');
       await connection.query('SELECT pg_advisory_xact_lock(20261020)');
       await connection.query(readFileSync(resolve('prisma/platform/schema.sql'), 'utf8'));
+      await applyControlMigrations(connection);
       const plans = [
         {
           code: 'piloto',
