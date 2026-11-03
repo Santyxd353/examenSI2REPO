@@ -55,7 +55,7 @@ export const businessModules: {
   {
     id: 'business',
     label: 'Mi negocio y plan',
-    permission: 'usuarios:gestionar',
+    permission: 'suscripcion:gestionar',
     description: 'Tienda y suscripción',
   },
 ];

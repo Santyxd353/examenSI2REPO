@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import {
   Home,
   Shirt,
@@ -21,6 +21,9 @@ import { businessModules, BusinessModule, TenantInfo } from './modules';
 import { BusinessOverview } from './BusinessOverview';
 import './workspace.css';
 
+const SubscriptionPanel = lazy(() =>
+  import('./Subscription').then((module) => ({ default: module.SubscriptionPanel })),
+);
 const icons = {
   home: Home,
   catalog: Shirt,
@@ -119,56 +122,9 @@ export function AdminWorkspace({
         ) : selected === 'orders' ? (
           <OrdersAdmin />
         ) : (
-          <section className="business-plan">
-            <span className="eyebrow">MI NEGOCIO Y SUSCRIPCIÓN</span>
-            <h1>{tenant?.name || 'Mi negocio'}</h1>
-            <p>
-              Identificador de tienda: <strong>{tenant?.slug}</strong>
-            </p>
-            <dl>
-              <dt>Plan</dt>
-              <dd>{tenant?.subscription.planName}</dd>
-              <dt>Estado</dt>
-              <dd>
-                {(
-                  {
-                    ACTIVE: 'Activo',
-                    TRIALING: 'Período de prueba',
-                    EXPIRED: 'Vencido',
-                    PAST_DUE: 'Pago pendiente',
-                    CANCELED: 'Cancelado',
-                    SUSPENDED: 'Suspendido',
-                  } as Record<string, string>
-                )[tenant?.subscription.status || ''] || tenant?.subscription.status}
-              </dd>
-              <dt>Vigencia</dt>
-              <dd>
-                {tenant?.subscription.periodEnd
-                  ? new Date(tenant.subscription.periodEnd).toLocaleDateString('es-BO')
-                  : 'Sin vencimiento registrado'}
-              </dd>
-            </dl>
-            <h2>Capacidad del plan</h2>
-            {tenant?.subscription.plan === 'piloto' && (
-              <p>El espacio inicial conserva sus datos sin cuotas comerciales.</p>
-            )}
-            <dl>
-              {Object.entries(tenant?.subscription.limits || {}).map(([key, value]) => (
-                <div key={key}>
-                  <dt>
-                    {(
-                      {
-                        locations: 'Ubicaciones',
-                        staff: 'Personal',
-                        products: 'Productos',
-                      } as Record<string, string>
-                    )[key] || key}
-                  </dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
+          <Suspense fallback={<p role="status">Consultando tu plan…</p>}>
+            <SubscriptionPanel />
+          </Suspense>
         )}
       </div>
     </div>

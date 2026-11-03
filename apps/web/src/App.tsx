@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, FormEvent } from 'react';
+import { useEffect, useState, useRef, FormEvent, lazy, Suspense } from 'react';
 import {
   ArrowUpRight,
   ArrowRight,
@@ -99,7 +99,19 @@ function GarmentArt({ color = '#d5c6b0' }: { color?: string }) {
     </svg>
   );
 }
+const PlatformProvision = lazy(() =>
+  import('./admin/PlatformProvision').then((module) => ({ default: module.PlatformProvision })),
+);
 export function App() {
+  return new URLSearchParams(window.location.search).get('plataforma') === '1' ? (
+    <Suspense fallback={<p role="status">Cargando acceso de plataforma…</p>}>
+      <PlatformProvision />
+    </Suspense>
+  ) : (
+    <StoreApp />
+  );
+}
+function StoreApp() {
   const accountEpoch = useRef(0),
     viewEpoch = useRef(0);
   const [page, setPage] = useState<'catalogo' | 'avatar' | 'admin' | 'commerce'>('catalogo'),

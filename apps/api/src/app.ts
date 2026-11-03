@@ -20,6 +20,14 @@ import { ProfileController } from './profile';
 import { OrdersController } from './orders';
 import { RealtimeGateway } from './realtime';
 import { ApiErrors } from './errors';
+import { EntitlementsController, EntitlementsService } from './billing/entitlements.service';
+import { QuotaService } from './billing/quota.service';
+import {
+  PlatformOperatorController,
+  PlatformOperatorService,
+  PlatformOperatorGuard,
+} from './tenancy/operator';
+import { PlanWriteInterceptor } from './billing/access.interceptor';
 import { storedPath, ensureStorage } from './storage';
 import { TenantRegistry, TenantController, PlatformController } from './tenancy/platform';
 import { runForTenant } from './tenancy/context';
@@ -47,6 +55,8 @@ class HealthController {
     OrdersController,
     TenantController,
     PlatformController,
+    EntitlementsController,
+    PlatformOperatorController,
   ],
   providers: [
     Db,
@@ -56,6 +66,11 @@ class HealthController {
     CommercialAnalytics,
     RealtimeGateway,
     TenantRegistry,
+    EntitlementsService,
+    QuotaService,
+    PlatformOperatorService,
+    PlatformOperatorGuard,
+    PlanWriteInterceptor,
   ],
 })
 class AppModule {}
@@ -81,6 +96,7 @@ export async function createApp() {
   }
   app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (/^\/api\/health\/?$/i.test(req.path)) return next();
+    if (/^\/api\/platform\/operator\/(login|tenants)\/?$/i.test(req.path)) return next();
     if (
       ['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
       /^\/api\/platform\/stores\/?$/i.test(req.path)
@@ -121,6 +137,16 @@ export async function createApp() {
   });
   app.enableCors({ origin: allowedOrigins, credentials: true });
   app.use(
+    '/api/platform/operator/login',
+    rateLimit({
+      windowMs: 15 * 60000,
+      limit: 10,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { message: 'Demasiados intentos. Espera antes de volver a iniciar sesión.' },
+    }),
+  );
+  app.use(
     '/api/auth',
     rateLimit({
       windowMs: 15 * 60 * 1000,
@@ -156,6 +182,7 @@ export async function createApp() {
     });
   }
   app.useGlobalFilters(new ApiErrors());
+  app.useGlobalInterceptors(app.get(PlanWriteInterceptor));
   app.setGlobalPrefix('api');
   await app.init();
   return app;

@@ -108,6 +108,8 @@ export const EntitlementsSchema = z
     currency: z.literal('BOB'),
     priceMinor: MinorSchema,
     billingMode: z.enum(['STRIPE_TEST', 'QR_SIMULATED']).nullable(),
+    legacyPilot: z.boolean().default(false),
+    paidThrough: TimestampSchema.nullable().optional(),
     limits: PlanLimitsSchema,
     features: PlanFeaturesSchema,
     usage: z.strictObject({

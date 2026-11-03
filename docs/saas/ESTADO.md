@@ -12,7 +12,7 @@ esta ampliación; las verificaciones históricas del20/10 se conservan abajo.
 | --- | --- | --- |
 | Alcance y prioridades | Definidos inicialmente | ALCANCE_Y_ENTREGA.md; decisiones del usuario sobre SaaS, offline web/Android, Stripe y QR simulado |
 | Base SaaS y aislamiento | Implementado en rama de trabajo | Contexto por petición, base y archivos por tienda, tokens vinculados, cookies y claves móviles separadas; pruebas HTTP, ORM, SQL, transacciones, eventos y purga |
-| Provisión y planes | Implementado en rama de trabajo | CLI de alta, migraciones por tienda, prueba de 14 días, expiración y límites transaccionales ante altas concurrentes; precios sin publicar |
+| Provisión y planes | A03 verificado localmente | Portal global y CLI, autenticación de control separada, planes149/299/599BOB, consumo/entitlements, cuotas transaccionales y períodos por aniversario. Checkout/proveedores pendientes A04 |
 | Administración por módulos | Implementado en web | Inicio, catálogo, inventario, ubicaciones, ventas, pedidos, equipo, reportes y negocio; prueba de administradora, vendedora y analista |
 | Identidad de tienda Android | Implementado en código | Selector en inicio de sesión, tokens y WebSocket por tienda; tipos y compatibilidad Expo aprobados. No se ha generado un APK nuevo |
 | Inventario y paquete offline | Pendiente | Requiere contexto de tienda y protocolo durable |
