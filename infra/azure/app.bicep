@@ -15,6 +15,14 @@ param databaseUrl string
 @secure()
 param jwtSecret string
 
+@secure()
+param offlineVaultSecret string
+
+@secure()
+param openaiApiKey string = ''
+
+param openaiReportsModel string = ''
+
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
   name: environmentName
 }
@@ -52,7 +60,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           server: registry.properties.loginServer
         }
       ]
-      secrets: [
+      secrets: concat([
         {
           name: 'database-url'
           value: databaseUrl
@@ -61,14 +69,23 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'jwt-secret'
           value: jwtSecret
         }
-      ]
+        {
+          name: 'offline-vault-secret'
+          value: offlineVaultSecret
+        }
+      ], empty(openaiApiKey) ? [] : [
+        {
+          name: 'openai-api-key'
+          value: openaiApiKey
+        }
+      ])
     }
     template: {
       containers: [
         {
           name: 'vestidor18'
           image: image
-          env: [
+          env: concat([
             { name: 'NODE_ENV', value: 'production' }
             { name: 'API_HOST', value: '0.0.0.0' }
             { name: 'API_PORT', value: '3018' }
@@ -83,7 +100,11 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'RUN_DB_SEED', value: 'true' }
             { name: 'DATABASE_URL', secretRef: 'database-url' }
             { name: 'JWT_SECRET', secretRef: 'jwt-secret' }
-          ]
+            { name: 'OFFLINE_VAULT_SECRET', secretRef: 'offline-vault-secret' }
+          ], empty(openaiApiKey) ? [] : [
+            { name: 'OPENAI_API_KEY', secretRef: 'openai-api-key' }
+            { name: 'OPENAI_REPORTS_MODEL', value: openaiReportsModel }
+          ])
           probes: [
             {
               type: 'Startup'

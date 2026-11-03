@@ -1,0 +1,6 @@
+{
+  "platforms": ["android"],
+  "android": {
+    "modules": ["bo.edu.grupo18.reportspeech.ReportSpeechModule"]
+  }
+}
