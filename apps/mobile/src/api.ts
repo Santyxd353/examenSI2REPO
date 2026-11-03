@@ -1,16 +1,17 @@
 import * as SecureStore from 'expo-secure-store';
 import { createOfflineIdentity, canRestoreOfflineIdentity, type OfflineIdentity } from './auth/offlineIdentity';
 import { createSessionScope, type ScopeKey } from './auth/sessionScope';
+import { secureStoreKey } from './auth/secureStoreKey';
 import { ApiProblem, type ApiProblemPayload } from './errors/ApiProblem';
 import { createApiHeaders } from './transport/headers';
 import type { Identity } from './types';
 
 type AuthReply = { accessToken: string; refreshToken: string; user: Identity; message?: string; code?: string };
 
-const TENANT_KEY = 'vestidor18.tenant';
-const OFFLINE_IDENTITY_KEY = (tenant: string) => `vestidor18.${tenant}.identity`;
+const TENANT_KEY = secureStoreKey('lumina', 'tenant');
+const OFFLINE_IDENTITY_KEY = (tenant: string) => secureStoreKey('lumina', 'identity', tenant);
 const sessionKey = (kind: 'access' | 'refresh', tenant: string) =>
-  tenant === 'lumina' ? `vestidor18.${kind}` : `vestidor18.${tenant}.${kind}`;
+  secureStoreKey('lumina', 'session', kind, tenant);
 const scope = createSessionScope('lumina');
 
 export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://172-191-104-91.sslip.io/api').replace(/\/$/, '');

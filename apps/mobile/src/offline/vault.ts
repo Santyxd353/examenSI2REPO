@@ -1,7 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
+import { secureStoreKey } from '../auth/secureStoreKey';
 import { offlineScopeKey, type OfflineScope } from './scope';
 
-const keyName = (scope: OfflineScope) => `lumina.offline.dek.${offlineScopeKey(scope)}`;
+const keyName = (scope: OfflineScope) => secureStoreKey('lumina', 'offline', 'dek', offlineScopeKey(scope));
 
 /** Guarda únicamente el DEK activo de un ámbito; la cola SQLite se conserva. */
 export async function storeActiveDek(scope: OfflineScope, dekBase64: string) {

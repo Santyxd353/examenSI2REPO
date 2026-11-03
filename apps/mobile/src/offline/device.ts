@@ -1,7 +1,8 @@
 import { randomUUID } from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
+import { secureStoreKey } from '../auth/secureStoreKey';
 
-const DEVICE_ID_KEY = 'lumina.offline.device-id';
+const DEVICE_ID_KEY = secureStoreKey('lumina', 'offline', 'device');
 
 export async function getOfflineDeviceId() {
   const existing = await SecureStore.getItemAsync(DEVICE_ID_KEY);
