@@ -26,3 +26,20 @@ Pop-Location
 ```
 
 Antes de entregar, registrar SHA-256, bytes, versionName, versionCode, applicationId, certificado y URL API. La firma oficial requiere el certificado autorizado del proyecto.
+
+## Verificar el artefacto
+
+La verificación no publica ni firma nada; rechaza una URL sin HTTPS. Para una
+APK QA firmada con depuración se debe declarar explícitamente el límite:
+
+```powershell
+./scripts/verify-android-artifact.ps1 `
+  -ApkPath 'apps/mobile/android/app/build/outputs/apk/release/app-release.apk' `
+  -ApiUrl 'https://api-qa.example/api' `
+  -ExpectedPackage 'bo.edu.grupo18.vestidorar.qa' `
+  -AllowDebugCertificate
+```
+
+Para producción, omite `-AllowDebugCertificate`, usa el paquete
+`bo.edu.grupo18.vestidorar`, un `versionCode` superior al instalado y una firma
+propia cuya clave privada no se guarda en este repositorio.
