@@ -132,4 +132,31 @@ export const SubscriptionCheckoutSchema = z.strictObject({
   planCode: PlanCodeSchema,
   provider: z.enum(['STRIPE_TEST', 'QR_SIMULATED']),
   operationId: UuidSchema,
+  acceptCycleTerms: z.literal(true),
 });
+export const SubscriptionCheckoutViewSchema = z.strictObject({
+  schemaVersion: z.literal('1.0'),
+  id: UuidSchema,
+  operationId: UuidSchema,
+  provider: z.enum(['STRIPE_TEST', 'QR_SIMULATED']),
+  status: z.enum(['INITIALIZING', 'PENDING', 'APPLIED', 'STALE', 'EXPIRED']),
+  planCode: PlanCodeSchema,
+  amountMinor: MinorSchema,
+  currency: z.literal('BOB'),
+  cycleAction: z.enum(['ACTIVATE', 'RENEW', 'CHANGE']),
+  expiresAt: TimestampSchema,
+  checkoutUrl: z.string().url().nullable(),
+  problemCode: z.string().nullable(),
+  simulated: z.boolean(),
+  qrPayload: z.string().optional(),
+  qrDataUrl: z.string().optional(),
+  result: z
+    .strictObject({
+      periodFrom: TimestampSchema,
+      paidThrough: TimestampSchema,
+      subscriptionVersion: z.number().int().positive(),
+      confirmedAt: TimestampSchema,
+    })
+    .nullable(),
+});
+export type SubscriptionCheckoutView = z.infer<typeof SubscriptionCheckoutViewSchema>;

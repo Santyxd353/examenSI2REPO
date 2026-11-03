@@ -213,6 +213,13 @@ function StoreApp() {
     const t = setInterval(() => void reload().catch(() => {}), 4000);
     return () => clearInterval(t);
   }, [user]);
+  useEffect(() => {
+    if (
+      user?.permissions?.includes('suscripcion:gestionar') &&
+      new URLSearchParams(window.location.search).has('checkout')
+    )
+      setPage('admin');
+  }, [user?.id]);
   useEffect(
     () => () => {
       if (bodyUrl.startsWith('blob:')) URL.revokeObjectURL(bodyUrl);

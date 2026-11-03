@@ -1,6 +1,6 @@
 # Estado de Lúmina SaaS
 
-Actualización de desarrollo: 02/11/2026. Entrega prevista: 07/11/2026.
+Actualización de desarrollo: 03/11/2026. Entrega prevista: 07/11/2026.
 
 El documento ICONIX v2.0 es la base del desarrollo. El equipo A inició ejecución
 en desarrollo/servidor-web con worktree aislado. A00 volvió a verificar100pruebas,
@@ -19,7 +19,7 @@ esta ampliación; las verificaciones históricas del20/10 se conservan abajo.
 | Reportes y dashboards offline | Pendiente | Requiere conjunto local y definición común de reportes |
 | IA por texto/voz | Pendiente | Proveedor y credenciales por configurar |
 | ML evaluado | Pendiente | Demostración con datos sintéticos identificados confirmada; entrenamiento y evaluación temporal definidos, sin resultados fabricados |
-| Suscripciones Stripe/QR | Pendiente | Esencial Bs149, Profesional Bs299, Negocio Bs599 por tienda/mes; Stripe TEST y QR_SIMULATED para entrega académica. Configuración y flujos por implementar |
+| Suscripciones Stripe/QR | A04 verificado localmente | QR real de simulación, renovación/cambio/cancelación idempotentes y UI móvil. Stripe probado con eventos firmados del SDK; sesión externa pendiente de cuenta TEST configurada.135pruebas generales aprobadas. No desplegado |
 | Documento ICONIX nuevo | Especificación objetivo en Word y JSON | `docs/Lumina_SaaS_ICONIX_Grupo18.docx` y `iconix/especificacion.json`: 54 requisitos, 27 casos, 111 diagramas, 59 tablas; dos carátulas, índice navegable, recomendaciones, bibliografía y QR. No acredita implementación de los incrementos pendientes |
 | Contratos compartidos A01/G0a | Verificado localmente | Esquemas/DTO/planes, hash canónico, dinero exacto y fixtures.11pruebas de contrato; paridad API/Vite/WebCrypto. Motor reporting y validación Android pendientes |
 | Esquema A02 | Migrado y verificado solo en local | Seis tablas y ampliaciones ICONIX, Prisma regenerado, migración control versionada,19suites/108tests y ensayo real de respaldo/restauración. Servicios y despliegue pendientes |

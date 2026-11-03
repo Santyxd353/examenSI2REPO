@@ -22,6 +22,10 @@ import { RealtimeGateway } from './realtime';
 import { ApiErrors } from './errors';
 import { EntitlementsController, EntitlementsService } from './billing/entitlements.service';
 import { QuotaService } from './billing/quota.service';
+import { SubscriptionService } from './billing/subscription.service';
+import { SubscriptionController } from './billing/subscription.controller';
+import { StripeAdapter } from './billing/stripe.adapter';
+import { BillingWebhookController } from './billing/webhook.controller';
 import {
   PlatformOperatorController,
   PlatformOperatorService,
@@ -56,6 +60,8 @@ class HealthController {
     TenantController,
     PlatformController,
     EntitlementsController,
+    SubscriptionController,
+    BillingWebhookController,
     PlatformOperatorController,
   ],
   providers: [
@@ -68,6 +74,8 @@ class HealthController {
     TenantRegistry,
     EntitlementsService,
     QuotaService,
+    SubscriptionService,
+    StripeAdapter,
     PlatformOperatorService,
     PlatformOperatorGuard,
     PlanWriteInterceptor,
@@ -77,7 +85,7 @@ class AppModule {}
 export async function createApp() {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 48)
     throw new Error('Configura JWT_SECRET con al menos 48 caracteres aleatorios.');
-  const app = await NestFactory.create(AppModule, { logger: false });
+  const app = await NestFactory.create(AppModule, { logger: false, rawBody: true });
   const registry = app.get(TenantRegistry);
   await registry.initialize();
   if (process.env.TRUST_PROXY === '1') app.getHttpAdapter().getInstance().set('trust proxy', 1);
@@ -96,6 +104,7 @@ export async function createApp() {
   }
   app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (/^\/api\/health\/?$/i.test(req.path)) return next();
+    if (req.method === 'POST' && /^\/api\/billing\/stripe\/webhook\/?$/i.test(req.path)) return next();
     if (/^\/api\/platform\/operator\/(login|tenants)\/?$/i.test(req.path)) return next();
     if (
       ['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&

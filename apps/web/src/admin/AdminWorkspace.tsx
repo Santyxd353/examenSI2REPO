@@ -42,7 +42,12 @@ export function AdminWorkspace({
   permissions,
   onCatalogChanged,
 }: Parameters<typeof Admin>[0]) {
-  const [selected, setSelected] = useState<BusinessModule>('home');
+  const [selected, setSelected] = useState<BusinessModule>(() =>
+    permissions.includes('suscripcion:gestionar') &&
+    new URLSearchParams(window.location.search).has('checkout')
+      ? 'business'
+      : 'home',
+  );
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
   const [error, setError] = useState('');
   const [online, setOnline] = useState(navigator.onLine);

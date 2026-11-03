@@ -6,7 +6,7 @@ import { TenantRegistry } from '../tenancy/platform';
 
 // These handlers take their own short write lease, or are authorized read operations.
 const independentlyGated =
-  /^\/api\/(?:analytics\/query|reports\/(?:execute|datasets|interpret|transcribe)|offline\/(?:sync|bootstrap)|tenant\/subscription\/(?:checkout|cancel-renewal|qr\/[a-f0-9-]+\/confirm))\/?$/i;
+  /^\/api\/(?:analytics\/query|reports\/(?:execute|datasets|interpret|transcribe)|offline\/(?:sync|bootstrap)|tenant\/subscription\/(?:checkout|cancel-renewal|qr\/[^/]+\/confirm))\/?$/i;
 @Injectable()
 export class PlanWriteInterceptor implements NestInterceptor {
   constructor(

@@ -22,6 +22,16 @@ async function main() {
   process.env.PLATFORM_OPERATOR_USERNAME = 'operadora-ui-qa';
   process.env.PLATFORM_OPERATOR_PASSWORD_HASH = await hash(operatorPassword, 10);
   process.env.PLATFORM_OPERATOR_JWT_SECRET = randomBytes(48).toString('hex');
+  const ApiErrors = require('../dist/api/errors').ApiErrors;
+  const originalCatch = ApiErrors.prototype.catch;
+  ApiErrors.prototype.catch = function (error, host) {
+    if (error?.code)
+      console.log(
+        'QA database diagnostic',
+        JSON.stringify({ code: error.code, model: error.meta?.modelName }),
+      );
+    return originalCatch.call(this, error, host);
+  };
   const app = await require('../dist/api/app').createApp();
   await app.listen(3022, '127.0.0.1');
   const registry = app.get(require('../dist/api/tenancy/platform').TenantRegistry);
@@ -47,6 +57,14 @@ async function main() {
   });
   const browser = await chromium.launch({ headless: true });
   const errors = [];
+  const trace = (page) =>
+    page.on('response', async (response) => {
+      const path = new URL(response.url()).pathname;
+      if (path.startsWith('/api/') && response.status() >= 400) {
+        const body = await response.json().catch(() => ({}));
+        console.log(`HTTP ${response.status()} ${path}: ${body.message || ''}`);
+      }
+    });
   mkdirSync('.local', { recursive: true });
   let storeDatabase;
   try {
@@ -96,6 +114,7 @@ async function main() {
     await operator.context().setOffline(false);
 
     const business = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    trace(business);
     business.on('pageerror', (e) => errors.push(e.message));
     await business.goto(origin);
     await business.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
@@ -125,6 +144,63 @@ async function main() {
     );
     await business.screenshot({ path: '.local/billing-business-mobile.png', fullPage: true });
     await business.waitForLoadState('networkidle');
+    const subscriber = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    trace(subscriber);
+    subscriber.on('pageerror', (e) => errors.push(e.message));
+    await subscriber.goto(origin + '/?tienda=' + slug);
+    await subscriber.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
+    await subscriber.getByLabel('Correo electrónico', { exact: true }).fill(`${slug}@ui-qa.test`);
+    await subscriber.getByLabel('Contraseña', { exact: true }).fill('PropietariaUI2026!');
+    await subscriber
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Iniciar sesión', exact: true })
+      .click();
+    await subscriber.getByRole('button', { name: 'Administración', exact: true }).click();
+    await subscriber
+      .locator('.business-sidebar')
+      .getByRole('button', { name: 'Mi negocio y plan', exact: true })
+      .click();
+    await subscriber.getByRole('button', { name: 'Elegir Profesional', exact: true }).click();
+    await subscriber.getByLabel('Acepto el ciclo completo', { exact: false }).check();
+    await subscriber.getByRole('button', { name: 'Generar QR simulado', exact: true }).click();
+    await expect(subscriber.getByAltText('QR de simulación académica')).toBeVisible();
+    await subscriber.getByRole('button', { name: 'Confirmar pago simulado', exact: true }).click();
+    await expect(
+      subscriber.getByRole('status').filter({ hasText: 'Suscripción confirmada' }),
+    ).toBeVisible();
+    await subscriber
+      .getByRole('button', { name: 'Cancelar renovación al vencer', exact: true })
+      .click();
+    await expect(
+      subscriber.getByText('La renovación está cancelada.', { exact: false }),
+    ).toBeVisible();
+    await subscriber.getByRole('button', { name: 'Elegir Profesional', exact: true }).click();
+    await subscriber.getByLabel('Acepto el ciclo completo', { exact: false }).check();
+    await subscriber.getByRole('button', { name: 'Generar QR simulado', exact: true }).click();
+    await subscriber.getByRole('button', { name: 'Confirmar pago simulado', exact: true }).click();
+    await expect(
+      subscriber.getByRole('button', { name: 'Cancelar renovación al vencer', exact: true }),
+    ).toBeVisible();
+    await subscriber
+      .getByRole('button', { name: 'Cancelar renovación al vencer', exact: true })
+      .click();
+    await expect(
+      subscriber.getByText('La renovación está cancelada.', { exact: false }),
+    ).toBeVisible();
+    expect(
+      await subscriber.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+    ).toBe(true);
+    await subscriber.screenshot({ path: '.local/billing-checkout-mobile.png', fullPage: true });
+    await subscriber.waitForLoadState('networkidle');
+    const checkoutId = (await subscriber.locator('.billing-reference').innerText())
+      .replace('Referencia: ', '')
+      .trim();
+    await subscriber.goto(origin + '/?tienda=' + slug + '&checkout=' + checkoutId);
+    await expect(
+      subscriber.getByRole('heading', { name: 'Mi negocio y plan', exact: true }),
+    ).toBeVisible();
+    await expect(subscriber.getByText('Confirmado', { exact: true })).toBeVisible();
+    await subscriber.waitForLoadState('networkidle');
     expect(errors).toEqual([]);
     console.log(
       'PASS: portal global, provisión real, login separado, planes/consumo y ancho móvil en Chromium.',
@@ -158,6 +234,6 @@ async function main() {
   }
 }
 main().catch((error) => {
-  console.error(error.message);
+  console.error(error.stack || error.message);
   process.exitCode = 1;
 });

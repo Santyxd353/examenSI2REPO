@@ -1,6 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RefreshCw, Check, CalendarDays, Building2 } from 'lucide-react';
-import { EntitlementsSchema, PLAN_CATALOG, type Entitlements } from '@lumina/contracts';
+import {
+  EntitlementsSchema,
+  PLAN_CATALOG,
+  SubscriptionCheckoutViewSchema,
+  type Entitlements,
+  type PlanCode,
+  type SubscriptionCheckoutView,
+} from '@lumina/contracts';
 import { api } from '../api';
 import './subscription.css';
 const money = (minor: number) =>
@@ -48,6 +55,15 @@ function Usage({
   );
 }
 export function SubscriptionPanel() {
+  const [chosen, setChosen] = useState<PlanCode | null>(null),
+    [accepted, setAccepted] = useState(false),
+    [checkout, setCheckout] = useState<SubscriptionCheckoutView | null>(null),
+    [paying, setPaying] = useState(false),
+    [notice, setNotice] = useState('');
+  const intentKey = useRef<{ planCode: PlanCode; provider: string; operationId: string } | null>(
+    null,
+  );
+  const active = useRef(true);
   const [data, setData] = useState<Entitlements | null>(null),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(false);
@@ -55,12 +71,22 @@ export function SubscriptionPanel() {
     setLoading(true);
     setError('');
     try {
-      const checked = EntitlementsSchema.safeParse(await api('/tenant/subscription'));
+      const [subscription, recent] = await Promise.all([
+        api('/tenant/subscription'),
+        api('/tenant/subscription/checkouts'),
+      ]);
+      const checked = EntitlementsSchema.safeParse(subscription);
       if (!checked.success)
         throw new Error(
           'No se pudo interpretar el estado del plan. Actualiza e intenta nuevamente.',
         );
+      if (!active.current) return;
       setData(checked.data);
+      const returnedId = new URLSearchParams(window.location.search).get('checkout');
+      const candidate =
+        recent.items.find((item: SubscriptionCheckoutView) => item.id === returnedId) ||
+        recent.items[0];
+      if (candidate) setCheckout(SubscriptionCheckoutViewSchema.parse(candidate));
     } catch (failure) {
       setError(
         failure instanceof TypeError
@@ -72,8 +98,96 @@ export function SubscriptionPanel() {
     }
   }
   useEffect(() => {
+    active.current = true;
     void load();
+    return () => {
+      active.current = false;
+    };
   }, []);
+  async function pay(provider: 'STRIPE_TEST' | 'QR_SIMULATED', retry = false) {
+    const planCode = retry ? checkout?.planCode : chosen;
+    if (!planCode || (!accepted && !retry)) return;
+    if (retry && checkout)
+      intentKey.current = { planCode, provider, operationId: checkout.operationId };
+    if (
+      !intentKey.current ||
+      intentKey.current.planCode !== planCode ||
+      intentKey.current.provider !== provider
+    )
+      intentKey.current = { planCode, provider, operationId: crypto.randomUUID() };
+    setPaying(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = SubscriptionCheckoutViewSchema.parse(
+        await api('/tenant/subscription/checkout', {
+          method: 'POST',
+          body: JSON.stringify({ ...intentKey.current, acceptCycleTerms: true }),
+        }),
+      );
+      if (active.current) {
+        setCheckout(result);
+        setChosen(null);
+        setAccepted(false);
+      }
+    } catch (failure) {
+      if (active.current) {
+        setError(
+          failure instanceof TypeError
+            ? 'Se perdió la conexión. Actualiza para recuperar la intención antes de reintentar.'
+            : (failure as Error).message,
+        );
+      }
+    } finally {
+      if (active.current) setPaying(false);
+    }
+  }
+  async function confirmQr() {
+    if (!checkout) return;
+    setPaying(true);
+    setError('');
+    try {
+      const result = SubscriptionCheckoutViewSchema.parse(
+        await api(`/tenant/subscription/qr/${checkout.id}/confirm`, {
+          method: 'POST',
+          body: JSON.stringify({ simulatedPayment: true }),
+        }),
+      );
+      if (active.current) {
+        setCheckout(result);
+        setNotice('Suscripción confirmada mediante simulación académica.');
+        await load();
+      }
+    } catch (failure) {
+      if (active.current)
+        setError(
+          failure instanceof TypeError
+            ? 'Se perdió la respuesta. Actualiza el estado; la confirmación no se repetirá.'
+            : (failure as Error).message,
+        );
+    } finally {
+      if (active.current) setPaying(false);
+    }
+  }
+  const cancelKey = useRef<string | null>(null);
+  async function cancel() {
+    cancelKey.current ??= crypto.randomUUID();
+    setPaying(true);
+    setError('');
+    try {
+      await api('/tenant/subscription/cancel-renewal', {
+        method: 'POST',
+        body: JSON.stringify({ operationId: cancelKey.current }),
+      });
+      cancelKey.current = null;
+      await load();
+    } catch (failure) {
+      if (active.current) setError((failure as Error).message);
+    } finally {
+      if (active.current) setPaying(false);
+    }
+  }
+  const pending = checkout && ['INITIALIZING', 'PENDING'].includes(checkout.status);
   return (
     <section className="subscription-panel">
       <div className="saas-heading">
@@ -92,6 +206,90 @@ export function SubscriptionPanel() {
         </p>
       )}
       {loading && !data && <p role="status">Consultando el plan…</p>}
+      {notice && (
+        <p role="status" className="saas-alert">
+          {notice}
+        </p>
+      )}
+      {checkout && (
+        <section
+          className="saas-surface subscription-payment"
+          aria-label="Estado de suscripción solicitada"
+        >
+          <h2>
+            {checkout.simulated
+              ? 'QR simulado · demostración académica'
+              : 'Stripe TEST · demostración académica'}
+          </h2>
+          <p>
+            {PLAN_CATALOG[checkout.planCode].name} · <strong>{money(checkout.amountMinor)}</strong>
+          </p>
+          <p className="billing-reference">Referencia: {checkout.id}</p>
+          <p>
+            Estado:{' '}
+            <strong>
+              {
+                {
+                  PENDING: 'Pendiente de confirmación',
+                  INITIALIZING: 'Preparación pendiente',
+                  APPLIED: 'Confirmado',
+                  STALE: 'Requiere revisión; no aplicado',
+                  EXPIRED: 'Intención vencida',
+                }[checkout.status]
+              }
+            </strong>
+          </p>
+          {pending && (
+            <p>
+              Vigente hasta {date(checkout.expiresAt)}. Volver a esta página no confirma un pago.
+            </p>
+          )}
+          {checkout.status === 'PENDING' && checkout.simulated && (
+            <>
+              <p>
+                Este QR no realiza transferencias bancarias. La confirmación es una simulación
+                autorizada para el proyecto.
+              </p>
+              <img
+                src={checkout.qrDataUrl}
+                width="280"
+                height="280"
+                alt="QR de simulación académica"
+              />
+              <button className="saas-primary" disabled={paying} onClick={() => void confirmQr()}>
+                Confirmar pago simulado
+              </button>
+            </>
+          )}
+          {checkout.status === 'PENDING' && checkout.checkoutUrl && (
+            <a
+              className="saas-primary"
+              href={checkout.checkoutUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Abrir Stripe TEST
+            </a>
+          )}
+          {checkout.status === 'INITIALIZING' && (
+            <button
+              className="saas-secondary"
+              disabled={paying}
+              onClick={() => void pay('STRIPE_TEST', true)}
+            >
+              Reintentar preparación Stripe
+            </button>
+          )}
+          {checkout.result && <p>Acceso pagado hasta {date(checkout.result.paidThrough)}.</p>}
+          <button
+            className="saas-secondary"
+            disabled={loading || paying}
+            onClick={() => void load()}
+          >
+            Consultar estado del pago
+          </button>
+        </section>
+      )}
       {data && (
         <>
           <div className="subscription-current saas-surface">
@@ -132,6 +330,15 @@ export function SubscriptionPanel() {
                   La renovación está cancelada. El acceso se mantiene hasta{' '}
                   {date(data.paidThrough || data.periodTo)}.
                 </p>
+              )}
+              {!data.cancelAtPeriodEnd && !data.legacyPilot && (
+                <button
+                  className="saas-secondary"
+                  disabled={paying || loading}
+                  onClick={() => void cancel()}
+                >
+                  Cancelar renovación al vencer
+                </button>
               )}
             </div>
           </div>
@@ -176,6 +383,45 @@ export function SubscriptionPanel() {
         <h2>Planes disponibles</h2>
         <span>Precios en bolivianos por tienda y por mes.</span>
       </div>
+      {chosen && !pending && (
+        <section className="saas-surface subscription-payment" aria-label="Condiciones del ciclo">
+          <h2>
+            {PLAN_CATALOG[chosen].name} · {money(PLAN_CATALOG[chosen].priceMinor)}
+          </h2>
+          <p>
+            La activación o el cambio de plan inicia un mes completo al confirmar, sin prorrateo ni
+            devolución automática del período anterior. Renovar el mismo plan antes del vencimiento
+            agrega un mes al acceso pagado y conserva las cuotas del mes actual.
+          </p>
+          <p>
+            Esta entrega usa pagos de prueba y renovación manual. No se realizan cargos automáticos.
+          </p>
+          <label className="billing-consent">
+            <input
+              type="checkbox"
+              checked={accepted}
+              onChange={(event) => setAccepted(event.target.checked)}
+            />
+            Acepto el ciclo completo y las condiciones indicadas.
+          </label>
+          <div className="billing-actions">
+            <button
+              className="saas-primary"
+              disabled={!accepted || paying}
+              onClick={() => void pay('QR_SIMULATED')}
+            >
+              Generar QR simulado
+            </button>
+            <button
+              className="saas-secondary"
+              disabled={!accepted || paying}
+              onClick={() => void pay('STRIPE_TEST')}
+            >
+              Preparar Stripe TEST
+            </button>
+          </div>
+        </section>
+      )}
       <div className="subscription-plans">
         {Object.values(PLAN_CATALOG).map((plan) => (
           <article
@@ -216,6 +462,18 @@ export function SubscriptionPanel() {
                 </li>
               ))}
             </ul>
+            <button
+              className="saas-secondary"
+              disabled={!data || loading || paying || Boolean(pending)}
+              onClick={() => {
+                setChosen(plan.code);
+                setAccepted(false);
+                intentKey.current = null;
+                setError('');
+              }}
+            >
+              Elegir {plan.name}
+            </button>
           </article>
         ))}
       </div>

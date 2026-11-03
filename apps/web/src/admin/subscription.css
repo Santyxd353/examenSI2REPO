@@ -416,3 +416,40 @@
     animation: none;
   }
 }
+.subscription-payment {
+  padding: 24px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: flex-start;
+}
+.subscription-payment p {
+  margin: 0;
+  line-height: 1.6;
+}
+.subscription-payment img {
+  max-width: 100%;
+  height: auto;
+}
+.billing-reference {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.billing-consent {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 44px;
+  line-height: 1.5;
+}
+.billing-consent input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.billing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
