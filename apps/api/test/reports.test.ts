@@ -229,6 +229,43 @@ test('cliente sin permiso no puede consultar reportes ni ejecutar analítica', a
         .send({ from: '2026-01-01', to: '2026-02-28', horizonWeeks: 2 })
     ).status,
   ).toBe(403);
+  expect(
+    (
+      await request(app.getHttpServer())
+        .post('/api/analytics/agent/query')
+        .auth(clientToken, { type: 'bearer' })
+        .send({
+          from: '2026-01-01',
+          to: '2026-02-28',
+          question: '¿Qué producto vendió más?',
+        })
+    ).status,
+  ).toBe(403);
+});
+
+test('el agente exige configuración privada de servidor antes de llamar a un proveedor externo', async () => {
+  const previousKey = process.env.OPENAI_API_KEY;
+  const previousModel = process.env.OPENAI_REPORTS_MODEL;
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_REPORTS_MODEL;
+  try {
+    const response = await request(app.getHttpServer())
+      .post('/api/analytics/agent/query')
+      .auth(adminToken, { type: 'bearer' })
+      .send({
+        from: '2026-01-01',
+        to: '2026-02-28',
+        location: locationId,
+        question: '¿Qué producto vendió más?',
+      });
+    expect(response.status).toBe(503);
+    expect(response.body.message).toContain('OPENAI_API_KEY');
+  } finally {
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
+    if (previousModel === undefined) delete process.env.OPENAI_REPORTS_MODEL;
+    else process.env.OPENAI_REPORTS_MODEL = previousModel;
+  }
 });
 
 test('detecta una venta semanal extrema usando semanas anteriores como referencia', async () => {

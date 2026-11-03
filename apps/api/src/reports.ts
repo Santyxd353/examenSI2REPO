@@ -8,6 +8,7 @@ import {
   Post,
   Query,
   Req,
+  ServiceUnavailableException,
   UseGuards,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -25,6 +26,9 @@ const filterSchema = z
     location: z.string().uuid().optional(),
   })
   .refine((value) => value.from <= value.to, 'La fecha inicial debe ser anterior a la final.');
+const agentQuerySchema = filterSchema.extend({
+  question: z.string().trim().min(4).max(500),
+});
 
 type Filters = z.infer<typeof filterSchema>;
 type SaleRow = {
@@ -33,6 +37,10 @@ type SaleRow = {
   ubicacion_id: string;
   canal: string;
   cantidad: number;
+};
+type OpenAIResponse = {
+  output?: { type?: string; call_id?: string; name?: string; arguments?: string }[];
+  output_text?: string;
 };
 
 const number = (value: unknown) => Number(value ?? 0);
@@ -498,6 +506,121 @@ export class CommercialAnalytics {
         'Puedo responder sobre ventas, pedidos, productos, inventario, existencias y sucursales. Reformula la pregunta con uno de esos temas.',
     };
   }
+
+  /**
+   * El modelo nunca recibe acceso a SQL ni a Prisma. Solo puede pedir este resumen,
+   * que vuelve a aplicar permisos y alcance de ubicación del usuario autenticado.
+   */
+  async agentQuery(user: Identity, raw: unknown) {
+    requirePermission(user, 'reportes:consultar');
+    const input = agentQuerySchema.parse(raw);
+    const apiKey = process.env.OPENAI_API_KEY;
+    const model = process.env.OPENAI_REPORTS_MODEL;
+    if (!apiKey || !model)
+      throw new ServiceUnavailableException(
+        'El agente de reportes aún no está configurado. Define OPENAI_API_KEY y OPENAI_REPORTS_MODEL únicamente en el servidor.',
+      );
+
+    const tool = {
+      type: 'function',
+      name: 'consultar_resumen_comercial',
+      description:
+        'Consulta ventas confirmadas, productos, sucursales, vendedores e inventario. Es de solo lectura y siempre respeta los permisos del usuario.',
+      parameters: {
+        type: 'object',
+        properties: {
+          from: { type: 'string', description: 'Fecha inicial ISO YYYY-MM-DD.' },
+          to: { type: 'string', description: 'Fecha final ISO YYYY-MM-DD.' },
+          location: { type: 'string', description: 'UUID de sucursal opcional.' },
+        },
+        required: ['from', 'to'],
+        additionalProperties: false,
+      },
+    };
+    const instructions = [
+      'Eres el asistente de reportes de Lúmina.',
+      'Responde en español y únicamente con hechos obtenidos mediante la herramienta.',
+      'No inventes cifras, no solicites ni reveles contraseñas, claves, tokens o datos de otras tiendas.',
+      'No puedes modificar pedidos, stock, usuarios ni configuraciones.',
+      'Si faltan datos, indícalo y propone un filtro o período concreto.',
+      `La pregunta del usuario debe analizarse dentro del período solicitado: ${input.from} a ${input.to}.`,
+    ].join(' ');
+    const request = async (body: unknown) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25000);
+      try {
+        const response = await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          const detail = await response.text().catch(() => '');
+          throw new ServiceUnavailableException(
+            `El proveedor de IA no pudo atender la consulta (${response.status}).${detail ? ' Revisa la configuración del servidor.' : ''}`,
+          );
+        }
+        return (await response.json()) as OpenAIResponse;
+      } catch (error) {
+        if (error instanceof ServiceUnavailableException) throw error;
+        throw new ServiceUnavailableException('No fue posible conectar con el proveedor de IA.');
+      } finally {
+        clearTimeout(timeout);
+      }
+    };
+
+    let conversation: unknown[] = [{ role: 'user', content: input.question }];
+    for (let round = 0; round < 3; round++) {
+      const response = await request({
+        model,
+        instructions,
+        input: conversation,
+        tools: [tool],
+        tool_choice: 'auto',
+        parallel_tool_calls: false,
+        max_output_tokens: 450,
+      });
+      const calls = (response.output || []).filter(
+        (item) => item.type === 'function_call' && item.name === tool.name && item.call_id,
+      );
+      if (!calls.length) {
+        const answer = response.output_text?.trim();
+        if (!answer)
+          throw new ServiceUnavailableException('El agente no devolvió una respuesta válida. Inténtalo de nuevo.');
+        return { provider: 'openai', answer };
+      }
+      const outputs = await Promise.all(
+        calls.map(async (call) => {
+          let args: unknown;
+          try {
+            args = JSON.parse(call.arguments || '{}');
+          } catch {
+            args = {};
+          }
+          const requested = filterSchema.safeParse(args);
+          const filters = requested.success
+            ? requested.data
+            : { from: input.from, to: input.to, location: input.location };
+          const report = await this.report(user, filters);
+          return {
+            type: 'function_call_output',
+            call_id: call.call_id,
+            output: JSON.stringify({
+              period: report.filters,
+              kpis: report.kpis,
+              summary: report.summary,
+              products: report.products.slice(0, 10),
+              locations: report.locations,
+              inventory: report.inventory,
+            }),
+          };
+        }),
+      );
+      conversation = [...conversation, ...(response.output || []), ...outputs];
+    }
+    throw new ServiceUnavailableException('El agente excedió el límite de consultas seguras. Reformula la pregunta.');
+  }
 }
 
 @Controller('reports')
@@ -532,6 +655,11 @@ export class AnalyticsController {
   @Post('query')
   query(@Req() req: AuthRequest, @Body() body: unknown) {
     return this.analytics.query(req.user, body);
+  }
+
+  @Post('agent/query')
+  agentQuery(@Req() req: AuthRequest, @Body() body: unknown) {
+    return this.analytics.agentQuery(req.user, body);
   }
 
   @Post('ml/demo/train')

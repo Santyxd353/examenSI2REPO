@@ -276,7 +276,7 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
                 <Text style={styles.insightText}>{report.summary}</Text>
               </View>
             </View>
-            <ReportAssistant />
+            <ReportAssistant from={isoDaysAgo(days)} to={today()} />
 
             <View style={styles.panel}>
               <View style={styles.panelHeader}>
