@@ -32,3 +32,5 @@ Este incremento adelanta CU04/CU05 y el núcleo de A14 para B13 según la secuen
 El aviso de Vite sobre el paquete principal mayor a 800 kB sigue pendiente para la división de la aplicación y shell offline de A09; los módulos nuevos sí tienen chunks propios. Stripe externo, offline, IA y ML siguen con los pendientes ya registrados en ESTADO.md.
 
 Interfaces y decisiones de compatibilidad: [A14-handoff.md](A14-handoff.md).
+
+Seguimiento de provisión: una tienda nueva asigna su sucursal principal a la propietaria desde el alta. Caso RED (responsable undefined) y GREEN: 15 pruebas de provisión/equipo aprobadas; logs a14-provision-red.log y a14-provision-green.log. La regla de no inferir responsables se aplica únicamente a datos históricos.

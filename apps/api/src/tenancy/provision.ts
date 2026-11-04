@@ -79,7 +79,7 @@ export async function provisionTenant(raw: unknown, registry: TenantRegistry) {
     );
     await seedTenantRoles(client);
     const adminRole = await client.rol.findUniqueOrThrow({ where: { nombre: 'Administrador' } });
-    await client.usuario.create({
+    const owner = await client.usuario.create({
       data: {
         nombres: 'Administradora',
         apellidos: input.name,
@@ -92,7 +92,13 @@ export async function provisionTenant(raw: unknown, registry: TenantRegistry) {
       },
     });
     await client.ubicacion.create({
-      data: { nombre: 'Sucursal principal', tipo: 'TIENDA', activa: true },
+      data: {
+        nombre: 'Sucursal principal',
+        tipo: 'TIENDA',
+        activa: true,
+        responsable_id: owner.id,
+        usuario_ubicacion: { create: { usuario_id: owner.id } },
+      },
     });
     await client.plantilla_corporal.create({
       data: {
