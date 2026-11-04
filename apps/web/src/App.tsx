@@ -114,6 +114,8 @@ export function App() {
   );
 }
 function StoreApp() {
+  // Keep the same intent after a lost response; only hashes are retained, never photo bytes.
+  const uploadIdentity = useRef<{ fingerprint: string; id: string } | null>(null);
   const accountEpoch = useRef(0),
     viewEpoch = useRef(0);
   const [page, setPage] = useState<'catalogo' | 'avatar' | 'admin' | 'commerce'>('catalogo'),
@@ -376,9 +378,33 @@ function StoreApp() {
     setError('');
     try {
       const f = new FormData(form);
-      f.set('idempotencia', crypto.randomUUID());
+      const photos = await Promise.all(
+        ['frente', 'perfil', 'espalda'].map(async (view) => {
+          const file = f.get(view) as File;
+          const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+          return [
+            view,
+            file.type,
+            Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join(''),
+          ];
+        }),
+      );
+      if (epoch !== accountEpoch.current) return;
+      const fingerprint = JSON.stringify([
+        tenantSlug(),
+        user.id,
+        epoch,
+        f.get('altura'),
+        f.get('adulto'),
+        f.get('consentimiento'),
+        photos,
+      ]);
+      if (uploadIdentity.current?.fingerprint !== fingerprint)
+        uploadIdentity.current = { fingerprint, id: crypto.randomUUID() };
+      f.set('idempotencia', uploadIdentity.current.id);
       await api('/avatars', { method: 'POST', body: f });
       if (epoch !== accountEpoch.current) return;
+      uploadIdentity.current = null;
       setNotice('Fotos recibidas. Puedes consultar el progreso aquí.');
       form.reset();
       await reload();

@@ -3,6 +3,7 @@ import { defer, firstValueFrom } from 'rxjs';
 import { AuthRequest, AuthService } from '../auth';
 import { currentTenant } from '../tenancy/context';
 import { TenantRegistry } from '../tenancy/platform';
+import { isAvatarPrivacyDeletion } from '../avatars/lifecycle';
 
 // These handlers take their own short write lease, or are authorized read operations.
 const independentlyGated =
@@ -21,6 +22,7 @@ export class PlanWriteInterceptor implements NestInterceptor {
       !tenant ||
       ['GET', 'HEAD', 'OPTIONS'].includes(request.method) ||
       independentlyGated.test(request.path) ||
+      isAvatarPrivacyDeletion(request.method, request.path) ||
       /^multipart\/form-data/i.test(request.headers['content-type'] || '')
     )
       return next.handle();

@@ -10,6 +10,7 @@ import { Db } from './db';
 import { AuthController, AuthService, AuthGuard } from './auth';
 import { CatalogController } from './catalog';
 import { AvatarsController } from './avatars';
+import { isAvatarPrivacyDeletion } from './avatars/lifecycle';
 import { FittingController } from './fitting';
 import { AvatarJobs } from './avatar-jobs';
 import { LocationsController, StaffController } from './locations';
@@ -91,7 +92,13 @@ export async function createApp() {
   if (process.env.TRUST_PROXY === '1') app.getHttpAdapter().getInstance().set('trust proxy', 1);
   const origin = process.env.WEB_ORIGIN || 'http://localhost:5173';
   const allowedOrigins = [origin, origin.replace('localhost', '127.0.0.1')];
-  app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'same-site' },
+      // Authenticated models become local Blob URLs before Three.js loads them.
+      contentSecurityPolicy: { directives: { connectSrc: ["'self'", 'blob:'] } },
+    }),
+  );
   app.use(cookieParser());
   const webRoot =
     process.env.SERVE_WEB === 'true' ? resolve(process.env.WEB_ROOT || 'dist/web') : null;
@@ -104,7 +111,8 @@ export async function createApp() {
   }
   app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (/^\/api\/health\/?$/i.test(req.path)) return next();
-    if (req.method === 'POST' && /^\/api\/billing\/stripe\/webhook\/?$/i.test(req.path)) return next();
+    if (req.method === 'POST' && /^\/api\/billing\/stripe\/webhook\/?$/i.test(req.path))
+      return next();
     if (/^\/api\/platform\/operator\/(login|tenants)\/?$/i.test(req.path)) return next();
     if (
       ['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
@@ -128,6 +136,7 @@ export async function createApp() {
       if (
         tenant.readOnly &&
         !readOnlyQuery &&
+        !isAvatarPrivacyDeletion(req.method, req.path) &&
         !['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
         !req.path.startsWith('/api/auth/') &&
         !req.path.startsWith('/api/tenant/subscription')
