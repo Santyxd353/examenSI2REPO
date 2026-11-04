@@ -24,6 +24,10 @@ import './workspace.css';
 const SubscriptionPanel = lazy(() =>
   import('./Subscription').then((module) => ({ default: module.SubscriptionPanel })),
 );
+const Team = lazy(() => import('./Team').then((module) => ({ default: module.Team })));
+const Locations = lazy(() =>
+  import('./Locations').then((module) => ({ default: module.Locations })),
+);
 const icons = {
   home: Home,
   catalog: Shirt,
@@ -54,6 +58,9 @@ export function AdminWorkspace({
   const allowed = businessModules.filter(
     (module) => !module.permission || permissions.includes(module.permission),
   );
+  useEffect(() => {
+    if (!allowed.some((module) => module.id === selected)) setSelected('home');
+  }, [permissions, selected]);
   useEffect(() => {
     void api('/tenant')
       .then(setTenant)
@@ -111,10 +118,26 @@ export function AdminWorkspace({
         )}
         {selected === 'home' ? (
           <BusinessOverview permissions={permissions} tenant={tenant} onOpen={open} />
-        ) : ['catalog', 'inventory', 'locations', 'team'].includes(selected) ? (
+        ) : selected === 'team' || selected === 'locations' ? (
+          <Suspense fallback={<p role="status">Abriendo módulo…</p>}>
+            {selected === 'team' ? (
+              <Team
+                readOnly={tenant?.readOnly ?? true}
+                online={online}
+                limit={tenant?.subscription.limits.staff}
+              />
+            ) : (
+              <Locations
+                readOnly={tenant?.readOnly ?? true}
+                online={online}
+                limit={tenant?.subscription.limits.locations}
+              />
+            )}
+          </Suspense>
+        ) : ['catalog', 'inventory'].includes(selected) ? (
           <Admin
             key={selected}
-            module={selected as 'catalog' | 'inventory' | 'locations' | 'team'}
+            module={selected as 'catalog' | 'inventory'}
             products={products}
             categories={categories}
             permissions={permissions}

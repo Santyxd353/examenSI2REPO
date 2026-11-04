@@ -16,41 +16,34 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { hash } from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { AuthGuard, AuthRequest, requirePermission } from './auth';
 import { Db } from './db';
-import { assignAssortment } from './assortment';
 import { RealtimeGateway } from './realtime';
-import { requireCapacity } from './tenancy/capacity';
 
-const locationInput = z
-  .object({
-    nombre: z.string().trim().min(2).max(120),
-    tipo: z.enum(['TIENDA', 'ALMACEN']),
-    direccion: z.string().trim().min(5).max(300).optional(),
-    padreId: z.string().uuid().optional(),
-  })
-  .strict();
-
-const staffInput = z
-  .object({
-    nombres: z.string().trim().min(2).max(100),
-    apellidos: z.string().trim().min(2).max(120),
-    correo: z.string().trim().toLowerCase().email().max(160),
-    clave: z
-      .string()
-      .min(10)
-      .max(72)
-      .refine((value) => Buffer.byteLength(value, 'utf8') <= 72),
-    rol: z.enum(['Vendedor', 'Analista']),
-    ubicaciones: z.array(z.string().uuid()).max(50).default([]),
-  })
-  .strict();
+import {
+  StaffCreateSchema,
+  StaffUpdateSchema,
+  LocationCreateSchema,
+  LocationUpdateSchema,
+} from '@lumina/contracts';
+import {
+  staffRoles,
+  staffSelect,
+  staffDto,
+  locationDto,
+  locationInclude,
+  createStaff,
+  updateStaff,
+  createLocation,
+  updateLocation,
+  changeAssignment,
+  passwordHash,
+} from './administration';
 
 export { can, requireLocationScope } from './inventory/scope';
-import { can, requireLocationScope, lockActiveLocations } from './inventory/scope';
+import { can, requireLocationScope } from './inventory/scope';
 import { applyStockDelta, applyStockCount } from './inventory/inventory.service';
 import { onlineTransfer } from './inventory/online-transfer';
 import { OnlineTransferSchema } from '@lumina/contracts';
@@ -80,127 +73,38 @@ export class LocationsController {
     const where = can(req.user, 'ubicaciones:gestionar')
       ? {}
       : { usuario_ubicacion: { some: { usuario_id: req.user.id } } };
-    return this.db.ubicacion.findMany({
-      where,
-      include: {
-        _count: { select: { inventario: true, usuario_ubicacion: true } },
-        usuario_ubicacion: {
-          include: {
-            usuario: { select: { id: true, nombres: true, apellidos: true, correo: true } },
-          },
-        },
-      },
-      orderBy: [{ activa: 'desc' }, { nombre: 'asc' }],
-    });
+    return (
+      await this.db.ubicacion.findMany({
+        where,
+        include: locationInclude,
+        orderBy: [{ activa: 'desc' }, { nombre: 'asc' }],
+      })
+    ).map(locationDto);
   }
 
   @Post()
   async create(@Req() req: AuthRequest, @Body() body: unknown) {
     requirePermission(req.user, 'ubicaciones:gestionar');
-    const data = locationInput.parse(body);
-    return this.db.$transaction(async (tx) => {
-      // Serialize hierarchy edits; the row lock also coordinates with stock writers.
-      await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('vestidor18:ubicacion:jerarquia', 0))`;
-      await requireCapacity(tx, 'locations');
-      if (data.padreId) await lockActiveLocations(tx, [data.padreId]);
-      const location = await tx.ubicacion.create({
-        data: {
-          nombre: data.nombre,
-          tipo: data.tipo,
-          direccion: data.direccion,
-          padre_id: data.padreId,
-          activa: true,
-        },
-      });
-      const variants = await tx.variante.findMany({
-        where: { activa: true, producto: { estado: 'PUBLICADO' } },
-        select: { id: true },
-      });
-      await assignAssortment(
-        tx,
-        variants.map((variant) => variant.id),
-        [location.id],
-      );
-      return location;
-    });
+    const data = LocationCreateSchema.parse(body);
+    return this.db.$transaction((tx) => createLocation(tx, req.user, data));
   }
 
   @Patch(':id')
   async update(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: unknown) {
     requirePermission(req.user, 'ubicaciones:gestionar');
-    const data = locationInput
-      .partial()
-      .extend({ padreId: z.string().uuid().nullable().optional(), activa: z.boolean().optional() })
-      .strict()
-      .refine((value) => Object.keys(value).length > 0)
-      .parse(body);
-    if (data.padreId === id)
-      throw new BadRequestException('Una ubicación no puede contenerse a sí misma.');
     z.string().uuid().parse(id);
-    return this.db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended('vestidor18:ubicacion:jerarquia', 0))`;
-      await tx.$queryRaw`SELECT id FROM ubicacion WHERE id=${id}::uuid FOR UPDATE`;
-      const found = await tx.ubicacion.findUnique({ where: { id } });
-      if (!found) throw new NotFoundException('Ubicación no encontrada.');
-      if (data.activa === true && !found.activa) await requireCapacity(tx, 'locations');
-      const effectiveParentId = data.padreId === undefined ? found.padre_id : data.padreId;
-      if (effectiveParentId && (data.padreId !== undefined || data.activa === true)) {
-        let parent = await tx.ubicacion.findFirst({
-          where: { id: effectiveParentId, activa: true },
-          select: { id: true, padre_id: true },
-        });
-        if (!parent) throw new BadRequestException('La ubicación superior no está activa.');
-        while (parent?.padre_id) {
-          if (parent.padre_id === id)
-            throw new BadRequestException('La jerarquía de ubicaciones no puede formar un ciclo.');
-          parent = await tx.ubicacion.findUnique({
-            where: { id: parent.padre_id },
-            select: { id: true, padre_id: true },
-          });
-        }
-      }
-      if (data.activa === false && found.activa) {
-        const [stock, children] = await Promise.all([
-          tx.inventario.count({
-            where: {
-              ubicacion_id: id,
-              OR: [{ fisico: { gt: 0 } }, { reservado: { gt: 0 } }, { comprometido: { gt: 0 } }],
-            },
-          }),
-          tx.ubicacion.count({ where: { padre_id: id, activa: true } }),
-        ]);
-        if (stock)
-          throw new BadRequestException(
-            'Transfiere o ajusta a cero todas las existencias antes de desactivar la ubicación.',
-          );
-        if (children)
-          throw new BadRequestException(
-            'Desactiva o reasigna primero las ubicaciones dependientes.',
-          );
-      }
-      const location = await tx.ubicacion.update({
-        where: { id },
-        data: {
-          nombre: data.nombre,
-          tipo: data.tipo,
-          direccion: data.direccion,
-          padre_id: data.padreId,
-          activa: data.activa,
-        },
+    const data = LocationUpdateSchema.parse(body);
+    return this.db
+      .$transaction((tx) => updateLocation(tx, req.user, id, data))
+      .catch((error) => {
+        if (
+          data.expectedVersion === undefined &&
+          error instanceof ConflictException &&
+          (error.getResponse() as { code?: string }).code === 'LOCATION_DEPENDENCIES'
+        )
+          throw new BadRequestException(error.getResponse());
+        throw error;
       });
-      if (data.activa === true && !found.activa) {
-        const variants = await tx.variante.findMany({
-          where: { activa: true, producto: { estado: 'PUBLICADO' } },
-          select: { id: true },
-        });
-        await assignAssortment(
-          tx,
-          variants.map((variant) => variant.id),
-          [id],
-        );
-      }
-      return location;
-    });
   }
 
   @Get(':id/inventory')
@@ -463,20 +367,9 @@ export class LocationsController {
   @Post(':id/assignments')
   async assign(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: unknown) {
     requirePermission(req.user, 'usuarios:gestionar');
+    z.string().uuid().parse(id);
     const { usuarioId } = z.object({ usuarioId: z.string().uuid() }).strict().parse(body);
-    const roles = await this.db.usuario_rol.findMany({
-      where: { usuario_id: usuarioId },
-      include: { rol: true },
-    });
-    if (!roles.some(({ rol }) => rol.nombre === 'Vendedor' || rol.nombre === 'Analista'))
-      throw new BadRequestException('Solo se pueden asignar vendedores o analistas.');
-    const location = await this.db.ubicacion.findFirst({ where: { id, activa: true } });
-    if (!location) throw new NotFoundException('Ubicación no encontrada.');
-    return this.db.usuario_ubicacion.upsert({
-      where: { usuario_id_ubicacion_id: { usuario_id: usuarioId, ubicacion_id: id } },
-      update: {},
-      create: { usuario_id: usuarioId, ubicacion_id: id },
-    });
+    return this.db.$transaction((tx) => changeAssignment(tx, req.user, id, usuarioId, true));
   }
 
   @Delete(':id/assignments/:userId')
@@ -486,8 +379,9 @@ export class LocationsController {
     @Param('userId') userId: string,
   ) {
     requirePermission(req.user, 'usuarios:gestionar');
-    await this.db.usuario_ubicacion.deleteMany({ where: { usuario_id: userId, ubicacion_id: id } });
-    return { ok: true };
+    z.string().uuid().parse(id);
+    z.string().uuid().parse(userId);
+    return this.db.$transaction((tx) => changeAssignment(tx, req.user, id, userId, false));
   }
 }
 
@@ -499,60 +393,44 @@ export class StaffController {
   @Get()
   async list(@Req() req: AuthRequest) {
     requirePermission(req.user, 'usuarios:gestionar');
-    return this.db.usuario.findMany({
-      where: { usuario_rol: { some: { rol: { nombre: { in: ['Vendedor', 'Analista'] } } } } },
-      select: {
-        id: true,
-        nombres: true,
-        apellidos: true,
-        correo: true,
-        estado: true,
-        usuario_rol: { select: { rol: { select: { nombre: true } } } },
-        usuario_ubicacion: { select: { ubicacion_id: true } },
-      },
-      orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }],
+    return (
+      await this.db.usuario.findMany({
+        where: { usuario_rol: { some: { rol: { nombre: { in: staffRoles } } } } },
+        select: staffSelect,
+        orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }],
+      })
+    ).map(staffDto);
+  }
+
+  @Get('roles')
+  async roles(@Req() req: AuthRequest) {
+    requirePermission(req.user, 'usuarios:gestionar');
+    const roles = await this.db.rol.findMany({
+      where: { nombre: { in: staffRoles } },
+      include: { rol_permiso: { include: { permiso: true } } },
+      orderBy: { nombre: 'asc' },
     });
+    return roles.map((r) => ({
+      schemaVersion: '1.0',
+      nombre: r.nombre,
+      permisos: r.rol_permiso.map((p) => `${p.permiso.recurso}:${p.permiso.accion}`).sort(),
+    }));
   }
 
   @Post()
   async create(@Req() req: AuthRequest, @Body() body: unknown) {
     requirePermission(req.user, 'usuarios:gestionar');
-    const data = staffInput.parse(body);
-    const uniqueLocations = [...new Set(data.ubicaciones)];
-    const existingLocations = await this.db.ubicacion.count({
-      where: { id: { in: uniqueLocations }, activa: true },
-    });
-    if (existingLocations !== uniqueLocations.length)
-      throw new BadRequestException('Una o más ubicaciones no existen o están inactivas.');
-    const password = await hash(data.clave, 12);
-    return this.db.$transaction(async (tx) => {
-      await requireCapacity(tx, 'staff');
-      const role = await tx.rol.findUniqueOrThrow({ where: { nombre: data.rol } });
-      const user = await tx.usuario.create({
-        data: {
-          nombres: data.nombres,
-          apellidos: data.apellidos,
-          correo: data.correo,
-          clave_hash: password,
-          estado: 'ACTIVO',
-          preferencias: { push: false },
-          creado_en: new Date(),
-        },
-      });
-      await tx.usuario_rol.create({
-        data: { usuario_id: user.id, rol_id: role.id, asignado_en: new Date() },
-      });
-      if (uniqueLocations.length)
-        await tx.usuario_ubicacion.createMany({
-          data: uniqueLocations.map((ubicacion_id) => ({ usuario_id: user.id, ubicacion_id })),
-        });
-      return {
-        id: user.id,
-        nombres: user.nombres,
-        apellidos: user.apellidos,
-        correo: user.correo,
-        rol: data.rol,
-      };
-    });
+    const data = StaffCreateSchema.parse(body);
+    const password = (await passwordHash(data.clave))!;
+    return this.db.$transaction((tx) => createStaff(tx, req.user, data, password));
+  }
+
+  @Patch(':id')
+  async update(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: unknown) {
+    requirePermission(req.user, 'usuarios:gestionar');
+    z.string().uuid().parse(id);
+    const data = StaffUpdateSchema.parse(body);
+    const password = await passwordHash(data.clave);
+    return this.db.$transaction((tx) => updateStaff(tx, req.user, id, data, password));
   }
 }

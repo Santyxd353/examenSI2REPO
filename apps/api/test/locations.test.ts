@@ -194,6 +194,16 @@ test('administrador asigna y retira múltiples ubicaciones a personal existente'
     .send({ usuarioId: seller.id });
   expect(assigned.status).toBe(201);
 
+  expect(
+    (await request(app.getHttpServer()).get('/api/locations').auth(sellerToken, { type: 'bearer' }))
+      .status,
+  ).toBe(401);
+  sellerToken = (
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ correo: sellerEmail, clave: 'VendedorSeguro2026!' })
+  ).body.accessToken;
+
   const twoLocations = await request(app.getHttpServer())
     .get('/api/locations')
     .auth(sellerToken, { type: 'bearer' });
@@ -205,6 +215,15 @@ test('administrador asigna y retira múltiples ubicaciones a personal existente'
     .delete(`/api/locations/${otherLocationId}/assignments/${seller.id}`)
     .auth(adminToken, { type: 'bearer' });
   expect(removed.status).toBe(200);
+  expect(
+    (await request(app.getHttpServer()).get('/api/locations').auth(sellerToken, { type: 'bearer' }))
+      .status,
+  ).toBe(401);
+  sellerToken = (
+    await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ correo: sellerEmail, clave: 'VendedorSeguro2026!' })
+  ).body.accessToken;
   const oneLocation = await request(app.getHttpServer())
     .get('/api/locations')
     .auth(sellerToken, { type: 'bearer' });

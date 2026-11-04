@@ -55,6 +55,7 @@ afterAll(async () => {
     await Promise.all(photos.map((photo) => removeStored(photo.clave_objeto)));
   }
   if (newLocationId) {
+    await db.usuario_ubicacion.deleteMany({ where: { ubicacion_id: newLocationId } });
     await db.disponibilidad_canal.deleteMany({ where: { ubicacion_id: newLocationId } });
     await db.inventario.deleteMany({ where: { ubicacion_id: newLocationId } });
     await db.ubicacion.delete({ where: { id: newLocationId } });

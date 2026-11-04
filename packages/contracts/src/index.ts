@@ -7,3 +7,4 @@ export * from './reports';
 export * from './analytics';
 export * from './inventory';
 export * from './catalog';
+export * from './team';

@@ -840,6 +840,9 @@ model trabajo_avatar {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model ubicacion {
+  version Int @default(1)
+  responsable_id String? @db.Uuid
+  responsable usuario? @relation("responsable_ubicacion", fields: [responsable_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_ubicacion_responsable")
   id                                                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   padre_id                                          String?                @db.Uuid
   nombre                                            String                 @db.VarChar(120)
@@ -858,11 +861,14 @@ model ubicacion {
   usuario_ubicacion                                 usuario_ubicacion[]
 
   @@index([padre_id], map: "ix_ubicacion_padre_id")
+  @@index([responsable_id], map: "ix_ubicacion_responsable_id")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model usuario {
+  version Int @default(1)
+  ubicaciones_responsables ubicacion[] @relation("responsable_ubicacion")
   id                                          String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   nombres                                     String                     @db.VarChar(100)
   apellidos                                   String                     @db.VarChar(120)

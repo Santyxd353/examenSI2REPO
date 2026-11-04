@@ -135,6 +135,73 @@ async function main() {
           0,
         );
     }
+    await nav.getByRole('button', { name: 'Equipo y permisos', exact: true }).click();
+    const team = page.locator('.team-module');
+    await team.getByRole('button', { name: 'Agregar integrante', exact: true }).click();
+    const teamForm = team.getByRole('form', { name: 'Datos del integrante' });
+    const teammateEmail = `equipo-ui-${randomUUID()}@qa.test`;
+    await teamForm.getByLabel('Nombres', { exact: true }).fill('Ana');
+    await teamForm.getByLabel('Apellidos', { exact: true }).fill('Prueba UI');
+    await teamForm.getByLabel('Correo', { exact: true }).fill(teammateEmail);
+    await teamForm.getByLabel('Contraseña inicial', { exact: true }).fill(password);
+    await teamForm.getByLabel('Rol', { exact: true }).selectOption('Analista');
+    await expect(teamForm.getByText('Consultar reportes', { exact: true })).toBeVisible();
+    await teamForm.getByRole('button', { name: 'Guardar integrante', exact: true }).click();
+    await expect(teamForm).toHaveCount(0);
+    await team.getByLabel('Buscar integrante').fill(teammateEmail);
+    let member = team.locator('.management-card').filter({ hasText: teammateEmail });
+    await member.getByRole('button', { name: 'Editar', exact: true }).click();
+    await teamForm.getByLabel('Estado', { exact: true }).selectOption('SUSPENDIDO');
+    await teamForm.getByLabel('Motivo', { exact: true }).fill('Suspensión de prueba visual');
+    await page.setViewportSize({ width: 390, height: 844 });
+    if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1))
+      throw Error('Equipo desborda en móvil.');
+    await team.screenshot({ path: '.local/team-mobile.png' });
+    await teamForm.getByRole('button', { name: 'Guardar integrante', exact: true }).click();
+    await expect(member.getByText('Suspendida', { exact: true })).toBeVisible();
+    expect((await db.usuario.findUniqueOrThrow({ where: { correo: teammateEmail } })).estado).toBe(
+      'SUSPENDIDO',
+    );
+    await member.getByRole('button', { name: 'Editar', exact: true }).click();
+    await teamForm.getByLabel('Estado', { exact: true }).selectOption('ACTIVO');
+    await teamForm.getByRole('button', { name: 'Guardar integrante', exact: true }).click();
+    await expect(member.getByText('Activa', { exact: true })).toBeVisible();
+    await context.setOffline(true);
+    await expect(team.getByRole('button', { name: 'Agregar integrante', exact: true })).toBeDisabled();
+    await expect(member.getByRole('button', { name: 'Editar', exact: true })).toBeDisabled();
+    await expect(member.getByText(teammateEmail, { exact: true })).toBeVisible();
+    await context.setOffline(false);
+    await expect(member.getByRole('button', { name: 'Editar', exact: true })).toBeEnabled();
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await nav.getByRole('button', { name: 'Sucursales y almacenes', exact: true }).click();
+    const locationsModule = page.locator('.locations-module');
+    await locationsModule.getByRole('button', { name: 'Agregar ubicación', exact: true }).click();
+    const locationForm = locationsModule.getByRole('form', { name: 'Datos de la ubicación' });
+    const branchName = `Sucursal UI ${randomUUID().slice(0, 8)}`;
+    await locationForm.getByLabel('Nombre', { exact: true }).fill(branchName);
+    await locationForm.getByLabel('Tipo', { exact: true }).selectOption('ALMACEN');
+    await locationForm.getByLabel('Responsable', { exact: true }).selectOption(admin.id);
+    await locationForm.getByRole('button', { name: 'Guardar ubicación', exact: true }).click();
+    await expect(locationForm).toHaveCount(0);
+    await locationsModule.getByLabel('Buscar ubicación').fill(branchName);
+    const branchCard = locationsModule.locator('.management-card').filter({ hasText: branchName });
+    await branchCard.getByRole('button', { name: 'Editar', exact: true }).click();
+    await locationForm.getByLabel('Estado', { exact: true }).selectOption('false');
+    await locationForm.getByLabel('Motivo', { exact: true }).fill('Cierre de prueba visual');
+    await locationForm.getByRole('button', { name: 'Guardar ubicación', exact: true }).click();
+    await expect(branchCard.getByText('Inactiva', { exact: true })).toBeVisible();
+    await branchCard.getByRole('button', { name: 'Editar', exact: true }).click();
+    await locationForm.getByLabel('Estado', { exact: true }).selectOption('true');
+    await locationForm.getByRole('button', { name: 'Guardar ubicación', exact: true }).click();
+    await expect(branchCard.getByText('Activa', { exact: true })).toBeVisible();
+    await locationsModule.screenshot({ path: '.local/locations-desktop.png' });
+    const branchPersisted = await db.ubicacion.findFirstOrThrow({ where: { nombre: branchName } });
+    expect(branchPersisted).toMatchObject({
+      activa: true,
+      tipo: 'ALMACEN',
+      responsable_id: admin.id,
+      version: 3,
+    });
     await nav.getByRole('button', { name: 'Catálogo y vestidor', exact: true }).click();
     const manager = page.locator('.catalog-manager');
     await manager.getByLabel('Buscar prenda, marca o código').fill(catalogName);
@@ -168,13 +235,11 @@ async function main() {
       png.data[i + 2] = 172;
       png.data[i + 3] = 255;
     }
-    await photoPanel
-      .locator('input[type=file]')
-      .setInputFiles({
-        name: 'galeria-qa.png',
-        mimeType: 'image/png',
-        buffer: PNG.sync.write(png),
-      });
+    await photoPanel.locator('input[type=file]').setInputFiles({
+      name: 'galeria-qa.png',
+      mimeType: 'image/png',
+      buffer: PNG.sync.write(png),
+    });
     await photoPanel
       .getByLabel('Licencia o autorización de las imágenes')
       .fill('Imagen sintética QA');
@@ -274,6 +339,8 @@ async function main() {
           tabIsolation: true,
           mobileOverflow: false,
           saleRecorded: true,
+          teamLifecycle: true,
+          locationLifecycle: true,
           catalogEdited: true,
           catalogPhotoManaged: true,
           catalogArchived: true,

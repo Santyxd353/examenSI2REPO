@@ -22,8 +22,16 @@ const intent = () => ({
 const digest = (v) => createHash('sha256').update(c.canonicalIntentJson(v)).digest('hex');
 
 test('contratos de catálogo respetan SKU/barcode de la BD y descuentos vigentes; transferir es solo online', () => {
-  c.CatalogProductSchema.parse(JSON.parse(fs.readFileSync(path.join(__dirname,'../fixtures/catalog-product-v1.json'),'utf8')));
-  c.OnlineTransferSchema.parse(JSON.parse(fs.readFileSync(path.join(__dirname,'../fixtures/online-transfer-v1.json'),'utf8')));
+  c.CatalogProductSchema.parse(
+    JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../fixtures/catalog-product-v1.json'), 'utf8'),
+    ),
+  );
+  c.OnlineTransferSchema.parse(
+    JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../fixtures/online-transfer-v1.json'), 'utf8'),
+    ),
+  );
   assert.equal(c.CatalogProductPatchSchema.safeParse({}).success, false);
   const variant = {
     id: id(8),
@@ -307,4 +315,27 @@ test('fixtures públicas son válidas y el hash canónico publicado es reproduci
   c.ReportDefinitionSchema.parse(golden.definition);
   c.ReportDatasetSchema.parse(golden.dataset);
   assert.equal(golden.expected.salesMinor, 22000);
+});
+
+test('equipo y ubicaciones exigen versiones y motivos sin perder compatibilidad de clientes anteriores', () => {
+  const id = 'AAAAC3F0-1234-4567-8123-000000000001';
+  assert.equal(c.StaffUpdateSchema.safeParse({ nombres: 'Ana' }).success, false);
+  assert.equal(
+    c.StaffUpdateSchema.safeParse({ expectedVersion: 1, estado: 'SUSPENDIDO' }).success,
+    false,
+  );
+  assert.equal(c.StaffUpdateSchema.safeParse({ expectedVersion: 1 }).success, false);
+  assert.equal(
+    c.StaffUpdateSchema.parse({ expectedVersion: 1, ubicaciones: [id] }).ubicaciones[0],
+    id.toLowerCase(),
+  );
+  assert.equal(
+    c.LocationUpdateSchema.safeParse({ expectedVersion: 1, activa: false }).success,
+    false,
+  );
+  assert.equal(c.LocationUpdateSchema.safeParse({ activa: false }).success, true);
+  assert.equal(
+    c.LocationUpdateSchema.parse({ expectedVersion: 1, direccion: null }).direccion,
+    null,
+  );
 });
