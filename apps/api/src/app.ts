@@ -13,6 +13,9 @@ import { AvatarsController } from './avatars';
 import { isAvatarPrivacyDeletion } from './avatars/lifecycle';
 import { FittingController } from './fitting';
 import { AvatarJobs } from './avatar-jobs';
+import { OfflineController } from './offline/offline.controller';
+import { DeviceKeysService } from './offline/device-keys.service';
+import { SyncService } from './offline/sync.service';
 import { LocationsController, StaffController } from './locations';
 import { AnalyticsController, CommercialAnalytics, ReportsController } from './reports';
 import { SalesController } from './sales';
@@ -46,6 +49,7 @@ class HealthController {
 @Module({
   controllers: [
     HealthController,
+    OfflineController,
     AuthController,
     CatalogController,
     AvatarsController,
@@ -70,6 +74,8 @@ class HealthController {
     AuthService,
     AuthGuard,
     AvatarJobs,
+    DeviceKeysService,
+    SyncService,
     CommercialAnalytics,
     RealtimeGateway,
     TenantRegistry,
@@ -132,7 +138,9 @@ export async function createApp() {
       if (pathStore && requested && pathStore !== requested)
         throw new HttpException('La imagen no pertenece a la tienda seleccionada.', 400);
       const tenant = await registry.resolve(pathStore || requested || 'lumina');
-      const readOnlyQuery = req.method === 'POST' && /^\/api\/analytics\/query\/?$/i.test(req.path);
+      const readOnlyQuery =
+        req.method === 'POST' &&
+        /^\/api\/(?:analytics\/query|offline\/(?:sync|bootstrap))\/?$/i.test(req.path);
       if (
         tenant.readOnly &&
         !readOnlyQuery &&

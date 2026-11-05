@@ -9,7 +9,7 @@ import {
 import { Identity, requirePermission } from '../auth';
 import { lockActiveLocations, requireLocationScope } from './scope';
 
-export type InventoryContext = { actor: Identity; operationId: string };
+export type InventoryContext = { actor: Identity; operationId: string; newInventoryId?: string };
 const uuid = UuidSchema;
 const deltaInput = StockDeltaInputSchema;
 const countInput = StockCountInputSchema;
@@ -54,7 +54,13 @@ async function save(
   variantId: string,
   locationId: string,
   physical: number,
+  expectedId?: string,
 ) {
+  if (expectedId && row && row.id !== expectedId)
+    throw new ConflictException({
+      code: 'ENTITY_CONFLICT',
+      message: 'El inventario tiene otra identidad. Consulta el saldo antes de reconciliarlo.',
+    });
   checkPhysical(physical, row);
   return row
     ? tx.inventario.update({
@@ -63,6 +69,7 @@ async function save(
       })
     : tx.inventario.create({
         data: {
+          ...(expectedId ? { id: uuid.parse(expectedId) } : {}),
           variante_id: variantId,
           ubicacion_id: locationId,
           fisico: physical,
@@ -131,6 +138,7 @@ export async function applyStockDelta(
     input.variantId,
     input.locationId,
     (previous?.fisico ?? 0) + input.deltaFisico,
+    context.newInventoryId,
   );
   await movement(tx, context, current, input.deltaFisico, 'AJUSTE', input.reason);
   await audit(
@@ -167,6 +175,7 @@ export async function applyStockCount(
     input.variantId,
     input.locationId,
     input.observedPhysical,
+    context.newInventoryId,
   );
   await movement(
     tx,

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ApiProblemSchema } from './problems';
+import { EntitlementsSchema } from './billing';
 import {
   ChannelSchema,
   HashSchema,
@@ -228,6 +229,24 @@ export const VaultEnvelopeSchema = z.strictObject({
 });
 export type VaultEnvelope = z.infer<typeof VaultEnvelopeSchema>;
 export const BootstrapRequestSchema = z.strictObject({ deviceId: UuidSchema });
+export const BootstrapResponseSchema = z
+  .strictObject({
+    schemaVersion: z.literal('1.0'),
+    tenantId: UuidSchema,
+    actorId: UuidSchema,
+    deviceId: UuidSchema,
+    keyVersion: SafeIntegerSchema.positive(),
+    keyBase64: base64(32),
+    permissions: z.array(z.string().min(1).max(100)).max(1000),
+    locationIds: z.array(UuidSchema),
+    entitlements: EntitlementsSchema,
+    issuedAt: TimestampSchema,
+  })
+  .refine(
+    (value) => value.tenantId === value.entitlements.tenantId,
+    'El plan pertenece a otra tienda.',
+  );
+export type OfflineBootstrap = z.infer<typeof BootstrapResponseSchema>;
 export const DownloadStatusSchema = z.strictObject({
   packageId: UuidSchema,
   state: z.enum(['NOT_DOWNLOADED', 'DOWNLOADING', 'PARTIAL', 'READY', 'ERROR']),

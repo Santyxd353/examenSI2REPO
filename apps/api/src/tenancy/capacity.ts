@@ -31,7 +31,9 @@ export async function requireCapacity(tx: Prisma.TransactionClient, resource: Ca
             },
           });
   if (!Number.isSafeInteger(limit) || limit < 0 || count >= limit)
-    throw new ConflictException(
-      `El plan alcanzó su límite de ${labels[resource]}. Revisa la capacidad de tu suscripción.`,
-    );
+    throw new ConflictException({
+      code: 'CAPACITY_EXCEEDED',
+      message: `El plan alcanzó su límite de ${labels[resource]}. Revisa la capacidad de tu suscripción.`,
+      retryable: true,
+    });
 }
