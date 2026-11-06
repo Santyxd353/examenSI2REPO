@@ -1,13 +1,15 @@
-import { ConflictException, ServiceUnavailableException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { OfflineIntent, OperationReceipt } from '@lumina/contracts';
 import { Identity } from '../auth';
 import { mutateCatalog } from '../catalog/catalog.service';
+import { ResourcesService } from './resources.service';
 export async function catalogHandler(
   tx: Prisma.TransactionClient,
   actor: Identity,
   op: Extract<OfflineIntent, { kind: 'CATALOG_CREATE' | 'CATALOG_UPDATE' | 'CATALOG_ARCHIVE' }>,
   parents: OperationReceipt[],
+  resources: ResourcesService,
 ) {
   let baseVersion = op.baseVersion;
   if (op.kind !== 'CATALOG_CREATE' && baseVersion === null) {
@@ -27,13 +29,7 @@ export async function catalogHandler(
     {
       actor,
       operationId: op.operationId,
-      resolveResource: async () => {
-        throw new ServiceUnavailableException({
-          code: 'RESOURCE_NOT_STAGED',
-          message: 'Sube y verifica los archivos pendientes antes de sincronizar la prenda.',
-          retryable: true,
-        });
-      },
+      resolveResource: (reference) => resources.resolve(tx, actor.id, op.deviceId, reference),
     },
     { kind: op.kind, entityId: op.entityId, baseVersion, payload: op.payload },
   );

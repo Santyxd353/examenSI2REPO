@@ -53,8 +53,9 @@ COPY --from=build /app/packages ./packages
 COPY package.json package-lock.json ./
 COPY tsconfig.json ./
 COPY prisma ./prisma
-COPY scripts/seed.ts scripts/seed-women.ts scripts/grant-admin.ts scripts/create-tenant.ts scripts/migrate-tenants.ts ./scripts/
+COPY scripts/seed.ts scripts/seed-women.ts scripts/prepare-offline-resources.ts scripts/grant-admin.ts scripts/create-tenant.ts scripts/migrate-tenants.ts ./scripts/
 COPY apps/api/src/tenancy ./apps/api/src/tenancy
+COPY apps/api/src/offline/resource-integrity.ts ./apps/api/src/offline/resource-integrity.ts
 COPY catalog-assets/women ./catalog-assets/women
 COPY workers/avatar ./workers/avatar
 COPY docker/azure-entrypoint.sh /usr/local/bin/azure-entrypoint

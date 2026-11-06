@@ -29,6 +29,10 @@ export const LocalStateSchema = z.enum([
 ]);
 export type LocalState = z.infer<typeof LocalStateSchema>;
 export type OperationKind = (typeof OPERATION_KINDS)[number];
+export const ArPlacementSchema = z.strictObject({
+  algorithm: z.literal('torso-v1'),
+  kind: z.enum(['dress', 'skirt', 'top']),
+});
 export const ResourceReferenceSchema = z.strictObject({
   clientResourceId: UuidSchema,
   variantId: UuidSchema.optional(),
@@ -37,6 +41,16 @@ export const ResourceReferenceSchema = z.strictObject({
   mime: z.enum(['image/png', 'image/jpeg', 'image/webp', 'model/gltf-binary']),
   usage: z.enum(['GALLERY', 'ANDROID_AR', 'WEB_3D']),
   license: z.string().trim().min(3).max(255),
+  placement: ArPlacementSchema.optional(),
+});
+export const ResourceStageRequestSchema = z.strictObject({
+  deviceId: UuidSchema,
+  reference: ResourceReferenceSchema,
+});
+export const ResourceStageResponseSchema = z.strictObject({
+  reference: ResourceReferenceSchema,
+  state: z.literal('VERIFIED'),
+  expiresAt: TimestampSchema,
 });
 export const DiscountWindowSchema = z
   .strictObject({
@@ -257,6 +271,23 @@ export const DownloadStatusSchema = z.strictObject({
   problem: ApiProblemSchema.optional(),
 });
 export type DownloadStatus = z.infer<typeof DownloadStatusSchema>;
+export const OutfitPreferencesSchema = z.strictObject({
+  brands: z.array(z.string().trim().min(1).max(100)).max(20).default([]),
+  sizes: z.array(z.string().trim().min(1).max(20)).max(10).default([]),
+  colors: z.array(z.string().trim().min(1).max(50)).max(20).default([]),
+  categoryIds: z.array(UuidSchema).max(20).default([]),
+  favoriteProductIds: z.array(UuidSchema).max(100).default([]),
+});
+export const OutfitRequestSchema = z
+  .strictObject({
+    deviceId: UuidSchema,
+    platform: z.enum(['WEB_3D', 'ANDROID_AR']),
+    includeOwnAvatar: z.boolean().default(false),
+  })
+  .refine(
+    (value) => value.platform === 'WEB_3D' || !value.includeOwnAvatar,
+    'El avatar GLB se descarga solo para la web.',
+  );
 export const OutfitManifestSchema = z
   .strictObject({
     packageId: UuidSchema,
@@ -266,6 +297,8 @@ export const OutfitManifestSchema = z
     createdAt: TimestampSchema,
     manifestVersion: z.literal('1.0'),
     preferencesBasis: z.string().max(1000),
+    expiresAt: TimestampSchema.optional(),
+    limitations: z.array(z.string().max(400)).max(10).optional(),
     garmentCount: MinorSchema.max(10),
     state: z.enum(['COMPLETO', 'PARCIAL']),
     garments: z
@@ -284,6 +317,10 @@ export const OutfitManifestSchema = z
           license: z.string().min(1).max(255),
           required: z.boolean(),
           placement: JsonRecordSchema.optional(),
+          productName: z.string().max(160).optional(),
+          size: z.string().max(20).optional(),
+          color: z.string().max(50).optional(),
+          colorHex: z.string().nullable().optional(),
         }),
       )
       .max(10),
@@ -301,6 +338,14 @@ export const OutfitManifestSchema = z
   .superRefine((v, ctx) => {
     if (v.garmentCount !== v.garments.length)
       ctx.addIssue({ code: 'custom', message: 'Recuento de prendas inconsistente.' });
+    if (
+      new Set(v.garments.map((g) => g.productId)).size !== v.garments.length ||
+      (!v.garments.length && v.state === 'COMPLETO')
+    )
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Cada prenda debe corresponder a un producto distinto.',
+      });
     if (v.garments.some((g) => g.format !== (v.platform === 'WEB_3D' ? 'GLB' : 'PNG')))
       ctx.addIssue({ code: 'custom', message: 'Formato incompatible con la plataforma.' });
     if (v.platform === 'ANDROID_AR' && v.optionalOwnAvatar)

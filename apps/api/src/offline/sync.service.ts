@@ -25,6 +25,7 @@ import { DeviceKeysService } from './device-keys.service';
 import { findReceipt, saveReceipt } from './receipts.repository';
 import { inventoryHandler } from './inventory-handler';
 import { catalogHandler } from './catalog-handler';
+import { ResourcesService } from './resources.service';
 
 function problem(error: unknown, correlationId: string): ApiProblem {
   if (error instanceof HttpException) {
@@ -90,6 +91,7 @@ export class SyncService {
     @Inject(AuthService) private auth: AuthService,
     @Inject(TenantRegistry) private registry: TenantRegistry,
     @Inject(DeviceKeysService) private devices: DeviceKeysService,
+    @Inject(ResourcesService) private resources: ResourcesService,
   ) {}
   async applyBatch(request: AuthRequest, raw: unknown) {
     const { operations } = SyncBatchSchema.parse(raw),
@@ -167,7 +169,7 @@ export class SyncService {
                 const value =
                   op.kind === 'STOCK_DELTA' || op.kind === 'STOCK_COUNT'
                     ? await inventoryHandler(tx, fresh, op)
-                    : await catalogHandler(tx, fresh, op, parents);
+                    : await catalogHandler(tx, fresh, op, parents, this.resources);
                 receipt = {
                   tenantId: tenant.id,
                   actorId: actor.id,

@@ -253,6 +253,14 @@ export async function mutateCatalog(
       if (reference.usage === 'WEB_3D') {
         if (!reference.variantId || reference.mime !== 'model/gltf-binary' || !validated.model)
           throw new BadRequestException('El modelo requiere variante y validación 3D.');
+        const attached = await tx.modelo_prenda.findUnique({
+          where: { id: reference.clientResourceId },
+        });
+        if (attached)
+          conflict(
+            'RESOURCE_ALREADY_ATTACHED',
+            'El modelo ya está registrado. Crea una referencia nueva para publicarlo de nuevo.',
+          );
         const latest = await tx.modelo_prenda.aggregate({
           where: { variante_id: reference.variantId, plantilla_id: validated.model.templateId },
           _max: { version: true },
@@ -311,6 +319,7 @@ export async function mutateCatalog(
             texto_alternativo: patch.nombre ?? previous?.nombre ?? 'Prenda femenina',
             licencia: reference.license,
             uso: reference.usage === 'GALLERY' ? 'GALERIA' : 'AR',
+            embedding: reference.placement ? { placement: reference.placement } : undefined,
             estado: 'PUBLICADO',
           },
         });

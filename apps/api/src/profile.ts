@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { AuthGuard, AuthRequest, AuthService } from './auth';
 import { Db } from './db';
 import { lockOperation } from './commerce/idempotency';
+import { OutfitPreferencesSchema } from '@lumina/contracts';
 
 const uuid = z.string().uuid();
 const phone = z
@@ -32,6 +33,7 @@ const profileUpdate = z
     apellidos: z.string().trim().min(2).max(120).optional(),
     telefono: phone.nullable().optional(),
     push: z.boolean().optional(),
+    preferences: OutfitPreferencesSchema.optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, 'No hay cambios para guardar.');
@@ -108,10 +110,12 @@ export class ProfileController {
   async updateProfile(@Req() req: AuthRequest, @Body() body: unknown) {
     const input = profileUpdate.parse(body);
     await this.db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM usuario WHERE id=${req.user.id}::uuid FOR UPDATE`;
       const current = await tx.usuario.findUniqueOrThrow({ where: { id: req.user.id } });
       const preferences = {
         ...((current.preferencias as Record<string, unknown>) || {}),
         ...(input.push === undefined ? {} : { push: input.push }),
+        ...(input.preferences === undefined ? {} : { vestidor: input.preferences }),
       };
       await tx.usuario.update({
         where: { id: req.user.id },
@@ -127,6 +131,7 @@ export class ProfileController {
         apellidos: input.apellidos,
         telefono: input.telefono,
         push: input.push,
+        preferenciasVestidorActualizadas: input.preferences !== undefined,
       });
     });
     return this.response(req.user.id);

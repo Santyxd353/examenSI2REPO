@@ -7,7 +7,7 @@ import { isAvatarPrivacyDeletion } from '../avatars/lifecycle';
 
 // These handlers take their own short write lease, or are authorized read operations.
 const independentlyGated =
-  /^\/api\/(?:analytics\/query|reports\/(?:execute|datasets|interpret|transcribe)|offline\/(?:sync|bootstrap)|tenant\/subscription\/(?:checkout|cancel-renewal|qr\/[^/]+\/confirm))\/?$/i;
+  /^\/api\/(?:analytics\/query|reports\/(?:execute|datasets|interpret|transcribe)|offline\/(?:sync|bootstrap|outfits)|tenant\/subscription\/(?:checkout|cancel-renewal|qr\/[^/]+\/confirm))\/?$/i;
 @Injectable()
 export class PlanWriteInterceptor implements NestInterceptor {
   constructor(

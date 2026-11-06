@@ -16,6 +16,11 @@ import { AvatarJobs } from './avatar-jobs';
 import { OfflineController } from './offline/offline.controller';
 import { DeviceKeysService } from './offline/device-keys.service';
 import { SyncService } from './offline/sync.service';
+import { SnapshotService } from './offline/snapshot.service';
+import { OutfitsService } from './offline/outfits.service';
+import { OfflineMaintenance } from './offline/offline-maintenance';
+import { ResourcesService } from './offline/resources.service';
+import { ResourcesController, OfflineMediaController } from './offline/resources.controller';
 import { LocationsController, StaffController } from './locations';
 import { AnalyticsController, CommercialAnalytics, ReportsController } from './reports';
 import { SalesController } from './sales';
@@ -50,6 +55,8 @@ class HealthController {
   controllers: [
     HealthController,
     OfflineController,
+    ResourcesController,
+    OfflineMediaController,
     AuthController,
     CatalogController,
     AvatarsController,
@@ -76,6 +83,10 @@ class HealthController {
     AvatarJobs,
     DeviceKeysService,
     SyncService,
+    SnapshotService,
+    OutfitsService,
+    OfflineMaintenance,
+    ResourcesService,
     CommercialAnalytics,
     RealtimeGateway,
     TenantRegistry,
@@ -131,7 +142,12 @@ export async function createApp() {
     )
       return next();
     try {
-      const pathStore = req.path.match(/^\/stores\/([^/]+)\/assets(?:\/|$)/i)?.[1];
+      const mediaStore = /^\/api\/catalog\/offline-media\/[^/]+\/?$/i.test(req.path)
+        ? req.query.store
+        : undefined;
+      if (mediaStore !== undefined && typeof mediaStore !== 'string')
+        throw new HttpException('Selecciona una tienda válida.', 400);
+      const pathStore = req.path.match(/^\/stores\/([^/]+)\/assets(?:\/|$)/i)?.[1] ?? mediaStore;
       const requested = req.headers['x-tenant-slug'];
       if (requested !== undefined && typeof requested !== 'string')
         throw new HttpException('Selecciona una tienda válida.', 400);
@@ -140,7 +156,7 @@ export async function createApp() {
       const tenant = await registry.resolve(pathStore || requested || 'lumina');
       const readOnlyQuery =
         req.method === 'POST' &&
-        /^\/api\/(?:analytics\/query|offline\/(?:sync|bootstrap))\/?$/i.test(req.path);
+        /^\/api\/(?:analytics\/query|offline\/(?:sync|bootstrap|outfits))\/?$/i.test(req.path);
       if (
         tenant.readOnly &&
         !readOnlyQuery &&

@@ -20,6 +20,8 @@ import { EntitlementsService } from '../billing/entitlements.service';
 import { DeviceKeysService } from './device-keys.service';
 import { SyncService } from './sync.service';
 import { findReceipt } from './receipts.repository';
+import { SnapshotService } from './snapshot.service';
+import { OutfitsService } from './outfits.service';
 @Controller('offline')
 @UseGuards(AuthGuard)
 export class OfflineController {
@@ -28,7 +30,49 @@ export class OfflineController {
     @Inject(DeviceKeysService) private keys: DeviceKeysService,
     @Inject(EntitlementsService) private entitlements: EntitlementsService,
     @Inject(SyncService) private syncService: SyncService,
+    @Inject(SnapshotService) private snapshots: SnapshotService,
+    @Inject(OutfitsService) private outfits: OutfitsService,
   ) {}
+  @Post('outfits')
+  async outfit(
+    @Req() request: AuthRequest,
+    @Body() body: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    response.setHeader('Cache-Control', 'private, no-store');
+    return this.outfits.create(request, body);
+  }
+  @Get('outfits/:id')
+  async outfitStatus(
+    @Req() request: AuthRequest,
+    @Param('id') id: string,
+    @Query() query: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    response.setHeader('Cache-Control', 'private, no-store');
+    return this.outfits.status(request, id, query);
+  }
+  @Get('outfits/:id/files/:resourceId')
+  async outfitFile(
+    @Req() request: AuthRequest,
+    @Param('id') id: string,
+    @Param('resourceId') resourceId: string,
+    @Query() query: unknown,
+    @Res() response: Response,
+  ) {
+    const file = await this.outfits.file(request, id, resourceId, query);
+    response.setHeader('Cache-Control', 'private, no-store');
+    response.setHeader('Content-Type', file.mime);
+    response.send(file.bytes);
+  }
+  @Get('snapshot') async snapshot(
+    @Req() request: AuthRequest,
+    @Query() query: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    response.setHeader('Cache-Control', 'private, no-store');
+    return this.snapshots.page(request, query);
+  }
   @Post('bootstrap') async bootstrap(
     @Req() request: AuthRequest,
     @Body() raw: unknown,

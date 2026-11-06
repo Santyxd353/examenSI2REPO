@@ -13,9 +13,20 @@ import {
 } from '@nestjs/common';
 import { z } from 'zod';
 import type { Response } from 'express';
+import type { Prisma } from '@prisma/client';
 import { Db } from './db';
 import { AuthGuard, AuthRequest } from './auth';
 import { storedPath } from './storage';
+const modelAccess: Prisma.modelo_prendaWhereInput = {
+  estado: 'PUBLICADO',
+  OR: [
+    { clave_glb: { not: { startsWith: 'private/offline/resources/' } } },
+    {
+      variante: { activa: true, producto: { estado: 'PUBLICADO', categoria: { activa: true } } },
+      plantilla_corporal: { activa: true },
+    },
+  ],
+};
 @Controller('fitting')
 @UseGuards(AuthGuard)
 export class FittingController {
@@ -50,7 +61,7 @@ export class FittingController {
       where: { id: s.avatar_id, estado: 'APROBADO', usuario_id: r.user.id },
     });
     const m = await this.db.modelo_prenda.findFirst({
-      where: { id: b.modeloId, estado: 'PUBLICADO' },
+      where: { id: b.modeloId, ...modelAccess },
     });
     if (!a || !m || m.plantilla_id !== a.plantilla_id)
       throw new BadRequestException('La prenda no es compatible con este avatar.');
@@ -80,9 +91,10 @@ export class FittingController {
     @Res() res: Response,
   ) {
     const m = await this.db.modelo_prenda.findFirst({
-      where: { id: z.string().uuid().parse(id), estado: 'PUBLICADO' },
+      where: { id: z.string().uuid().parse(id), ...modelAccess },
     });
     if (!m) throw new NotFoundException('Prenda 3D no disponible.');
+    res.setHeader('Cache-Control', 'private, no-store');
     res.type('model/gltf-binary').sendFile(storedPath(m.clave_glb), { dotfiles: 'allow' });
   }
 }

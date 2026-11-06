@@ -8,3 +8,4 @@ export * from './analytics';
 export * from './inventory';
 export * from './catalog';
 export * from './team';
+export * from './snapshots';
