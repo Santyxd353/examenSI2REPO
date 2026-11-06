@@ -262,14 +262,19 @@ export function CatalogScreen({
     }
   }
 
-  async function pay(orderId: string, decision: 'APROBAR' | 'RECHAZAR') {
+  async function pay(
+    orderId: string,
+    decision: 'APROBAR' | 'RECHAZAR',
+    method?: 'TARJETA_PRUEBA' | 'QR_PRUEBA',
+    reference?: string,
+  ) {
     setCommerceBusy(true);
     setCommerceError('');
     setCommerceMessage('');
     try {
       await api(`/commerce/orders/${orderId}/payment`, {
         method: 'POST',
-        body: JSON.stringify({ decision, idempotency: operationId() }),
+        body: JSON.stringify({ decision, idempotency: operationId(), method, reference }),
       });
       setCommerceMessage(
         decision === 'APROBAR'
@@ -468,7 +473,10 @@ export function CatalogScreen({
         numColumns={columns}
         keyExtractor={(item) => item.id}
         columnWrapperStyle={styles.gridRow}
-        contentContainerStyle={[styles.list, { paddingHorizontal: listPadding, paddingBottom: 94 + bottomInset }]}
+        contentContainerStyle={[
+          styles.list,
+          { paddingHorizontal: listPadding, paddingBottom: 94 + bottomInset },
+        ]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>

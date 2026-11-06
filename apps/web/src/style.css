@@ -2449,6 +2449,86 @@ footer > span:last-child {
   background: #1f342b;
   color: #fff;
 }
+.payment-demo {
+  width: min(440px, 100%);
+}
+.payment-demo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #276743;
+  background: #e6f3e9;
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.payment-methods {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin: 18px 0;
+}
+.payment-methods button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 48px;
+  border: 1px solid #d5dacd;
+  background: #fff;
+  color: #405046;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.payment-methods button.active {
+  border-color: #1f342b;
+  background: #eaf2eb;
+  color: #173e2a;
+  font-weight: 700;
+}
+.payment-demo > label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.payment-demo > label input {
+  padding: 13px;
+  border: 1px solid #d5dacd;
+  background: #fff;
+  width: 100%;
+  border-radius: 3px;
+  font: inherit;
+}
+.payment-demo-note {
+  display: block;
+  color: #66716a;
+  line-height: 1.55;
+  margin-top: 12px;
+}
+.payment-demo-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 9px;
+  margin-top: 20px;
+}
+.payment-demo-actions button {
+  min-height: 45px;
+  border-radius: 4px;
+  border: 1px solid #bf9286;
+  background: #fff;
+  color: #963e2e;
+  font: inherit;
+  cursor: pointer;
+}
+.payment-demo-actions .primary {
+  border-color: #1f342b;
+  color: #fff;
+}
 @media (max-width: 760px) {
   .commerce-grid {
     grid-template-columns: 1fr;

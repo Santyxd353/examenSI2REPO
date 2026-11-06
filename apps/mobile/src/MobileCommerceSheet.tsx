@@ -42,6 +42,8 @@ export type MobileOrder = {
   devolucion: { id: string; estado: string }[];
 };
 
+type DemoPaymentMethod = 'TARJETA_PRUEBA' | 'QR_PRUEBA';
+
 type Props = {
   visible: boolean;
   lines: MobileCartLine[];
@@ -57,7 +59,12 @@ type Props = {
   onLocationChange: (location: CatalogLocation) => void;
   onChangeQuantity: (variantId: string, quantity: number) => Promise<void>;
   onCheckout: (address: string, addressId?: string) => Promise<boolean>;
-  onPay: (orderId: string, decision: 'APROBAR' | 'RECHAZAR') => Promise<void>;
+  onPay: (
+    orderId: string,
+    decision: 'APROBAR' | 'RECHAZAR',
+    method: DemoPaymentMethod,
+    reference: string,
+  ) => Promise<void>;
   onReload: () => Promise<void>;
 };
 
@@ -88,6 +95,7 @@ export function MobileCommerceSheet({
   const [address, setAddress] = useState('');
   const [selectedAddressId, setSelectedAddressId] = useState<string>();
   const [checkoutFeedback, setCheckoutFeedback] = useState('');
+  const [paymentOrder, setPaymentOrder] = useState<MobileOrder | null>(null);
   const unavailable = lines.some((line) => line.available < line.quantity || line.price <= 0);
 
   useEffect(() => {
@@ -192,9 +200,19 @@ export function MobileCommerceSheet({
               onCheckout={checkout}
             />
           ) : (
-            <OrdersContent orders={orders} busy={busy} onPay={onPay} />
+            <OrdersContent orders={orders} busy={busy} onOpenPayment={setPaymentOrder} />
           )}
         </View>
+        <DemoPaymentSheet
+          order={paymentOrder}
+          busy={busy}
+          onClose={() => setPaymentOrder(null)}
+          onPay={async (decision, method, reference) => {
+            if (!paymentOrder) return;
+            await onPay(paymentOrder.id, decision, method, reference);
+            setPaymentOrder(null);
+          }}
+        />
       </View>
     </Modal>
   );
@@ -383,10 +401,7 @@ function CartContent({
 
       <Pressable
         disabled={busy}
-        style={[
-          styles.checkoutButton,
-          busy && styles.disabled,
-        ]}
+        style={[styles.checkoutButton, busy && styles.disabled]}
         onPress={() => void onCheckout()}
       >
         <Text style={styles.checkoutText}>{busy ? 'Procesando…' : 'Confirmar pedido  →'}</Text>
@@ -403,11 +418,11 @@ function CartContent({
 function OrdersContent({
   orders,
   busy,
-  onPay,
+  onOpenPayment,
 }: {
   orders: MobileOrder[];
   busy: boolean;
-  onPay: (orderId: string, decision: 'APROBAR' | 'RECHAZAR') => Promise<void>;
+  onOpenPayment: (order: MobileOrder) => void;
 }) {
   if (!orders.length)
     return (
@@ -451,24 +466,18 @@ function OrdersContent({
           </View>
           {order.estado === 'PENDIENTE_PAGO' && (
             <View style={styles.paymentBox}>
-              <Text style={styles.paymentTitle}>Pago de demostración</Text>
+              <Text style={styles.paymentTitle}>Lúmina Pay · demostración</Text>
               <Text style={styles.paymentCopy}>
-                Aprueba para confirmar el pedido o rechaza para liberar la reserva.
+                Elige QR o tarjeta de prueba. No se cobra dinero real ni se solicitan datos
+                bancarios.
               </Text>
               <View style={styles.paymentActions}>
                 <Pressable
                   disabled={busy}
                   style={[styles.approveButton, busy && styles.disabled]}
-                  onPress={() => void onPay(order.id, 'APROBAR')}
+                  onPress={() => onOpenPayment(order)}
                 >
-                  <Text style={styles.approveText}>Aprobar prueba</Text>
-                </Pressable>
-                <Pressable
-                  disabled={busy}
-                  style={[styles.rejectButton, busy && styles.disabled]}
-                  onPress={() => void onPay(order.id, 'RECHAZAR')}
-                >
-                  <Text style={styles.rejectText}>Rechazar</Text>
+                  <Text style={styles.approveText}>Abrir pasarela</Text>
                 </Pressable>
               </View>
             </View>
@@ -481,6 +490,139 @@ function OrdersContent({
         </View>
       ))}
     </ScrollView>
+  );
+}
+
+function DemoPaymentSheet({
+  order,
+  busy,
+  onClose,
+  onPay,
+}: {
+  order: MobileOrder | null;
+  busy: boolean;
+  onClose: () => void;
+  onPay: (
+    decision: 'APROBAR' | 'RECHAZAR',
+    method: DemoPaymentMethod,
+    reference: string,
+  ) => Promise<void>;
+}) {
+  const [method, setMethod] = useState<DemoPaymentMethod>('TARJETA_PRUEBA');
+  const [reference, setReference] = useState('4242');
+
+  useEffect(() => {
+    if (!order) return;
+    setMethod('TARJETA_PRUEBA');
+    setReference('4242');
+  }, [order?.id]);
+
+  if (!order) return null;
+  const referenceValid = reference.trim().length >= 4;
+  const submit = (decision: 'APROBAR' | 'RECHAZAR') =>
+    void onPay(
+      decision,
+      method,
+      method === 'TARJETA_PRUEBA'
+        ? `CARD-${reference.padStart(4, '0').slice(-4)}`
+        : reference.trim().toUpperCase(),
+    );
+
+  return (
+    <Modal transparent visible animationType="fade" onRequestClose={onClose}>
+      <View style={styles.gatewayOverlay}>
+        <View style={styles.gatewayCard}>
+          <Text style={styles.gatewayBadge}>✓ ENTORNO DE PRUEBA</Text>
+          <Text style={styles.gatewayTitle}>Lúmina Pay</Text>
+          <Text style={styles.gatewayCopy}>
+            Pedido {order.numero}\nTotal {money(Number(order.total))}
+          </Text>
+          <Text style={styles.gatewayNotice}>
+            Esta pasarela es académica: no procesa dinero ni guarda tarjetas reales.
+          </Text>
+          <View style={styles.gatewayMethods}>
+            <Pressable
+              style={[
+                styles.gatewayMethod,
+                method === 'TARJETA_PRUEBA' && styles.gatewayMethodActive,
+              ]}
+              onPress={() => {
+                setMethod('TARJETA_PRUEBA');
+                setReference('4242');
+              }}
+            >
+              <Text
+                style={[
+                  styles.gatewayMethodText,
+                  method === 'TARJETA_PRUEBA' && styles.gatewayMethodTextActive,
+                ]}
+              >
+                ▣ Tarjeta
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.gatewayMethod, method === 'QR_PRUEBA' && styles.gatewayMethodActive]}
+              onPress={() => {
+                setMethod('QR_PRUEBA');
+                setReference('LUMINA-QR-01');
+              }}
+            >
+              <Text
+                style={[
+                  styles.gatewayMethodText,
+                  method === 'QR_PRUEBA' && styles.gatewayMethodTextActive,
+                ]}
+              >
+                ▦ QR
+              </Text>
+            </Pressable>
+          </View>
+          <Text style={styles.gatewayLabel}>
+            {method === 'TARJETA_PRUEBA'
+              ? 'Últimos 4 dígitos de tarjeta ficticia'
+              : 'Referencia del QR de prueba'}
+          </Text>
+          <TextInput
+            value={reference}
+            keyboardType={method === 'TARJETA_PRUEBA' ? 'number-pad' : 'default'}
+            maxLength={method === 'TARJETA_PRUEBA' ? 4 : 32}
+            autoCapitalize="characters"
+            onChangeText={(value) =>
+              setReference(
+                method === 'TARJETA_PRUEBA'
+                  ? value.replace(/\D/g, '').slice(0, 4)
+                  : value
+                      .toUpperCase()
+                      .replace(/[^A-Z0-9-]/g, '')
+                      .slice(0, 32),
+              )
+            }
+            style={styles.gatewayInput}
+          />
+          <View style={styles.gatewayActions}>
+            <Pressable disabled={busy} style={styles.gatewayCancel} onPress={onClose}>
+              <Text style={styles.gatewayCancelText}>Cancelar</Text>
+            </Pressable>
+            <Pressable
+              disabled={busy || !referenceValid}
+              style={[styles.gatewayReject, (busy || !referenceValid) && styles.disabled]}
+              onPress={() => submit('RECHAZAR')}
+            >
+              <Text style={styles.gatewayRejectText}>Rechazar</Text>
+            </Pressable>
+          </View>
+          <Pressable
+            disabled={busy || !referenceValid}
+            style={[styles.gatewayPay, (busy || !referenceValid) && styles.disabled]}
+            onPress={() => submit('APROBAR')}
+          >
+            <Text style={styles.gatewayPayText}>
+              {busy ? 'Procesando…' : 'Pagar en modo prueba'}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -719,4 +861,79 @@ const styles = StyleSheet.create({
   },
   rejectText: { color: '#9f382d', fontSize: 9, fontWeight: '800' },
   returnText: { color: '#825c23', fontSize: 8, marginTop: 8 },
+  gatewayOverlay: {
+    flex: 1,
+    backgroundColor: '#111a',
+    padding: 22,
+    justifyContent: 'center',
+  },
+  gatewayCard: { backgroundColor: cream, borderRadius: 18, padding: 21 },
+  gatewayBadge: {
+    alignSelf: 'flex-start',
+    color: '#23673e',
+    backgroundColor: '#e5f3e8',
+    borderRadius: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    overflow: 'hidden',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  gatewayTitle: { color: green, fontSize: 25, fontWeight: '900', marginTop: 15 },
+  gatewayCopy: { color: '#38443c', fontSize: 11, lineHeight: 17, marginTop: 7, fontWeight: '700' },
+  gatewayNotice: { color: '#737c75', fontSize: 9, lineHeight: 13, marginTop: 9 },
+  gatewayMethods: { flexDirection: 'row', gap: 8, marginTop: 17 },
+  gatewayMethod: {
+    flex: 1,
+    minHeight: 43,
+    borderWidth: 1,
+    borderColor: '#d5dad3',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  gatewayMethodActive: { borderColor: green, backgroundColor: '#e7f1e8' },
+  gatewayMethodText: { color: '#58635a', fontSize: 10, fontWeight: '700' },
+  gatewayMethodTextActive: { color: green, fontWeight: '900' },
+  gatewayLabel: {
+    color: '#354139',
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 16,
+    marginBottom: 7,
+  },
+  gatewayInput: {
+    borderWidth: 1,
+    borderColor: '#d2d7d1',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    color: '#1f2923',
+    paddingHorizontal: 12,
+    minHeight: 45,
+    fontSize: 12,
+  },
+  gatewayActions: { flexDirection: 'row', gap: 8, marginTop: 17 },
+  gatewayCancel: { flex: 1, minHeight: 43, alignItems: 'center', justifyContent: 'center' },
+  gatewayCancelText: { color: '#667068', fontSize: 10, fontWeight: '800' },
+  gatewayReject: {
+    flex: 1,
+    minHeight: 43,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d8aaa0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gatewayRejectText: { color: '#9d3d2c', fontSize: 10, fontWeight: '800' },
+  gatewayPay: {
+    minHeight: 46,
+    marginTop: 8,
+    borderRadius: 8,
+    backgroundColor: green,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gatewayPayText: { color: '#fff', fontSize: 11, fontWeight: '900' },
 });

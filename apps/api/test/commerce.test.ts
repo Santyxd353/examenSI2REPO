@@ -99,10 +99,23 @@ test('carrito, reserva, pago simulado e idempotencia', async () => {
   const payment = await request(app.getHttpServer())
     .post(`/api/commerce/orders/${checkout.body.id}/payment`)
     .auth(token, { type: 'bearer' })
-    .send({ decision: 'APROBAR', idempotency: payId });
+    .send({
+      decision: 'APROBAR',
+      idempotency: payId,
+      method: 'QR_PRUEBA',
+      reference: 'LUMINA-QR-01',
+    });
   expect(payment.status).toBe(201);
   expect(payment.body.estado).toBe('CONFIRMADO');
   expect(payment.body.pago[0].estado).toBe('CONFIRMADO');
+  const paymentEvent = await db.evento_pago.findFirstOrThrow({
+    where: { pago_id: payment.body.pago[0].id, evento_externo: payId },
+  });
+  expect(paymentEvent.payload_resumen).toMatchObject({
+    simulacion: true,
+    metodo: 'QR_PRUEBA',
+    referencia: 'LUMINA-QR-01',
+  });
   const payRetry = await request(app.getHttpServer())
     .post(`/api/commerce/orders/${checkout.body.id}/payment`)
     .auth(token, { type: 'bearer' })

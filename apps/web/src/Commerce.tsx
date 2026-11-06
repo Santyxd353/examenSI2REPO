@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, ShoppingBag } from 'lucide-react';
+import { ArrowRight, CreditCard, QrCode, ShieldCheck, ShoppingBag, X } from 'lucide-react';
 import { api } from './api';
 
 type Cart = {
@@ -44,6 +44,11 @@ export function Commerce({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [paymentOrder, setPaymentOrder] = useState<Order | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'TARJETA_PRUEBA' | 'QR_PRUEBA'>(
+    'TARJETA_PRUEBA',
+  );
+  const [paymentReference, setPaymentReference] = useState('4242');
 
   async function reload() {
     const [nextCart, nextOrders] = await Promise.all([
@@ -89,6 +94,36 @@ export function Commerce({
   }
 
   const pending = orders.filter((order) => order.estado === 'PENDIENTE_PAGO');
+  async function simulatePayment(decision: 'APROBAR' | 'RECHAZAR') {
+    if (!paymentOrder) return;
+    await run(async () => {
+      await api(`/commerce/orders/${paymentOrder.id}/payment`, {
+        method: 'POST',
+        body: JSON.stringify({
+          decision,
+          idempotency: crypto.randomUUID(),
+          method: paymentMethod,
+          reference:
+            paymentMethod === 'TARJETA_PRUEBA'
+              ? `CARD-${paymentReference.padStart(4, '0').slice(-4)}`
+              : paymentReference.trim().toUpperCase(),
+        }),
+      });
+      setMessage(
+        decision === 'APROBAR'
+          ? 'Pago de prueba aprobado. Tu pedido está confirmado.'
+          : 'Pago de prueba rechazado; la reserva se liberó.',
+      );
+      setPaymentOrder(null);
+    });
+  }
+
+  function openPayment(order: Order) {
+    setPaymentOrder(order);
+    setPaymentMethod('TARJETA_PRUEBA');
+    setPaymentReference('4242');
+  }
+
   return (
     <section className="commerce-page">
       <div className="section-title">
@@ -246,39 +281,8 @@ export function Commerce({
               </ul>
               {order.estado === 'PENDIENTE_PAGO' && (
                 <div className="commerce-actions">
-                  <button
-                    disabled={busy}
-                    onClick={() =>
-                      void run(async () => {
-                        await api(`/commerce/orders/${order.id}/payment`, {
-                          method: 'POST',
-                          body: JSON.stringify({
-                            decision: 'APROBAR',
-                            idempotency: crypto.randomUUID(),
-                          }),
-                        });
-                        setMessage('Pago de prueba aprobado. Tu pedido está confirmado.');
-                      })
-                    }
-                  >
-                    Aprobar pago de prueba
-                  </button>
-                  <button
-                    disabled={busy}
-                    onClick={() =>
-                      void run(async () => {
-                        await api(`/commerce/orders/${order.id}/payment`, {
-                          method: 'POST',
-                          body: JSON.stringify({
-                            decision: 'RECHAZAR',
-                            idempotency: crypto.randomUUID(),
-                          }),
-                        });
-                        setMessage('Pago rechazado; la reserva se liberó.');
-                      })
-                    }
-                  >
-                    Simular rechazo
+                  <button disabled={busy} onClick={() => openPayment(order)}>
+                    Ir a pasarela de prueba
                   </button>
                 </div>
               )}
@@ -325,6 +329,106 @@ export function Commerce({
           )}
         </div>
       </div>
+      {paymentOrder && (
+        <div className="modal-overlay" onClick={() => !busy && setPaymentOrder(null)}>
+          <section
+            className="auth-modal payment-demo"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="payment-demo-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="modal-close"
+              aria-label="Cerrar pasarela"
+              disabled={busy}
+              onClick={() => setPaymentOrder(null)}
+            >
+              <X size={18} />
+            </button>
+            <span className="payment-demo-badge">
+              <ShieldCheck size={15} /> ENTORNO DE PRUEBA
+            </span>
+            <h2 id="payment-demo-title">Lúmina Pay</h2>
+            <p>
+              Pedido <b>{paymentOrder.numero}</b> · total <b>{money(Number(paymentOrder.total))}</b>
+              . Esta pantalla no procesa dinero ni solicita datos bancarios reales.
+            </p>
+            <div className="payment-methods" role="radiogroup" aria-label="Método de prueba">
+              <button
+                type="button"
+                className={paymentMethod === 'TARJETA_PRUEBA' ? 'active' : ''}
+                onClick={() => {
+                  setPaymentMethod('TARJETA_PRUEBA');
+                  setPaymentReference('4242');
+                }}
+              >
+                <CreditCard size={18} /> Tarjeta de prueba
+              </button>
+              <button
+                type="button"
+                className={paymentMethod === 'QR_PRUEBA' ? 'active' : ''}
+                onClick={() => {
+                  setPaymentMethod('QR_PRUEBA');
+                  setPaymentReference('LUMINA-QR-01');
+                }}
+              >
+                <QrCode size={18} /> QR de prueba
+              </button>
+            </div>
+            {paymentMethod === 'TARJETA_PRUEBA' ? (
+              <label>
+                Últimos cuatro dígitos de tarjeta ficticia
+                <input
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={paymentReference}
+                  onChange={(event) =>
+                    setPaymentReference(event.target.value.replace(/\D/g, '').slice(0, 4))
+                  }
+                />
+              </label>
+            ) : (
+              <label>
+                Referencia del QR de prueba
+                <input
+                  maxLength={32}
+                  value={paymentReference}
+                  onChange={(event) =>
+                    setPaymentReference(
+                      event.target.value
+                        .toUpperCase()
+                        .replace(/[^A-Z0-9-]/g, '')
+                        .slice(0, 32),
+                    )
+                  }
+                />
+              </label>
+            )}
+            <small className="payment-demo-note">
+              Usa cualquier valor de prueba válido. Solo se guarda la referencia simulada en la
+              auditoría del pedido.
+            </small>
+            <div className="payment-demo-actions">
+              <button
+                type="button"
+                disabled={busy || paymentReference.trim().length < 4}
+                onClick={() => void simulatePayment('RECHAZAR')}
+              >
+                Simular rechazo
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={busy || paymentReference.trim().length < 4}
+                onClick={() => void simulatePayment('APROBAR')}
+              >
+                {busy ? 'Procesando…' : 'Pagar en modo prueba'}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

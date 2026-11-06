@@ -30,7 +30,16 @@ const checkout = z
   })
   .strict();
 const paymentDecision = z
-  .object({ decision: z.enum(['APROBAR', 'RECHAZAR']), idempotency: uuid })
+  .object({
+    decision: z.enum(['APROBAR', 'RECHAZAR']),
+    idempotency: uuid,
+    method: z.enum(['TARJETA_PRUEBA', 'QR_PRUEBA']).optional(),
+    reference: z
+      .string()
+      .trim()
+      .regex(/^[A-Z0-9-]{4,32}$/)
+      .optional(),
+  })
   .strict();
 const returnRequest = z
   .object({
@@ -103,7 +112,12 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
   private async closePending(
     orderId: string,
     nextState: 'CANCELADO' | 'CONFIRMADO',
-    event?: { id: string; decision: 'APROBAR' | 'RECHAZAR' },
+    event?: {
+      id: string;
+      decision: 'APROBAR' | 'RECHAZAR';
+      method?: 'TARJETA_PRUEBA' | 'QR_PRUEBA';
+      reference?: string;
+    },
   ) {
     const changed = await this.db.$transaction(async (tx) => {
       const order = await tx.pedido.findUnique({
@@ -181,7 +195,11 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
             evento_externo: event.id,
             tipo: event.decision,
             firma_verificada: true,
-            payload_resumen: { simulacion: true },
+            payload_resumen: {
+              simulacion: true,
+              metodo: event.method ?? 'NO_ESPECIFICADO',
+              referencia: event.reference ?? null,
+            },
             recibido_en: now,
             procesado_en: now,
           },
@@ -491,6 +509,8 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
           !(await this.closePending(id, 'CONFIRMADO', {
             id: input.idempotency,
             decision: input.decision,
+            method: input.method,
+            reference: input.reference,
           }))
         )
           throw new BadRequestException('El pedido ya fue procesado.');
@@ -499,6 +519,8 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
           !(await this.closePending(id, 'CANCELADO', {
             id: input.idempotency,
             decision: input.decision,
+            method: input.method,
+            reference: input.reference,
           }))
         )
           throw new BadRequestException('El pedido ya fue procesado.');
