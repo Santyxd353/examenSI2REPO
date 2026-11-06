@@ -21,6 +21,7 @@ esta ampliación; las verificaciones históricas del20/10 se conservan abajo.
 | Copia y prendas offline A08 | Servidor verificado en local | Cortes paginados verificables, staging privado y hasta diez prendas. Pruebas con 12 referencias, GLB g18-1 en web y PNG AR en Android. Ver equipo-a/A08-descargas-handoff.md |
 | Offline web A09 | Verificado en Chromium | Reapertura sin red, descargas cifradas, visor local, cola de catálogo e inventario, conflicto y reenvío sin duplicación. Android físico queda en B09 y B15. Ver equipo-a/A09-web-offline.md |
 | Reportes y dashboards offline | Motor A10 verificado en Node y Chromium | Centavos, cobertura, filtros, selección cruzada, widgets y CSV con fixture común. Conjuntos privados, interfaz y Hermes pendientes de A11, A12 y B10. Ver equipo-a/A10-motor-reportes.md |
+| Reportes guardados A11 | API de definiciones verificada | Versiones, archivo, reintentos, cupo concurrente y acceso por cuenta. Queda conectar los conjuntos y la ejecución a la API. Ver equipo-a/A11-definiciones.md |
 | IA por texto/voz | Pendiente | Proveedor y credenciales por configurar |
 | ML evaluado | Pendiente | Demostración con datos sintéticos identificados confirmada; entrenamiento y evaluación temporal definidos, sin resultados fabricados |
 | Suscripciones Stripe/QR | A04 verificado localmente | QR real de simulación, renovación/cambio/cancelación idempotentes y UI móvil. Stripe probado con eventos firmados del SDK; sesión externa pendiente de cuenta TEST configurada.135pruebas generales aprobadas. No desplegado |

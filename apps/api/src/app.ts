@@ -23,6 +23,8 @@ import { ResourcesService } from './offline/resources.service';
 import { ResourcesController, OfflineMediaController } from './offline/resources.controller';
 import { LocationsController, StaffController } from './locations';
 import { AnalyticsController, CommercialAnalytics, ReportsController } from './reports';
+import { ReportDefinitionsController } from './reporting/definitions.controller';
+import { ReportDefinitionsService } from './reporting/definitions.service';
 import { SalesController } from './sales';
 import { CommerceController } from './commerce';
 import { ProfileController } from './profile';
@@ -64,6 +66,7 @@ class HealthController {
     LocationsController,
     StaffController,
     ReportsController,
+    ReportDefinitionsController,
     AnalyticsController,
     SalesController,
     CommerceController,
@@ -88,6 +91,7 @@ class HealthController {
     OfflineMaintenance,
     ResourcesService,
     CommercialAnalytics,
+    ReportDefinitionsService,
     RealtimeGateway,
     TenantRegistry,
     EntitlementsService,
