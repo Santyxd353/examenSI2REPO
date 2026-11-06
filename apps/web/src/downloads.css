@@ -1,0 +1,92 @@
+.offline-downloads {
+  display: grid;
+  gap: 1rem;
+  max-width: 1080px;
+  margin: 0 auto 3rem;
+}
+.offline-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: clamp(1rem, 3vw, 1.75rem);
+  border: 1px solid #ecdce4;
+  border-radius: 1rem;
+  background: #fffdfd;
+}
+.offline-card h2,
+.offline-card p {
+  margin: 0;
+}
+.offline-fields {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+}
+.offline-fields label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+  align-content: start;
+}
+.offline-fields input:not([type='checkbox']),
+.offline-form input[name='reason'],
+.offline-fields select {
+  width: 100%;
+  border: 1px solid #d6c2cc;
+  padding: 0.65rem;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #35242e;
+}
+.offline-check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.offline-fields .offline-check {
+  display: flex;
+}
+.offline-form > label:not(.offline-check) {
+  display: grid;
+  gap: 0.35rem;
+}
+.offline-form > .primary {
+  justify-self: start;
+}
+.offline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.offline-actions button,
+.offline-garment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  text-align: left;
+  border: 1px solid #ecdce4;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.8rem;
+  background: #fcf5f8;
+  color: #38212c;
+}
+.offline-card > .primary {
+  justify-self: start;
+}
+.offline-form,
+.offline-intent {
+  display: grid;
+  gap: 0.75rem;
+}
+.offline-intent {
+  border-top: 1px solid #ecdce4;
+  padding-top: 0.7rem;
+  overflow-wrap: anywhere;
+}
+.offline-intent button {
+  justify-self: start;
+}
+.offline-actions button[aria-pressed='true'] {
+  background: #ead3e0;
+  border-color: #c9a2b8;
+}

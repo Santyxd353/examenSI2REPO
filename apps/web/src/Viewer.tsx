@@ -3,7 +3,12 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RotateCcw, Plus, Minus, Move3D } from 'lucide-react';
-type Props = { bodyUrl: string; garmentUrl?: string | null; color?: string; reference?: boolean };
+type Props = {
+  bodyUrl: string | null;
+  garmentUrl?: string | null;
+  color?: string;
+  reference?: boolean;
+};
 export function Viewer({ bodyUrl, garmentUrl, color = '#e9e4d8', reference = true }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
@@ -67,15 +72,17 @@ export function Viewer({ bodyUrl, garmentUrl, color = '#e9e4d8', reference = tru
     setStatus('Cargando modelo…');
     async function load() {
       try {
-        const body = await loader.loadAsync(bodyUrl);
-        if (disposed) return;
-        body.scene.traverse((o) => {
-          if (o instanceof THREE.Mesh) {
-            o.castShadow = true;
-            o.receiveShadow = true;
-          }
-        });
-        scene.add(body.scene);
+        if (bodyUrl) {
+          const body = await loader.loadAsync(bodyUrl);
+          if (disposed) return;
+          body.scene.traverse((o) => {
+            if (o instanceof THREE.Mesh) {
+              o.castShadow = true;
+              o.receiveShadow = true;
+            }
+          });
+          scene.add(body.scene);
+        }
         if (garmentUrl) {
           const garment = await loader.loadAsync(garmentUrl);
           if (disposed) return;
@@ -143,7 +150,11 @@ export function Viewer({ bodyUrl, garmentUrl, color = '#e9e4d8', reference = tru
     <div className="viewer-shell">
       <div className="viewer-label">
         <span className="live-dot" />
-        {reference ? 'Modelo de referencia' : 'Tu avatar personal'}
+        {!bodyUrl
+          ? 'Silueta de la prenda'
+          : reference
+            ? 'Modelo de referencia'
+            : 'Tu avatar personal'}
       </div>
       <div
         ref={host}

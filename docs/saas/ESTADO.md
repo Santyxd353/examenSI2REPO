@@ -1,6 +1,6 @@
 # Estado de Lúmina SaaS
 
-Actualización de desarrollo: 04/11/2026. Entrega prevista: 07/11/2026.
+Actualización de desarrollo: 06/11/2026. Entrega prevista: 07/11/2026.
 
 El documento ICONIX v2.0 es la base del desarrollo. El equipo A inició ejecución
 en desarrollo/servidor-web con worktree aislado. A00 volvió a verificar100pruebas,
@@ -13,12 +13,13 @@ esta ampliación; las verificaciones históricas del20/10 se conservan abajo.
 | Alcance y prioridades | Definidos inicialmente | ALCANCE_Y_ENTREGA.md; decisiones del usuario sobre SaaS, offline web/Android, Stripe y QR simulado |
 | Base SaaS y aislamiento | Implementado en rama de trabajo | Contexto por petición, base y archivos por tienda, tokens vinculados, cookies y claves móviles separadas; pruebas HTTP, ORM, SQL, transacciones, eventos y purga |
 | Provisión y planes | A03 verificado localmente | Portal global y CLI, autenticación de control separada, planes149/299/599BOB, consumo/entitlements, cuotas transaccionales y períodos por aniversario. Checkout TEST y QR verificados en A04; cuenta Stripe externa pendiente |
-| Administración por módulos | A14: equipo y ubicaciones verificados; cierre modular pendiente | Alta/edición/suspensión/reactivación, último administrador, responsable, versiones y dependencias; módulos web separados. 31 suites/169 pruebas y Chromium. Sincronización A09 y reportes/análisis A12/A13 siguen pendientes; ver equipo-a/A14-handoff.md |
+| Administración por módulos | Equipo, ubicaciones y sincronización web verificados | Alta, edición, suspensión, reactivación, permisos, responsables y conflictos. La sincronización A09 tiene su propio módulo. Quedan reportes y análisis A10–A13. Ver equipo-a/A14-handoff.md y A09-web-offline.md |
 | Identidad de tienda Android | Implementado en código | Selector en inicio de sesión, tokens y WebSocket por tienda; tipos y compatibilidad Expo aprobados. No se ha generado un APK nuevo |
 | Catálogo y comercio A05 | Verificado localmente | Edición/archivo/versiones/precios/promociones/fotos; inventario transaccional y transferencia con comprobante; compras WEB/APP/POS, devoluciones y reportes sin duplicación. 29 suites/160 pruebas, build y Chromium aprobados; ver equipo-a/A05-catalogo-comercio.md y A05-handoff.md |
 | Avatar y vestidor A06 | Cuotas/privacidad/validación y web verificados; regeneración pendiente B14 | 34 suites/181 pruebas, shared13 y build aprobados. Exportación Blender real desde parámetros QA; Chromium recupera respuesta perdida y añade M/Negro exacta al carrito. No acredita inferencia exitosa de fotos reales ni regeneración; ver equipo-a/A06-avatar-handoff.md. CSP corregida para visor Blob privado. Sin despliegue |
-| Servidor de sincronización offline A07 | Verificado localmente; clientes por integrar | Bootstrap con clave envuelta recuperable por tienda/actor/dispositivo, cinco operaciones, recibos atómicos, dependencias, conflictos y permisos actuales. 38 suites/202 pruebas, shared14 y build aprobados. Ver equipo-a/A07-handoff.md; adaptación Android y G2 real pendientes |
-| Copia y prendas offline A08 | Servidor verificado en local | Cortes paginados y verificables, staging privado y selección de hasta diez prendas. Pruebas con 12 referencias, GLB g18-1 en web y PNG AR en Android. Persistencia cifrada y apertura sin red pendientes de A09 y B09. Ver equipo-a/A08-descargas-handoff.md |
+| Servidor de sincronización offline A07 | Servidor y web verificados en local | Bootstrap con clave envuelta por tienda, actor y dispositivo. Cinco operaciones con recibos atómicos, dependencias, conflictos y permisos actuales. Adaptación Android B08 pendiente. Ver equipo-a/A07-handoff.md |
+| Copia y prendas offline A08 | Servidor verificado en local | Cortes paginados verificables, staging privado y hasta diez prendas. Pruebas con 12 referencias, GLB g18-1 en web y PNG AR en Android. Ver equipo-a/A08-descargas-handoff.md |
+| Offline web A09 | Verificado en Chromium | Reapertura sin red, descargas cifradas, visor local, cola de catálogo e inventario, conflicto y reenvío sin duplicación. Android físico queda en B09 y B15. Ver equipo-a/A09-web-offline.md |
 | Reportes y dashboards offline | Pendiente | Requiere conjunto local y definición común de reportes |
 | IA por texto/voz | Pendiente | Proveedor y credenciales por configurar |
 | ML evaluado | Pendiente | Demostración con datos sintéticos identificados confirmada; entrenamiento y evaluación temporal definidos, sin resultados fabricados |
