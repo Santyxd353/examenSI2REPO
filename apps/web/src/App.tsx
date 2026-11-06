@@ -1167,6 +1167,11 @@ function StoreApp() {
             offlineSession={offlineSession}
             enableOffline={openOffline}
             localName={user?.tenant?.name}
+            reportIdentity={
+              user?.tenant?.id
+                ? { slug: tenantSlug(), actorId: user.id, tenantId: user.tenant.id }
+                : undefined
+            }
           />
         ) : page === 'commerce' ? (
           <Commerce locations={catalogLocations} onInventoryChanged={loadCatalog} />

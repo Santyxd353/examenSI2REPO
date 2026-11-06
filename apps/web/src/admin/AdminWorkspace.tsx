@@ -14,7 +14,8 @@ import {
   CloudUpload,
 } from 'lucide-react';
 import { Admin } from '../Admin';
-import { Reports } from '../Reports';
+import { ReportBuilder } from '../reporting/ReportBuilder';
+import type { ReportIdentity } from '../reporting/report-data';
 import { Sales } from '../Sales';
 import { OrdersAdmin } from '../OrdersAdmin';
 import { api } from '../api';
@@ -54,10 +55,12 @@ export function AdminWorkspace({
   offlineSession,
   enableOffline,
   localName,
+  reportIdentity,
 }: Parameters<typeof Admin>[0] & {
   offlineSession: OfflineSession | null;
   enableOffline: (signal: AbortSignal) => Promise<OfflineSession>;
   localName?: string;
+  reportIdentity?: ReportIdentity;
 }) {
   const [selected, setSelected] = useState<BusinessModule>(() =>
     permissions.includes('suscripcion:gestionar') &&
@@ -182,7 +185,16 @@ export function AdminWorkspace({
             onCatalogChanged={onCatalogChanged}
           />
         ) : selected === 'reports' ? (
-          <Reports />
+          reportIdentity && (
+            <ReportBuilder
+              key={reportIdentity.tenantId + ':' + reportIdentity.actorId}
+              identity={reportIdentity}
+              online={online}
+              session={offlineSession}
+              enableOffline={enableOffline}
+              readOnly={tenant?.readOnly ?? true}
+            />
+          )
         ) : selected === 'sales' ? (
           <Sales />
         ) : selected === 'orders' ? (
