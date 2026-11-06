@@ -294,6 +294,9 @@ export type ReportResult = {
   source: 'REAL' | 'DEMOSTRACION_SINTETICA';
   datasetId: string;
   asOf: string;
+  tenantId?: string;
+  definition?: ReportDefinition;
+  widgets?: { id: string; groups: ReportGroup[] }[];
   kpis: Partial<Record<ReportMetric, ReportValue>>;
   groups: ReportGroup[];
   detail: { rows: Record<string, unknown>[]; total: number };

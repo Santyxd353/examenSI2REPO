@@ -9,7 +9,6 @@ export type {
   ValidationResult,
   CrossFilterSelection,
 } from '@lumina/contracts';
-// A10 supplies executable functions; no placeholder results are exported.
 export type ReportingEngine = {
   validateReport: (
     definition: import('@lumina/contracts').ReportDefinition,
