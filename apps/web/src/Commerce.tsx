@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, CreditCard, QrCode, ShieldCheck, ShoppingBag, X } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { api } from './api';
 
 type Cart = {
@@ -27,6 +28,8 @@ type Order = {
 type Location = { id: string; nombre: string; tipo: string };
 const money = (value: number) =>
   new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(value);
+const paymentQrPayload = (order: Pick<Order, 'id' | 'total'>) =>
+  `LUMINA-PAY-DEMO:${order.id}:${Number(order.total).toFixed(2)}:BOB`;
 
 export function Commerce({
   locations,
@@ -77,6 +80,33 @@ export function Commerce({
       })
       .catch((e) => setError(e.message));
   }, [locationId]);
+  useEffect(() => {
+    if (!paymentOrder || paymentMethod !== 'QR_PRUEBA') return;
+    let active = true;
+    const refreshPayment = async () => {
+      try {
+        const nextOrders = (await api('/commerce/orders')) as Order[];
+        if (!active) return;
+        setOrders(nextOrders);
+        const paidOrder = nextOrders.find((order) => order.id === paymentOrder.id);
+        if (paidOrder && paidOrder.estado !== 'PENDIENTE_PAGO') {
+          setPaymentOrder(null);
+          setMessage(
+            paidOrder.estado === 'CONFIRMADO'
+              ? 'QR escaneado y pago de demostración confirmado.'
+              : `El pedido cambió a ${paidOrder.estado.replaceAll('_', ' ')}.`,
+          );
+        }
+      } catch {
+        // El chequeo periódico no debe interrumpir el checkout si se corta la red.
+      }
+    };
+    const interval = window.setInterval(() => void refreshPayment(), 2500);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [paymentMethod, paymentOrder]);
 
   async function run(operation: () => Promise<void>) {
     setBusy(true);
@@ -389,42 +419,45 @@ export function Commerce({
                 />
               </label>
             ) : (
-              <label>
-                Referencia del QR de prueba
-                <input
-                  maxLength={32}
-                  value={paymentReference}
-                  onChange={(event) =>
-                    setPaymentReference(
-                      event.target.value
-                        .toUpperCase()
-                        .replace(/[^A-Z0-9-]/g, '')
-                        .slice(0, 32),
-                    )
-                  }
+              <div className="payment-qr">
+                <QRCodeSVG
+                  value={paymentQrPayload(paymentOrder)}
+                  size={190}
+                  level="M"
+                  marginSize={4}
+                  title={`QR de prueba para ${paymentOrder.numero}`}
                 />
-              </label>
+                <b>Escanea desde Lúmina Pay Demo</b>
+                <small>El monto y el pedido se verifican automáticamente al escanear.</small>
+              </div>
             )}
             <small className="payment-demo-note">
-              Usa cualquier valor de prueba válido. Solo se guarda la referencia simulada en la
-              auditoría del pedido.
+              {paymentMethod === 'TARJETA_PRUEBA'
+                ? 'Usa cualquier valor de prueba válido. Solo se guarda la referencia simulada en la auditoría del pedido.'
+                : 'Mantén esta pantalla abierta hasta que la billetera demo confirme el pago.'}
             </small>
             <div className="payment-demo-actions">
               <button
                 type="button"
-                disabled={busy || paymentReference.trim().length < 4}
+                disabled={
+                  busy || (paymentMethod === 'TARJETA_PRUEBA' && paymentReference.trim().length < 4)
+                }
                 onClick={() => void simulatePayment('RECHAZAR')}
               >
                 Simular rechazo
               </button>
-              <button
-                type="button"
-                className="primary"
-                disabled={busy || paymentReference.trim().length < 4}
-                onClick={() => void simulatePayment('APROBAR')}
-              >
-                {busy ? 'Procesando…' : 'Pagar en modo prueba'}
-              </button>
+              {paymentMethod === 'TARJETA_PRUEBA' ? (
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={busy || paymentReference.trim().length < 4}
+                  onClick={() => void simulatePayment('APROBAR')}
+                >
+                  {busy ? 'Procesando…' : 'Pagar en modo prueba'}
+                </button>
+              ) : (
+                <span className="payment-awaiting">Esperando escaneo…</span>
+              )}
             </div>
           </section>
         </div>

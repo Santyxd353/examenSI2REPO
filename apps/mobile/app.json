@@ -23,7 +23,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Lúmina usa la cámara para mostrar una vista aproximada de vestidos y faldas sobre tu imagen. El video no se almacena."
+          "cameraPermission": "Lúmina usa la cámara para mostrar una vista aproximada de prendas y para escanear QR de pago de demostración. El video no se almacena."
         }
       ],
       [

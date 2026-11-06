@@ -41,6 +41,9 @@ const paymentDecision = z
       .optional(),
   })
   .strict();
+const demoWalletScan = z
+  .object({ qr: z.string().trim().min(20).max(200), idempotency: uuid })
+  .strict();
 const returnRequest = z
   .object({
     reason: z.string().trim().min(10).max(500),
@@ -528,6 +531,55 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
     }
     return this.db.pedido.findUniqueOrThrow({
       where: { id },
+      include: { detalle_pedido: true, pago: true },
+    });
+  }
+
+  @Post('demo-wallet/scan')
+  async payFromDemoWallet(@Req() req: AuthRequest, @Body() body: unknown) {
+    const input = demoWalletScan.parse(body);
+    const [kind, orderId, rawAmount, currency, ...extra] = input.qr.split(':');
+    if (kind !== 'LUMINA-PAY-DEMO' || extra.length || currency !== 'BOB')
+      throw new BadRequestException('El QR no pertenece a Lúmina Pay Demo.');
+    uuid.parse(orderId);
+    if (!/^\d+(?:\.\d{2})?$/.test(rawAmount ?? ''))
+      throw new BadRequestException('El monto del QR no es válido.');
+
+    await this.releaseExpired();
+    const order = await this.db.pedido.findFirst({
+      where: { id: orderId, usuario_id: req.user.id },
+      include: { pago: true },
+    });
+    if (!order) throw new BadRequestException('No puedes pagar este pedido con tu billetera demo.');
+    const payment = order.pago[0];
+    if (!payment || Number(payment.monto).toFixed(2) !== Number(rawAmount).toFixed(2))
+      throw new BadRequestException('El monto del QR no coincide con el pedido.');
+
+    const prior = await this.db.evento_pago.findUnique({
+      where: {
+        proveedor_evento_externo: {
+          proveedor: payment.proveedor,
+          evento_externo: input.idempotency,
+        },
+      },
+    });
+    if (prior && prior.pago_id !== payment.id)
+      throw new BadRequestException('Este escaneo ya fue utilizado en otro pedido.');
+    if (!prior) {
+      if (order.estado !== 'PENDIENTE_PAGO')
+        throw new BadRequestException('Este pedido ya no admite pagos.');
+      if (
+        !(await this.closePending(order.id, 'CONFIRMADO', {
+          id: input.idempotency,
+          decision: 'APROBAR',
+          method: 'QR_PRUEBA',
+          reference: `SCAN-${order.numero}`.toUpperCase().slice(0, 32),
+        }))
+      )
+        throw new BadRequestException('El pedido ya fue procesado.');
+    }
+    return this.db.pedido.findUniqueOrThrow({
+      where: { id: order.id },
       include: { detalle_pedido: true, pago: true },
     });
   }

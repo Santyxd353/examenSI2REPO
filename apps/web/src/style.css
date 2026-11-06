@@ -2510,6 +2510,27 @@ footer > span:last-child {
   line-height: 1.55;
   margin-top: 12px;
 }
+.payment-qr {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #dce2da;
+  border-radius: 8px;
+  text-align: center;
+  color: #26382d;
+  font-size: 12px;
+}
+.payment-qr svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.payment-qr small {
+  color: #66716a;
+  line-height: 1.4;
+}
 .payment-demo-actions {
   display: grid;
   grid-template-columns: 1fr 1.35fr;
@@ -2528,6 +2549,16 @@ footer > span:last-child {
 .payment-demo-actions .primary {
   border-color: #1f342b;
   color: #fff;
+}
+.payment-awaiting {
+  display: grid;
+  place-items: center;
+  min-height: 45px;
+  border-radius: 4px;
+  color: #276743;
+  background: #eaf2eb;
+  font-size: 12px;
+  font-weight: 700;
 }
 @media (max-width: 760px) {
   .commerce-grid {
