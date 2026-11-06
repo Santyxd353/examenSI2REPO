@@ -24,6 +24,7 @@ import {
   type ReportIdentity,
 } from './report-data';
 import { SavedReports } from './SavedReports';
+import { VoiceRequest } from './VoiceRequest';
 import './reporting.css';
 
 const today = () => boliviaDate(new Date().toISOString());
@@ -37,12 +38,14 @@ export function ReportBuilder({
   session,
   enableOffline,
   readOnly,
+  aiEnabled,
 }: {
   identity: ReportIdentity;
   online: boolean;
   session: OfflineSession | null;
   enableOffline: (signal: AbortSignal) => Promise<OfflineSession>;
   readOnly: boolean;
+  aiEnabled: boolean;
 }) {
   const { slug, actorId, tenantId } = identity;
   const [source, setSource] = useState<ReportDataset['source']>('REAL');
@@ -386,6 +389,7 @@ export function ReportBuilder({
           )}
           {online && (
             <SavedReports
+              key={'saved:' + data.datasetId}
               identity={identity}
               data={data}
               draft={draft}
@@ -397,6 +401,20 @@ export function ReportBuilder({
               }}
             />
           )}
+          {online &&
+            (aiEnabled && !readOnly ? (
+              <VoiceRequest
+                key={'assistant:' + data.datasetId}
+                data={data}
+                identity={identity}
+                review={setDraft}
+              />
+            ) : (
+              <p className="report-criteria report-control">
+                La asistencia por texto y voz está disponible con un plan Profesional o Negocio
+                activo.
+              </p>
+            ))}
           <form
             id="report-settings"
             className="report-panel report-control"

@@ -27,6 +27,9 @@ import { ReportDefinitionsController } from './reporting/definitions.controller'
 import { ReportDefinitionsService } from './reporting/definitions.service';
 import { ReportController } from './reporting/report.controller';
 import { ReportDatasetService } from './reporting/dataset.service';
+import { ReportAssistantController } from './reporting/assistant.controller';
+import { ReportAssistantService } from './reporting/assistant.service';
+import { ReportAiProvider } from './reporting/ai-provider';
 import { SalesController } from './sales';
 import { CommerceController } from './commerce';
 import { ProfileController } from './profile';
@@ -70,6 +73,7 @@ class HealthController {
     ReportsController,
     ReportDefinitionsController,
     ReportController,
+    ReportAssistantController,
     AnalyticsController,
     SalesController,
     CommerceController,
@@ -96,6 +100,8 @@ class HealthController {
     CommercialAnalytics,
     ReportDefinitionsService,
     ReportDatasetService,
+    ReportAssistantService,
+    ReportAiProvider,
     RealtimeGateway,
     TenantRegistry,
     EntitlementsService,
@@ -188,6 +194,19 @@ export async function createApp() {
     }
   });
   app.enableCors({ origin: allowedOrigins, credentials: true });
+  app.use(
+    ['/api/reports/interpret', '/api/reports/transcribe'],
+    rateLimit({
+      windowMs: 60_000,
+      limit: 20,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: {
+        code: 'REPORT_AI_RATE_LIMIT',
+        message: 'Espera un minuto antes de enviar más consultas.',
+      },
+    }),
+  );
   app.use(
     '/api/platform/operator/login',
     rateLimit({

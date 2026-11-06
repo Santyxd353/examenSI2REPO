@@ -234,7 +234,7 @@ export class ReportDatasetService {
     return manifest;
   }
 
-  private async load(actor: Identity, id: string) {
+  async load(actor: Identity, id: string) {
     const manifest = await this.manifest(actor, id);
     try {
       const bytes = await readStoredFile(

@@ -22,6 +22,44 @@ async function main() {
   process.env.WEB_ROOT = resolve('dist/web');
   process.env.WEB_ORIGIN = origin;
   process.env.OFFLINE_MASTER_KEY = randomBytes(32).toString('base64');
+  delete process.env.REPORT_AI_OPENAI_KEY;
+  const originalFetch = global.fetch;
+  const voiceText = 'Ventas de vestidos por categoría';
+  global.fetch = async (url, options) => {
+    if (String(url) === 'https://api.openai.com/v1/audio/transcriptions') {
+      const file = options.body.get('file');
+      expect(file.type).toBe('audio/webm');
+      expect(file.size).toBeGreaterThan(16);
+      return Response.json({ text: voiceText });
+    }
+    if (String(url) === 'https://api.openai.com/v1/responses') {
+      return Response.json({
+        status: 'completed',
+        output: [
+          {
+            type: 'message',
+            content: [
+              {
+                type: 'output_text',
+                text: JSON.stringify({
+                  action: 'PROPOSE',
+                  explanation: 'Filtrar vestidos dentro del corte.',
+                  specification: {
+                    title: 'Ventas de vestidos',
+                    fact: 'ventas_confirmadas',
+                    metrics: ['ventas_confirmadas_bob'],
+                    dimensions: ['categoria'],
+                    filters: [{ field: 'categoria', operator: 'eq', value: 'Vestidos' }],
+                  },
+                }),
+              },
+            ],
+          },
+        ],
+      });
+    }
+    return originalFetch(url, options);
+  };
   const { createApp } = require('../dist/api/app');
   const { TenantRegistry } = require('../dist/api/tenancy/platform');
   const { provisionTenant } = require('../dist/api/tenancy/provision');
@@ -37,6 +75,7 @@ async function main() {
       headless: true,
       viewport: { width: 1440, height: 960 },
       acceptDownloads: true,
+      args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'],
     });
     await context.setOffline(offline);
     page = context.pages()[0] ?? (await context.newPage());
@@ -61,7 +100,7 @@ async function main() {
         name: 'Lúmina reportes QA',
         ownerEmail: email,
         ownerPassword: password,
-        planCode: 'esencial',
+        planCode: 'pro',
       },
       registry,
     );
@@ -82,6 +121,30 @@ async function main() {
     await prepare();
     await expect(kpi()).toContainText('Bs 220,00');
     await expect(page.locator('.report-cut')).toContainText('DEMOSTRACIÓN SINTÉTICA');
+    await page.getByRole('textbox', { name: 'Consulta', exact: true }).fill(voiceText);
+    await page.getByRole('button', { name: 'Proponer diseño' }).click();
+    await expect(page.getByRole('alert')).toContainText(
+      'Puedes seguir usando los filtros manuales.',
+    );
+    await expect(kpi()).toContainText('Bs 220,00');
+    process.env.REPORT_AI_OPENAI_KEY = 'qa-no-network';
+    process.env.REPORT_AI_TEXT_MODEL = 'qa-text';
+    process.env.REPORT_AI_VOICE_MODEL = 'qa-voice';
+    await page.getByRole('button', { name: 'Dictar consulta' }).click();
+    await expect(page.getByText('Grabando hasta 30 segundos…')).toBeVisible();
+    await page.waitForTimeout(350);
+    await page.getByRole('button', { name: 'Detener grabación' }).click();
+    await expect(page.getByText('Puedes corregir la transcripción')).toBeVisible();
+    await page.getByRole('button', { name: 'Proponer diseño' }).click();
+    await expect(page.getByRole('region', { name: 'Propuesta para revisar' })).toContainText(
+      'Ventas de vestidos',
+    );
+    await page.getByRole('button', { name: 'Pasar al formulario' }).click();
+    await expect(kpi()).toContainText('Bs 220,00');
+    await page.getByRole('button', { name: 'Aplicar filtros y diseño' }).click();
+    await expect(kpi()).toContainText('Bs 170,00');
+    await prepare();
+    await expect(kpi()).toContainText('Bs 220,00');
     await page.getByLabel('Título', { exact: true }).fill('Colección de septiembre');
     await page.getByRole('button', { name: 'Añadir gráfico', exact: true }).click();
     await page.getByLabel('Tipo del gráfico 1').selectOption('donut');
@@ -103,6 +166,7 @@ async function main() {
     await context.close();
     await open(true);
     await reports();
+    await expect(page.getByRole('region', { name: 'Asistencia para reportes' })).toHaveCount(0);
     await expect(kpi()).toContainText('Bs 220,00');
     await expect(page.getByRole('heading', { name: 'Colección de septiembre' })).toBeVisible();
     await page.getByRole('button', { name: 'Filtrar Categoría: Vestidos' }).first().focus();
@@ -132,7 +196,7 @@ async function main() {
     });
     expect(errors).toEqual([]);
     console.log(
-      'Chromium verificó corte real y sintético, diseño guardado, gráficos, reinicio offline, filtros, CSV y PDF. ' +
+      'Chromium verificó cortes, propuesta de voz revisable con proveedor simulado, diseño guardado, reinicio offline, filtros, CSV y PDF. ' +
         workspace,
     );
   } catch (error) {
@@ -141,6 +205,7 @@ async function main() {
       .catch(() => {});
     throw error;
   } finally {
+    global.fetch = originalFetch;
     await context?.close();
     if (tenant) {
       for (const table of ['billing_event', 'subscription', 'tenant'])

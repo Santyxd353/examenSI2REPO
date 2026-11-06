@@ -141,6 +141,21 @@
   margin: 0.35rem 0 0;
   padding-left: 1.25rem;
 }
+.report-question {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.7rem 0;
+}
+.report-question textarea {
+  padding: 0.6rem;
+  min-width: 0;
+  resize: vertical;
+  border: 1px solid #d9c5d0;
+  border-radius: 0.5rem;
+  background: white;
+  color: inherit;
+  font: inherit;
+}
 .report-fields select[multiple] {
   min-height: 4.7rem;
 }

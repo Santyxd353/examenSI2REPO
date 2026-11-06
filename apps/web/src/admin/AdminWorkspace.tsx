@@ -193,6 +193,7 @@ export function AdminWorkspace({
               session={offlineSession}
               enableOffline={enableOffline}
               readOnly={tenant?.readOnly ?? true}
+              aiEnabled={tenant?.subscription.features.includes('ai') ?? false}
             />
           )
         ) : selected === 'sales' ? (

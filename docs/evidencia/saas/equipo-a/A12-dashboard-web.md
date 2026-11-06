@@ -11,4 +11,4 @@ Desde **Administración → Reportes y análisis**, el personal autorizado puede
 
 Se ejecutó `npm run build:web` y `node scripts/check-reporting-web.cjs` con PostgreSQL local. El recorrido provisionó una tienda aislada, comprobó Bs 0,00 con datos reales y Bs 220,00 con datos sintéticos, guardó un diseño, cerró Chromium y lo abrió sin red. La selección por teclado redujo el total a Bs 170,00. Un filtro manual obtuvo Bs 50,00 y el CSV exportó ese importe. Se generó PDF y se revisó el ancho de 390 px.
 
-El recorrido prueba la web. La interpretación por texto y voz y la integración Android tienen verificaciones propias.
+El recorrido actualizado prueba también la grabación en Chromium, la edición de la transcripción y la revisión de una propuesta con el proveedor simulado. La integración Android tiene verificaciones propias.

@@ -22,7 +22,7 @@ esta ampliación; las verificaciones históricas del20/10 se conservan abajo.
 | Offline web A09 | Verificado en Chromium | Reapertura sin red, descargas cifradas, visor local, cola de catálogo e inventario, conflicto y reenvío sin duplicación. Android físico queda en B09 y B15. Ver equipo-a/A09-web-offline.md |
 | Reportes y dashboards offline | Motor A10 verificado en Node y Chromium | Centavos, cobertura, filtros, selección cruzada, widgets y CSV con fixture común. Interfaz y Hermes corresponden a A12 y B10. Ver equipo-a/A10-motor-reportes.md |
 | Reportes A11 | API de definiciones y conjuntos verificada | Versiones, cupo concurrente, conjuntos por cuenta y ubicación, ejecución y CSV. Ver equipo-a/A11-definiciones.md |
-| Reportes web A12 | Dashboard manual y copia offline verificados | Diseño configurable, filtros y selección cruzada en Chromium con reinicio sin red. Asistencia por texto y voz en desarrollo. Ver equipo-a/A12-dashboard-web.md |
+| Reportes web A12 | Dashboard offline y asistencia verificados localmente | Filtros y selección cruzada sin red. Texto y voz con proveedor simulado, validación y cuota. La llamada al proveedor real requiere credenciales. Ver equipo-a/A12-dashboard-web.md y A12-asistencia-handoff.md |
 | IA por texto/voz | Pendiente | Proveedor y credenciales por configurar |
 | ML evaluado | Pendiente | Demostración con datos sintéticos identificados confirmada; entrenamiento y evaluación temporal definidos, sin resultados fabricados |
 | Suscripciones Stripe/QR | A04 verificado localmente | QR real de simulación, renovación/cambio/cancelación idempotentes y UI móvil. Stripe probado con eventos firmados del SDK; sesión externa pendiente de cuenta TEST configurada.135pruebas generales aprobadas. No desplegado |
