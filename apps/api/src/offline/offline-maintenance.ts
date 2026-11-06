@@ -32,6 +32,8 @@ export class OfflineMaintenance implements OnModuleDestroy {
           await runForTenant(tenant, async () => {
             await purgePrivateDocuments('snapshots');
             await purgePrivateDocuments('outfits');
+            await purgePrivateDocuments('report-real');
+            await purgePrivateDocuments('report-demo');
             await this.resources.purgeExpired();
           });
         } catch {

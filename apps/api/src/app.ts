@@ -25,6 +25,8 @@ import { LocationsController, StaffController } from './locations';
 import { AnalyticsController, CommercialAnalytics, ReportsController } from './reports';
 import { ReportDefinitionsController } from './reporting/definitions.controller';
 import { ReportDefinitionsService } from './reporting/definitions.service';
+import { ReportController } from './reporting/report.controller';
+import { ReportDatasetService } from './reporting/dataset.service';
 import { SalesController } from './sales';
 import { CommerceController } from './commerce';
 import { ProfileController } from './profile';
@@ -67,6 +69,7 @@ class HealthController {
     StaffController,
     ReportsController,
     ReportDefinitionsController,
+    ReportController,
     AnalyticsController,
     SalesController,
     CommerceController,
@@ -92,6 +95,7 @@ class HealthController {
     ResourcesService,
     CommercialAnalytics,
     ReportDefinitionsService,
+    ReportDatasetService,
     RealtimeGateway,
     TenantRegistry,
     EntitlementsService,
@@ -160,7 +164,9 @@ export async function createApp() {
       const tenant = await registry.resolve(pathStore || requested || 'lumina');
       const readOnlyQuery =
         req.method === 'POST' &&
-        /^\/api\/(?:analytics\/query|offline\/(?:sync|bootstrap|outfits))\/?$/i.test(req.path);
+        /^\/api\/(?:analytics\/query|reports\/(?:datasets|execute|export)|offline\/(?:sync|bootstrap|outfits))\/?$/i.test(
+          req.path,
+        );
       if (
         tenant.readOnly &&
         !readOnlyQuery &&

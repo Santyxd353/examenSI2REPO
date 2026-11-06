@@ -213,7 +213,7 @@ export const ReturnFactSchema = z.strictObject({
 export const RefundFactSchema = z.strictObject({
   id: factId,
   orderId: factId,
-  returnId: factId,
+  returnId: factId.nullable(),
   amountMinor: MinorSchema,
   status: z.string().min(1).max(40),
   occurredAt: TimestampSchema,
@@ -227,51 +227,91 @@ export const StockFactSchema = z
     physical: MinorSchema,
     reserved: MinorSchema,
     committed: MinorSchema,
-    version: SafeIntegerSchema.positive(),
+    version: MinorSchema,
     dimensions,
   })
   .refine(
     (v) => v.physical >= v.reserved + v.committed,
     'Stock físico no cubre reservas y compromisos.',
   );
-export const ReportDatasetSchema = z
-  .strictObject({
-    datasetId: z.string().min(1).max(160),
-    tenantId: UuidSchema,
-    ownerId: UuidSchema,
-    source: SourceSchema,
-    schemaVersion: z.literal('1.0'),
-    semanticsVersion: z.literal('1.0'),
-    asOf: TimestampSchema,
-    periodFrom: DateSchema,
-    periodTo: DateSchema,
-    authorizedLocationIds: z.array(z.string().min(1)).max(100),
-    downloadedLocationIds: z.array(z.string().min(1)).max(100),
-    availableColumns: z.array(z.string().min(1)).max(100),
-    rowCount: MinorSchema.max(50000),
-    rowLimit: z.literal(50000),
-    complete: z.boolean(),
-    omittedCoverage: z.array(z.string().max(1000)).max(100),
-    sha256: HashSchema,
-    sales: z.array(SaleFactSchema).max(50000),
-    orders: z.array(OrderFactSchema).max(50000),
-    payments: z.array(PaymentFactSchema).max(50000),
-    returns: z.array(ReturnFactSchema).max(50000),
-    refunds: z.array(RefundFactSchema).max(50000),
-    stock: z.array(StockFactSchema).max(50000),
-  })
-  .superRefine((v, ctx) => {
-    const fail = (message: string) => ctx.addIssue({ code: 'custom', message });
-    const rows = [...v.sales, ...v.orders, ...v.payments, ...v.returns, ...v.refunds, ...v.stock];
-    if (rows.length !== v.rowCount || rows.length > 50000) fail('Recuento de filas inválido.');
-    if (v.periodFrom > v.periodTo) fail('Cobertura temporal inválida.');
-    if (v.downloadedLocationIds.some((id) => !v.authorizedLocationIds.includes(id)))
-      fail('Conjunto fuera de ubicaciones autorizadas.');
-    for (const facts of [v.sales, v.orders, v.payments, v.returns, v.refunds, v.stock]) {
-      if (new Set(facts.map((f) => f.id)).size !== facts.length)
-        fail('Hechos duplicados en el conjunto.');
-    }
-  });
+export const ReportDatasetMetadataSchema = z.strictObject({
+  datasetId: z.string().min(1).max(160),
+  tenantId: UuidSchema,
+  ownerId: UuidSchema,
+  source: SourceSchema,
+  schemaVersion: z.literal('1.0'),
+  semanticsVersion: z.literal('1.0'),
+  asOf: TimestampSchema,
+  periodFrom: DateSchema,
+  periodTo: DateSchema,
+  authorizedLocationIds: z.array(z.string().min(1)).max(100),
+  downloadedLocationIds: z.array(z.string().min(1)).max(100),
+  availableColumns: z.array(z.string().min(1)).max(100),
+  labels: z
+    .partialRecord(
+      z.enum(['ubicacion', 'producto', 'variante', 'vendedor']),
+      z.record(z.string().min(1).max(160), z.string().min(1).max(220)),
+    )
+    .optional(),
+  rowCount: MinorSchema.max(50000),
+  rowLimit: z.literal(50000),
+  complete: z.boolean(),
+  omittedCoverage: z.array(z.string().max(1000)).max(100),
+  sha256: HashSchema,
+});
+export const ReportDatasetManifestSchema = ReportDatasetMetadataSchema.extend({
+  expiresAt: TimestampSchema,
+});
+export const ReportDatasetRequestSchema = z.discriminatedUnion('source', [
+  z.strictObject({
+    source: z.literal('REAL'),
+    period: PeriodSchema,
+    locationIds: z.array(UuidSchema).min(1).max(100).optional(),
+    definitionId: UuidSchema.optional(),
+  }),
+  z.strictObject({
+    source: z.literal('DEMOSTRACION_SINTETICA'),
+    definitionId: UuidSchema.optional(),
+  }),
+]);
+export const ReportDatasetRowSchema = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('sales'), fact: SaleFactSchema }),
+  z.strictObject({ kind: z.literal('orders'), fact: OrderFactSchema }),
+  z.strictObject({ kind: z.literal('payments'), fact: PaymentFactSchema }),
+  z.strictObject({ kind: z.literal('returns'), fact: ReturnFactSchema }),
+  z.strictObject({ kind: z.literal('refunds'), fact: RefundFactSchema }),
+  z.strictObject({ kind: z.literal('stock'), fact: StockFactSchema }),
+]);
+export const ReportDatasetPageSchema = z.strictObject({
+  datasetId: UuidSchema,
+  asOf: TimestampSchema,
+  sha256: HashSchema,
+  offset: MinorSchema.max(50000),
+  nextOffset: SafeIntegerSchema.positive().max(50000).nullable(),
+  rows: z.array(ReportDatasetRowSchema).max(500),
+});
+export type ReportDatasetRow = z.infer<typeof ReportDatasetRowSchema>;
+export type ReportDatasetManifest = z.infer<typeof ReportDatasetManifestSchema>;
+export type ReportDatasetPage = z.infer<typeof ReportDatasetPageSchema>;
+export const ReportDatasetSchema = ReportDatasetMetadataSchema.extend({
+  sales: z.array(SaleFactSchema).max(50000),
+  orders: z.array(OrderFactSchema).max(50000),
+  payments: z.array(PaymentFactSchema).max(50000),
+  returns: z.array(ReturnFactSchema).max(50000),
+  refunds: z.array(RefundFactSchema).max(50000),
+  stock: z.array(StockFactSchema).max(50000),
+}).superRefine((v, ctx) => {
+  const fail = (message: string) => ctx.addIssue({ code: 'custom', message });
+  const rows = [...v.sales, ...v.orders, ...v.payments, ...v.returns, ...v.refunds, ...v.stock];
+  if (rows.length !== v.rowCount || rows.length > 50000) fail('Recuento de filas inválido.');
+  if (v.periodFrom > v.periodTo) fail('Cobertura temporal inválida.');
+  if (v.downloadedLocationIds.some((id) => !v.authorizedLocationIds.includes(id)))
+    fail('Conjunto fuera de ubicaciones autorizadas.');
+  for (const facts of [v.sales, v.orders, v.payments, v.returns, v.refunds, v.stock]) {
+    if (new Set(facts.map((f) => f.id)).size !== facts.length)
+      fail('Hechos duplicados en el conjunto.');
+  }
+});
 export type ReportDataset = z.infer<typeof ReportDatasetSchema>;
 export type SaleFact = z.infer<typeof SaleFactSchema>;
 export type StockFact = z.infer<typeof StockFactSchema>;

@@ -77,7 +77,7 @@ export function factsFor(definition: ReportDefinition, dataset: ReportDataset): 
         ...order?.dimensions,
         ...sale?.dimensions,
         ...row.dimensions,
-        estado_pedido: order?.status ?? sale?.orderStatus ?? null,
+        estado_pedido: order?.status ?? sale?.orderStatus ?? row.dimensions.estado_pedido ?? null,
       }),
     });
   }
@@ -94,7 +94,7 @@ export function factsFor(definition: ReportDefinition, dataset: ReportDataset): 
       dimensions: timed(day, {
         ...order?.dimensions,
         ...row.dimensions,
-        estado_pedido: order?.status ?? null,
+        estado_pedido: order?.status ?? row.dimensions.estado_pedido ?? null,
       }),
     });
   }

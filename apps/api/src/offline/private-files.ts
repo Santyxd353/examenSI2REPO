@@ -24,7 +24,10 @@ export async function writePrivateDocument(key: string, value: unknown, maxBytes
   }
 }
 
-export async function purgePrivateDocuments(directory: 'snapshots' | 'outfits', now = new Date()) {
+export async function purgePrivateDocuments(
+  directory: 'snapshots' | 'outfits' | 'report-real' | 'report-demo',
+  now = new Date(),
+) {
   const root = `private/offline/${directory}`;
   const list = (key: string) =>
     readdir(storedPath(key), { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => {
