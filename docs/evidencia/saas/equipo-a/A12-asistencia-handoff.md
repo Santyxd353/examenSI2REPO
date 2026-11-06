@@ -18,4 +18,4 @@ Para habilitar el proveedor se configuran `REPORT_AI_OPENAI_KEY`, `REPORT_AI_TEX
 - `npm test -- --cacheDirectory .local/jest --runTestsByPath apps/api/test/report-assistant.test.ts` comprobó el plan, el aislamiento del corte, la ausencia de proveedor, el rechazo de SQL y una sola cuota confirmada tras transcripción y reintento. El endpoint de ejecución obtuvo Bs 220,00 sobre la definición aprobada del fixture.
 - `npm run build` y `node scripts/check-reporting-web.cjs` compilaron el sistema y verificaron la grabación WebM, la revisión de la propuesta y la generación manual del resultado. Los servicios del proveedor usaron respuestas controladas y el micrófono de prueba de Chromium.
 
-Queda pendiente la comprobación con una cuenta de proveedor y la integración en el APK. El despliegue se reserva para la nueva VM.
+Queda pendiente la comprobación con una cuenta de proveedor. El APK de la rama B usa `/analytics/agent/query` y `/analytics/query`. En A15 debe consumir los cortes y el contrato de propuesta de este incremento. El despliegue se reserva para la nueva VM.

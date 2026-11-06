@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1.0",
+  "jobId": "job-demo-generate-001",
+  "tenantId": "tenant-demo-lumina",
+  "actorId": "operator-demo-001",
+  "source": "DEMOSTRACION_SINTETICA",
+  "action": "GENERATE_DATASET",
+  "datasetId": "demo-femenino-seed42-v1",
+  "workDir": ".local/analytics/cli-demo",
+  "parameters": {},
+  "inventorySnapshot": []
+}

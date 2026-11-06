@@ -1,0 +1,15 @@
+{
+  "datasetId": "demo-femenino-seed42-v1",
+  "source": "DEMOSTRACION_SINTETICA",
+  "seed": 42,
+  "days": 365,
+  "products": 12,
+  "variants": 36,
+  "locations": 5,
+  "channels": ["WEB", "APP", "TIENDA"],
+  "rows": 197100,
+  "trainDays": 255,
+  "validationDays": 55,
+  "testDays": 55,
+  "warmupDays": 28
+}
