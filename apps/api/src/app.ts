@@ -30,6 +30,10 @@ import { ReportDatasetService } from './reporting/dataset.service';
 import { ReportAssistantController } from './reporting/assistant.controller';
 import { ReportAssistantService } from './reporting/assistant.service';
 import { ReportAiProvider } from './reporting/ai-provider';
+import { AnalysisJobsController } from './analytics/jobs.controller';
+import { AnalysisJobs } from './analytics/jobs.service';
+import { AnalysisResults } from './analytics/results.service';
+import { AnalyticsWorkerBridge } from './analytics/worker-bridge';
 import { SalesController } from './sales';
 import { CommerceController } from './commerce';
 import { ProfileController } from './profile';
@@ -74,6 +78,7 @@ class HealthController {
     ReportDefinitionsController,
     ReportController,
     ReportAssistantController,
+    AnalysisJobsController,
     AnalyticsController,
     SalesController,
     CommerceController,
@@ -102,6 +107,9 @@ class HealthController {
     ReportDatasetService,
     ReportAssistantService,
     ReportAiProvider,
+    AnalysisJobs,
+    AnalysisResults,
+    AnalyticsWorkerBridge,
     RealtimeGateway,
     TenantRegistry,
     EntitlementsService,

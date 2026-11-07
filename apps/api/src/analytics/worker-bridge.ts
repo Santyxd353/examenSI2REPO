@@ -70,10 +70,10 @@ function within(root: string, path: string) {
   return Boolean(tail) && tail !== '..' && !tail.startsWith('..' + sep) && !isAbsolute(tail);
 }
 
-export async function verifiedAnalyticsBytes(
+export async function readAnalyticsBytes(
   root: string,
   path: string,
-  sha256: string,
+  sha256: string | null,
   limit: number,
 ) {
   const target = resolve(root, path);
@@ -94,7 +94,7 @@ export async function verifiedAnalyticsBytes(
     }
     if (
       (await file.stat()).size !== bytes.length ||
-      createHash('sha256').update(bytes).digest('hex') !== sha256
+      (sha256 !== null && createHash('sha256').update(bytes).digest('hex') !== sha256)
     )
       throw new AnalyticsWorkerError(
         'ANALYTICS_HASH_MISMATCH',
@@ -104,6 +104,11 @@ export async function verifiedAnalyticsBytes(
   } finally {
     await file.close();
   }
+}
+
+export const verifiedAnalyticsBytes = readAnalyticsBytes;
+export function analyticsRoot(tenant: string, actor: string) {
+  return resolve('.local', 'analytics-private', UuidSchema.parse(tenant), UuidSchema.parse(actor));
 }
 
 export async function readAnalyticsOutput(root: string, job: AnalyticsJobV1, raw: unknown) {
@@ -144,7 +149,13 @@ export async function readAnalyticsOutput(root: string, job: AnalyticsJobV1, raw
   return value;
 }
 
-function executePython(executable: string, cwd: string, request: string, timeoutMs: number) {
+function executePython(
+  executable: string,
+  cwd: string,
+  request: string,
+  timeoutMs: number,
+  signal?: AbortSignal,
+) {
   return new Promise<{ code: number | null; output: unknown }>((done, reject) => {
     const env = Object.fromEntries(
       Object.entries(process.env).filter(([key]) =>
@@ -164,8 +175,17 @@ function executePython(executable: string, cwd: string, request: string, timeout
       },
       stdio: ['ignore', 'pipe', 'ignore'],
     });
+    const abort = () => {
+      failure = new AnalyticsWorkerError(
+        'ANALYTICS_INTERRUPTED',
+        'El servidor interrumpió el análisis. Puedes iniciar uno nuevo.',
+      );
+      child.kill('SIGKILL');
+    };
     let size = 0;
     let failure: AnalyticsWorkerError | undefined;
+    signal?.addEventListener('abort', abort, { once: true });
+    if (signal?.aborted) abort();
     const chunks: Buffer[] = [];
     const timer = setTimeout(() => {
       failure = new AnalyticsWorkerError(
@@ -191,6 +211,7 @@ function executePython(executable: string, cwd: string, request: string, timeout
       );
     });
     child.once('close', (code) => {
+      signal?.removeEventListener('abort', abort);
       clearTimeout(timer);
       if (failure) {
         reject(failure);
@@ -206,7 +227,8 @@ function executePython(executable: string, cwd: string, request: string, timeout
 }
 
 export class AnalyticsWorkerBridge {
-  async run(input: Omit<AnalyticsJobV1, 'workDir'>) {
+  async run(input: Omit<AnalyticsJobV1, 'workDir'>, signal?: AbortSignal) {
+    signal?.throwIfAborted();
     const executable = process.env.ANALYTICS_PYTHON_PATH;
     if (!executable || !isAbsolute(executable))
       throw new AnalyticsWorkerError(
@@ -234,7 +256,7 @@ export class AnalyticsWorkerBridge {
     await writeFile(request, JSON.stringify(job), { mode: 0o600, flag: 'wx' });
     try {
       const timeout = job.action === 'TRAIN_DEMAND' ? demandTimeoutMs : defaultTimeoutMs;
-      const child = await executePython(executable, cwd, request, timeout);
+      const child = await executePython(executable, cwd, request, timeout, signal);
       if (child.code !== 0 && protocol.safeParse(child.output).data?.ok !== false) throw invalid();
       return await readAnalyticsOutput(root, job, child.output);
     } finally {

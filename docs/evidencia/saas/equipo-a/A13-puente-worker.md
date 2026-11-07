@@ -12,4 +12,4 @@ Para la integración, el servicio debe construir las rutas internas y verificar 
 - `npm run build:api` y `npm test -- --cacheDirectory .local/jest --runTestsByPath apps/api/test/analytics-worker.test.ts`. Las dos pruebas del puente comprobaron la salida autorizada y el rechazo de otro tenant, un hash alterado y una ruta fuera del trabajo.
 - `node scripts/check-analytics-worker.cjs` generó 197.100 filas sintéticas y comprobó el SHA-256 de los cuatro archivos del manifiesto. El puente recibió métricas del entrenamiento real de `anomaly-iforest-seed42-v1` y una sugerencia de reposición de seis unidades sobre el ejemplo de B03.
 
-Quedan pendientes la cola durable, el guardado de métricas y modelos, los endpoints y la pantalla administrativa. Estos resultados corresponden al dataset sintético. El despliegue queda para la nueva VM.
+El incremento posterior conecta la cola, el guardado de métricas y modelos, los endpoints y la pantalla administrativa. Sus resultados y comandos están en A13-api-handoff.md. Los datos de demostración permanecen sintéticos y el despliegue queda para la nueva VM.

@@ -7,6 +7,7 @@ export type BusinessModule =
   | 'sales'
   | 'orders'
   | 'reports'
+  | 'analysis'
   | 'sync'
   | 'business';
 export const businessModules: {
@@ -52,6 +53,12 @@ export const businessModules: {
     label: 'Reportes y análisis',
     permission: 'reportes:consultar',
     description: 'Resultados comerciales',
+  },
+  {
+    id: 'analysis',
+    label: 'Análisis de datos',
+    permission: 'reportes:consultar',
+    description: 'Demanda, anomalías y reposición',
   },
   {
     id: 'business',

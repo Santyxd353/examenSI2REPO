@@ -37,3 +37,13 @@ def test_unknown_category_is_accepted_by_pipeline() -> None:
     sample = featured.dropna().iloc[[-1]].copy()
     sample["channel"] = "CANAL_NUEVO"
     assert model.predict(sample).shape == (1,)
+
+
+def test_forecast_beyond_downloaded_history_keeps_unobserved_truth_empty() -> None:
+    panel = _small_panel()
+    model = fit_demand_model(build_features(panel), n_estimators=5, max_depth=4)
+    forecast = recursive_forecast(model, panel, pd.Timestamp("2025-11-15"), 7)
+    assert len(forecast) == 7
+    assert forecast["date"].min() == pd.Timestamp("2025-11-16")
+    assert forecast["actual_units"].isna().all()
+    assert (forecast["predicted_units"] >= 0).all()

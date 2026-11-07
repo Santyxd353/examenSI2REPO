@@ -8,6 +8,7 @@ import {
   ShoppingBag,
   ClipboardList,
   BarChart3,
+  BrainCircuit,
   Settings,
   Wifi,
   WifiOff,
@@ -16,6 +17,7 @@ import {
 import { Admin } from '../Admin';
 import { ReportBuilder } from '../reporting/ReportBuilder';
 import type { ReportIdentity } from '../reporting/report-data';
+import { AnalyticsLab } from '../analytics/AnalyticsLab';
 import { Sales } from '../Sales';
 import { OrdersAdmin } from '../OrdersAdmin';
 import { api } from '../api';
@@ -43,6 +45,7 @@ const icons = {
   sales: ShoppingBag,
   orders: ClipboardList,
   reports: BarChart3,
+  analysis: BrainCircuit,
   business: Settings,
   sync: CloudUpload,
 };
@@ -184,6 +187,19 @@ export function AdminWorkspace({
             permissions={permissions}
             onCatalogChanged={onCatalogChanged}
           />
+        ) : selected === 'analysis' ? (
+          reportIdentity && (
+            <AnalyticsLab
+              key={reportIdentity.tenantId + ':' + reportIdentity.actorId}
+              identity={reportIdentity}
+              online={online}
+              session={offlineSession}
+              enableOffline={enableOffline}
+              readOnly={tenant?.readOnly ?? true}
+              features={tenant?.subscription.features ?? []}
+              multiLocation={['negocio', 'piloto'].includes(tenant?.subscription.plan ?? '')}
+            />
+          )
         ) : selected === 'reports' ? (
           reportIdentity && (
             <ReportBuilder
