@@ -91,7 +91,7 @@ export class SQLiteIntentRepository {
     check();
     const result: OfflineIntent[] = [];
     for (const row of rows) {
-      const decoded = await this.cipher.open(scope, 'intent', row.operation_id, row.payload);
+      const decoded = await this.cipher.open(scope, 'intent', row.operation_id, row.payload, true);
       check();
       let item: OfflineIntent = {
         operationId: row.operation_id,
@@ -128,6 +128,10 @@ export class SQLiteIntentRepository {
         };
       }
       try {
+        if (decoded.legacy)
+          throw new Error(
+            'La operación anterior no tiene un comprobante local cifrado. Revisa sus datos antes de crear otra intención.',
+          );
         const wire = await prepareWireIntent(item, this.digest);
         check();
         item = {
@@ -136,6 +140,11 @@ export class SQLiteIntentRepository {
           createdAt: wire.createdAt,
           payload: JSON.stringify(wire),
         };
+        if (item.state === 'BLOCKED' && !item.message)
+          item = {
+            ...item,
+            message: 'Esta intención requiere revisión antes de crear su reemplazo.',
+          };
       } catch (error) {
         check();
         item = {
@@ -193,6 +202,7 @@ export class SQLiteIntentRepository {
         'projection',
         row.entity_id,
         row.payload,
+        true,
       );
       check();
       if (migrated) {

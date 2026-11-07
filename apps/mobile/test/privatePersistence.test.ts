@@ -6,6 +6,8 @@ import { createOfflineAccess } from '../src/offline/access';
 import { createRecordCipher } from '../src/offline/recordCipher';
 import { SQLiteIntentRepository } from '../src/offline/sqliteIntentRepository';
 import { migrateOfflineDatabase } from '../src/offline/migrations';
+import { PrivateRecords } from '../src/offline/privateRecords';
+import { prepareWireIntent } from '../src/offline/protocol';
 import { saveOfflineDashboard, loadOfflineDashboard } from '../src/modules/reports/offlineReport';
 
 const digest = async (text: string) => createHash('sha256').update(text).digest('hex');
@@ -97,6 +99,7 @@ test('el cifrado autentica cuenta y registro, conserva claves anteriores y bloqu
   const f = fixture();
   const encoded = await f.cipher.seal(scope, 'report', 'one', { ventas: 14900 });
   assert.ok(!encoded.includes('14900'));
+  await assert.rejects(f.cipher.open(scope, 'report', 'one', '{"ventas":14900}'), /cifrado/);
   assert.deepEqual((await f.cipher.open(scope, 'report', 'one', encoded)).value, { ventas: 14900 });
   await assert.rejects(f.cipher.open(scope, 'report', 'two', encoded));
   f.rotate();
@@ -190,8 +193,56 @@ test('SQLite confirma intención cifrada junto con proyección, conserva el hash
     'DISCARDED',
   );
   assert.equal((await repo.listIntents(scope)).length, 2);
+  const unsignedLegacy = await prepareWireIntent({ ...draft, operationId: randomUUID() }, digest);
+  await f.adapter.runAsync(
+    'INSERT INTO offline_intent VALUES (?,?,?,?,?,?,?,?,?,?)',
+    unsignedLegacy.operationId,
+    scope.tenantId,
+    scope.actorId,
+    scope.deviceId,
+    unsignedLegacy.kind,
+    JSON.stringify(unsignedLegacy),
+    1,
+    '[]',
+    'PENDING',
+    unsignedLegacy.createdAt,
+  );
+  assert.equal(
+    (await repo.listIntents(scope)).find((item) => item.operationId === unsignedLegacy.operationId)
+      ?.state,
+    'BLOCKED',
+  );
   f.access.lock();
   await assert.rejects(repo.listIntents(scope));
+  f.db.close();
+});
+test('los recursos privados se cifran, se borran solo dentro de su ámbito y no aceptan un sobre reemplazado por texto claro', async () => {
+  const f = fixture();
+  await migrateOfflineDatabase(f.adapter);
+  const records = new PrivateRecords(f.adapter, f.cipher);
+  const resource = { base64: 'iVBORw0KGgo=', bytes: 8 };
+  await records.put(scope, 'outfits', 'asset', resource);
+  await records.put(scope, 'reports', 'saved', { ventas: 149 });
+  const raw = f.db
+    .prepare('SELECT payload FROM offline_private_record WHERE namespace=?')
+    .get('outfits') as any;
+  assert.ok(!raw.payload.includes(resource.base64));
+  assert.deepEqual((await records.get(scope, 'outfits', 'asset'))?.value, resource);
+  await assert.rejects(records.remove({ ...scope, actorId: randomUUID() }, 'outfits', ['asset']));
+  await records.remove(scope, 'outfits', ['asset']);
+  assert.equal(await records.get(scope, 'outfits', 'asset'), null);
+  assert.deepEqual((await records.get(scope, 'reports', 'saved'))?.value, { ventas: 149 });
+  await f.adapter.runAsync(
+    'INSERT INTO offline_private_record VALUES (?,?,?,?,?,?,?)',
+    scope.tenantId,
+    scope.actorId,
+    scope.deviceId,
+    'outfits',
+    'tampered',
+    JSON.stringify(resource),
+    '2026-11-07T12:00:00Z',
+  );
+  await assert.rejects(records.get(scope, 'outfits', 'tampered'), /cifrado/);
   f.db.close();
 });
 test('si la sesión se cierra durante el INSERT, SQLite revierte la intención y su proyección', async () => {

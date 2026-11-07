@@ -180,11 +180,11 @@ async function rotate(requestScope: ScopeKey) {
 
 // Las rutas existentes aún no declaran todos sus DTO. Las nuevas rutas deben usar
 // `api<T>()`; el valor por defecto conserva compatibilidad durante la migración.
-export async function api<T = any>(
+async function authenticatedResponse(
   path: string,
   options: RequestInit = {},
   retry = true,
-): Promise<T> {
+): Promise<{ response: Awaited<ReturnType<typeof scopedFetch>>; requestScope: ScopeKey }> {
   const requestScope = scope.capture();
   const headers = createApiHeaders(options.headers, requestScope, accessToken, options.body);
 
@@ -202,12 +202,31 @@ export async function api<T = any>(
       throw reason;
     }
     scope.assertCurrent(requestScope);
-    return api<T>(path, options, false);
+    return authenticatedResponse(path, options, false);
   }
   if (!response.ok) throw ApiProblem.fromHttp(response.status, await responsePayload(response));
+  return { response, requestScope };
+}
+
+export async function api<T = any>(
+  path: string,
+  options: RequestInit = {},
+  retry = true,
+): Promise<T> {
+  const { response, requestScope } = await authenticatedResponse(path, options, retry);
   const data = (await response.json().catch(() => undefined)) as T;
   scope.assertCurrent(requestScope);
   return data;
+}
+
+/** Descarga privada con los mismos permisos, renovación y guardas que el JSON. */
+export async function apiBytes(path: string, options: RequestInit = {}) {
+  const { response, requestScope } = await authenticatedResponse(path, options);
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  scope.assertCurrent(requestScope);
+  if (bytes.byteLength > 50 * 1024 * 1024)
+    throw new Error('El recurso supera el límite de 50 MiB.');
+  return { bytes, contentType: response.headers.get('content-type')?.split(';')[0] ?? null };
 }
 
 export async function restoreSession(): Promise<Identity | null> {

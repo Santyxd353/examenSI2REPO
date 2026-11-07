@@ -53,4 +53,24 @@ export class PrivateRecords {
     check();
     return { value, savedAt: row.saved_at };
   }
+  async remove(scope: OfflineScope, namespace: string, ids: readonly string[]) {
+    const check = this.cipher.guard(scope);
+    if (ids.length > 100) throw new Error('El lote de limpieza local es demasiado grande.');
+    await this.db.withExclusiveTransactionAsync(async (tx) => {
+      for (const id of new Set(ids)) {
+        check();
+        await tx.runAsync(
+          `DELETE FROM offline_private_record
+        WHERE tenant_id=? AND actor_id=? AND device_id=? AND namespace=? AND record_id=?`,
+          scope.tenantId,
+          scope.actorId,
+          scope.deviceId,
+          namespace,
+          id,
+        );
+        check();
+      }
+    });
+    check();
+  }
 }

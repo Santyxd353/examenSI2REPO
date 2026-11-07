@@ -49,6 +49,7 @@ type Props = {
   onCategoryChange: (value: string) => void;
   onClearFilters: () => void;
   onTryAr: (product: Product, variant: Variant) => void;
+  onOpenOfflineOutfits: () => void;
   onCatalogRefresh: () => Promise<void>;
   onIdentityChange: (identity: Identity) => void;
   onAdminMode?: () => void;
@@ -90,6 +91,7 @@ export function CatalogScreen({
   onCategoryChange,
   onClearFilters,
   onTryAr,
+  onOpenOfflineOutfits,
   onCatalogRefresh,
   onIdentityChange,
   onAdminMode,
@@ -408,6 +410,12 @@ export function CatalogScreen({
         </Pressable>
         <View style={styles.headerActions}>
           <HeaderAction
+            icon="↓"
+            count={0}
+            label="Descargas sin conexión"
+            onPress={onOpenOfflineOutfits}
+          />
+          <HeaderAction
             icon={favoritesOnly ? '♥' : '♡'}
             count={favoriteCount}
             label="Favoritos"
@@ -468,7 +476,10 @@ export function CatalogScreen({
         numColumns={columns}
         keyExtractor={(item) => item.id}
         columnWrapperStyle={styles.gridRow}
-        contentContainerStyle={[styles.list, { paddingHorizontal: listPadding, paddingBottom: 94 + bottomInset }]}
+        contentContainerStyle={[
+          styles.list,
+          { paddingHorizontal: listPadding, paddingBottom: 94 + bottomInset },
+        ]}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>

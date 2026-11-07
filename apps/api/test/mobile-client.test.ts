@@ -53,6 +53,36 @@ afterAll(() => {
   global.fetch = originalFetch;
 });
 
+test('los archivos privados usan la sesión APP y una lectura tardía no llega a otra tienda', async () => {
+  let finish!: (value: ArrayBuffer) => void;
+  const pending = new Promise<ArrayBuffer>((resolve) => {
+    finish = resolve;
+  });
+  global.fetch = jest.fn(async (url) =>
+    String(url).endsWith('/private.png')
+      ? ({
+          ok: true,
+          status: 200,
+          headers: new Headers({ 'Content-Type': 'image/png' }),
+          arrayBuffer: () => pending,
+        } as Response)
+      : reply(session('a')),
+  ) as typeof fetch;
+  const client = require('../../mobile/src/api') as typeof import('../../mobile/src/api');
+  await client.selectTenant('tienda-a');
+  await client.login('a@ejemplo.test', 'PruebaSegura2026!');
+  const reading = client.apiBytes('/private.png');
+  await new Promise((resolve) => setImmediate(resolve));
+  const call = (global.fetch as jest.Mock).mock.calls.find(([url]: [string]) =>
+    url.endsWith('/private.png'),
+  );
+  expect(call[1].headers.get('X-Client-Channel')).toBe('APP');
+  expect(call[1].headers.get('X-Tenant-Slug')).toBe('tienda-a');
+  await client.selectTenant('tienda-b');
+  finish(new Uint8Array([137, 80, 78, 71]).buffer);
+  await expect(reading).rejects.toThrow(/cambió/);
+});
+
 test('logout durante la persistencia no restaura tokens al terminar las escrituras antiguas', async () => {
   global.fetch = jest.fn(async () => reply(session('a'))) as typeof fetch;
   const client = require('../../mobile/src/api') as typeof import('../../mobile/src/api');

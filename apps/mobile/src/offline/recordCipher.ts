@@ -10,7 +10,8 @@ export interface RecordCipher {
     kind: string,
     id: string,
     encoded: string,
-  ): Promise<{ value: T; migrated: boolean }>;
+    allowLegacy?: boolean,
+  ): Promise<{ value: T; migrated: boolean; legacy?: boolean }>;
 }
 type Dependencies = {
   access: ReturnType<typeof createOfflineAccess>;
@@ -38,10 +39,19 @@ export function createRecordCipher(deps: Dependencies): RecordCipher {
       check();
       return JSON.stringify({ schemaVersion: '1.0', keyId, sealed } satisfies StoredRecord);
     },
-    async open<T>(scope: OfflineScope, kind: string, id: string, encoded: string) {
+    async open<T>(
+      scope: OfflineScope,
+      kind: string,
+      id: string,
+      encoded: string,
+      allowLegacy = false,
+    ) {
       const check = deps.access.guard(scope);
       const record = JSON.parse(encoded) as StoredRecord;
-      if (!record?.sealed) return { value: record as T, migrated: true };
+      if (!record?.sealed) {
+        if (!allowLegacy) throw new Error('Falta el sobre cifrado del registro.');
+        return { value: record as T, migrated: true, legacy: true };
+      }
       if (record.schemaVersion !== '1.0' || typeof record.keyId !== 'string')
         throw new Error('Formato de almacén offline no compatible.');
       const keys = await deps.keys(scope);

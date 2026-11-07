@@ -34,6 +34,8 @@ import { canUseBusinessWorkspace } from './modules/registry';
 import { offlineAccess } from './offline/access';
 import { useSystemBars } from './systemBars';
 import { CatalogScreen } from './CatalogScreen';
+import { OfflineOutfitsScreen } from './modules/catalog/OfflineOutfitsScreen';
+import { arGarmentImageUrl } from './modules/catalog/nativeOutfits';
 import { connectRealtime } from './realtime';
 import { bootstrapOfflineVault } from './offline/bootstrap';
 import { watchOfflineReconnect } from './offline/reconnect';
@@ -42,12 +44,13 @@ import { garmentImageFrame, garmentKind, garmentOutline, projectTorso } from './
 import type { Layout, Torso } from './pose';
 import type { Catalog, CatalogLocation, Identity, Product, Variant } from './types';
 
-type Page = 'catalog' | 'ar';
+type Page = 'catalog' | 'offline-outfits' | 'ar';
 
 export function App() {
   const [user, setUser] = useState<Identity | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState<Page>('catalog');
+  const [arReturn, setArReturn] = useState<'catalog' | 'offline-outfits'>('catalog');
   const [adminClientMode, setAdminClientMode] = useState(false);
   const [catalog, setCatalog] = useState<Catalog>({
     products: [],
@@ -94,6 +97,7 @@ export function App() {
     setDebouncedSearch('');
     setCategory('');
     setPage('catalog');
+    setArReturn('catalog');
     setError('');
     setCatalogLoading(false);
     setLoading(false);
@@ -149,6 +153,7 @@ export function App() {
       setSelection(null);
       setLocation(null);
       setPage('catalog');
+      setArReturn('catalog');
       setAdminClientMode(false);
       setCatalog({
         products: [],
@@ -238,12 +243,26 @@ export function App() {
       />
     );
 
+  if (page === 'offline-outfits')
+    return (
+      <OfflineOutfitsScreen
+        user={user}
+        catalog={catalog}
+        onBack={() => setPage('catalog')}
+        onTry={(product, variant) => {
+          setSelection({ product, variant });
+          setArReturn('offline-outfits');
+          setPage('ar');
+        }}
+      />
+    );
+
   if (page === 'ar' && selection)
     return (
       <ArCamera
         product={selection.product}
         variant={selection.variant}
-        onBack={() => setPage('catalog')}
+        onBack={() => setPage(arReturn)}
       />
     );
 
@@ -274,8 +293,10 @@ export function App() {
       }}
       onTryAr={(product, variant) => {
         setSelection({ product, variant });
+        setArReturn('catalog');
         setPage('ar');
       }}
+      onOpenOfflineOutfits={() => setPage('offline-outfits')}
       onCatalogRefresh={() => loadCatalog(location?.id || '')}
       onIdentityChange={setUser}
       onAdminMode={
@@ -539,9 +560,7 @@ function ArCamera({
   const [retry, setRetry] = useState(0);
   const [imageFailed, setImageFailed] = useState(false);
   const nativeAvailable = isPoseAvailable();
-  const arImageUrl = variant.arImagePath
-    ? `${API_URL.replace(/\/api$/, '')}${variant.arImagePath}`
-    : null;
+  const arImageUrl = arGarmentImageUrl(API_URL, variant.arImagePath);
   const categoryKind = garmentKind(product.tipoPrenda || '');
   const kind = categoryKind === 'unsupported' ? garmentKind(product.nombre) : categoryKind;
 

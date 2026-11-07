@@ -44,10 +44,10 @@ Resultados observados hasta este avance:
 | Comprobación | Resultado |
 | --- | --- |
 | Contratos y motor compartido | 25 pruebas aprobadas |
-| Unitarios móviles, incluido SQLite real y WebCrypto en Node | 61 pruebas aprobadas |
+| Unitarios móviles, incluido SQLite real y WebCrypto en Node | 67 pruebas aprobadas |
 | TypeScript móvil | Aprobado |
 | Compatibilidad de dependencias Expo | Aprobada |
-| Exportación Android/Hermes | Aprobada: 988 módulos, bundle de aproximadamente 3,1 MB |
+| Exportación Android/Hermes | Aprobada: 992 módulos, bundle de aproximadamente 3,2 MB |
 | Compilación API/web | Aprobada |
 | Suite completa API del candidato de trabajo | 47 suites y 233 pruebas aprobadas, 446 segundos |
 | Regresión de reintento web en la misma pestaña | 2 pruebas adicionales aprobadas |
@@ -57,6 +57,16 @@ Resultados observados hasta este avance:
 | Uso de APK en dispositivo | Pendiente; no ejecutado por este agente |
 
 Los unitarios criptográficos usan AES-GCM de WebCrypto y SQLite de Node para comprobar la persistencia. La implementación Android usa Expo Crypto/SecureStore/SQLite y todavía requiere la comprobación nativa correspondiente.
+
+### Descargas nativas para el vestidor AR
+
+El catálogo Android abre «Descargas sin conexión». La clienta guarda marcas, categorías, tallas y colores preferidos; el servidor selecciona hasta diez prendas compatibles mediante el manifiesto privado A08. La pantalla informa cuántas prendas llegaron, la fecha de preparación, las limitaciones y los recursos pendientes. Permite continuar, verificar y eliminar la descarga.
+
+Los PNG se descargan con la sesión APP y la tienda actual, verifican longitud y SHA-256 y se persisten cifrados. Un reemplazo incompleto conserva el último paquete íntegro. Al probar una prenda se descifra en memoria y se abre la cámara con su anclaje de vestido, falda o parte superior; al volver se conserva la pantalla de descargas. El logout bloquea el acceso al ámbito anterior. La superposición AR sigue siendo orientativa y no representa una simulación física de ajuste.
+
+Las pruebas cubren reapertura, descarga parcial, corrupción y reparación, reemplazo, URLs ajenas, aislamiento, PNG en memoria y eliminación por ámbito. Los registros privados nuevos rechazan contenido sin sobre cifrado; los registros históricos de cola en texto claro se conservan bloqueados para revisión y no se reenvían automáticamente. La exportación Hermes de este incremento tiene SHA-256 `46986EA6584D1E14C89DA7FC97DE464E5013BF2235966C781C0DDE39AF65BA85`; no constituye una prueba de cámara en dispositivo ni un APK firmado.
+
+La suite del manifiesto privado pasó sus cuatro pruebas y utiliza el descargador nativo contra los archivos reales de la API: las diez prendas se verificaron y quedaron disponibles para abrirlas en memoria. El cliente de transporte pasó seis pruebas, incluida una respuesta binaria tardía tras cambiar de tienda. El primer intento de la suite excedió el tiempo de preparación porque PostgreSQL local estaba recuperándose; se repitió con la base disponible y pasó en 26 segundos, sin ampliar los tiempos de las operaciones.
 
 El primer recorrido completo encontró dos dependencias de entorno: faltaba el GLB de referencia generado y se mezclaban declaraciones de transporte de Node/React Native. Se preparó el fixture y se corrigieron los tipos sin desactivar el chequeo móvil. Ambos casos de avatar y los casos del cliente móvil fueron repetidos con resultado favorable. Un cierre de fixtures necesitó un timeout de limpieza mayor debido a un checkpoint de disco de 38 segundos; no se amplió el tiempo de las operaciones comerciales.
 
@@ -73,7 +83,6 @@ node scripts/check-saas-integrated.cjs
 ## Pendientes antes de G6
 
 - Revisar e integrar los tres commits B publicados después de la base: `c9d2db3`, `eebd68a` y `89accbf`, sobre pagos de compra con QR y Stripe TEST. Todavía no forman parte de este avance.
-- Conectar la descarga nativa de hasta diez prendas al manifiesto privado A08 y al vestidor AR. Los helpers B anteriores no bastan como evidencia de ese flujo.
 - Cerrar A06/B14: regeneración de avatar sin fotos purgadas y evidencia de inferencia válida desde fotos reales autorizadas.
 - Aceptación en dispositivo: cierre y reapertura, pérdida de red, claves, cámara, audio, conflictos y dashboards offline. La compilación Hermes no sustituye estas pruebas.
 - Revisión final de la rama y trazabilidad RF/CU. Las métricas analíticas siguen siendo de demostración sintética; su calidad y limitaciones se conservan en A13.

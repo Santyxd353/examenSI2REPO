@@ -8,6 +8,7 @@ import { Fixture } from './helpers/offline';
 import { AuthService } from '../src/auth';
 import { storedPath } from '../src/storage';
 import { seedWomen } from '../../../scripts/seed-women';
+import { NativeOutfitCache } from '../../mobile/src/modules/catalog/nativeOutfits';
 
 let f: Fixture;
 const deviceId = randomUUID();
@@ -76,6 +77,42 @@ test('12 referencias reales producen diez productos distintos con archivos ínte
     expect(repeat.body.garments.map((item: any) => item.variantId)).toEqual(
       data.garments.map((item) => item.variantId),
     );
+    if (platform === 'ANDROID_AR') {
+      const records = new Map<string, unknown>();
+      const cache = new NativeOutfitCache(
+        'https://qa.test/api',
+        {
+          tenantId: data.tenantId,
+          actorId: data.ownerId,
+          deviceId,
+        },
+        {
+          guard: () => {},
+          read: async (key) => records.get(key) ?? null,
+          write: async (key, value) => {
+            records.set(key, value);
+          },
+          remove: async (keys) => {
+            keys.forEach((key) => records.delete(key));
+          },
+          digest: async (bytes) => hash(Buffer.from(bytes)),
+          get: async (path) => {
+            const result = await file('/api' + path);
+            expect(result.status).toBe(200);
+            return {
+              bytes: new Uint8Array(result.body),
+              contentType: result.headers['content-type'].split(';')[0],
+            };
+          },
+        },
+      );
+      const downloaded = await cache.download(data);
+      expect(downloaded.active?.readyIds).toHaveLength(10);
+      expect(downloaded.pending).toBeNull();
+      expect(await cache.image(data.packageId, data.garments[0].resourceId)).toMatch(
+        /^data:image\/png;base64,/,
+      );
+    }
   }
 });
 

@@ -100,6 +100,7 @@ export async function loadOfflineDashboard(
     'dashboard',
     key,
     row.payload,
+    true,
   );
   check();
   const report = verifyOfflineDashboard(value);
