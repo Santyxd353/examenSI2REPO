@@ -95,6 +95,16 @@ test('carrito, reserva, pago simulado e idempotencia', async () => {
     .auth(token, { type: 'bearer' })
     .send(payload);
   expect(retry.body.id).toBe(checkout.body.id);
+  const legacyCard = await request(app.getHttpServer())
+    .post(`/api/commerce/orders/${checkout.body.id}/payment`)
+    .auth(token, { type: 'bearer' })
+    .send({
+      decision: 'APROBAR',
+      idempotency: randomUUID(),
+      method: 'TARJETA_PRUEBA',
+      reference: 'CARD-4242',
+    });
+  expect(legacyCard.status).toBe(400);
   const payId = randomUUID();
   const payment = await request(app.getHttpServer())
     .post(`/api/commerce/orders/${checkout.body.id}/payment`)

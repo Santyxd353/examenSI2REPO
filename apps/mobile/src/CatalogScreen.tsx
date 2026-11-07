@@ -262,33 +262,6 @@ export function CatalogScreen({
     }
   }
 
-  async function pay(
-    orderId: string,
-    decision: 'APROBAR' | 'RECHAZAR',
-    method?: 'TARJETA_PRUEBA' | 'QR_PRUEBA',
-    reference?: string,
-  ) {
-    setCommerceBusy(true);
-    setCommerceError('');
-    setCommerceMessage('');
-    try {
-      await api(`/commerce/orders/${orderId}/payment`, {
-        method: 'POST',
-        body: JSON.stringify({ decision, idempotency: operationId(), method, reference }),
-      });
-      setCommerceMessage(
-        decision === 'APROBAR'
-          ? 'Pago de prueba aprobado. El pedido quedó confirmado.'
-          : 'Pago de prueba rechazado. La reserva fue liberada.',
-      );
-      await Promise.all([loadCommerce(), onCatalogRefresh()]);
-    } catch (reason) {
-      setCommerceError((reason as Error).message);
-    } finally {
-      setCommerceBusy(false);
-    }
-  }
-
   async function loadProfile() {
     setProfileLoading(true);
     setProfileError('');
@@ -712,7 +685,6 @@ export function CatalogScreen({
         onLocationChange={onLocationChange}
         onChangeQuantity={changeQuantity}
         onCheckout={checkout}
-        onPay={pay}
         onReload={loadCommerce}
       />
 

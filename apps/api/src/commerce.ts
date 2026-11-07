@@ -8,12 +8,14 @@ import {
   OnModuleInit,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import * as timers from 'node:timers';
+import Stripe from 'stripe';
 import { z } from 'zod';
 import { AuthGuard, AuthRequest } from './auth';
 import { Db } from './db';
@@ -33,7 +35,7 @@ const paymentDecision = z
   .object({
     decision: z.enum(['APROBAR', 'RECHAZAR']),
     idempotency: uuid,
-    method: z.enum(['TARJETA_PRUEBA', 'QR_PRUEBA']).optional(),
+    method: z.literal('QR_PRUEBA').optional(),
     reference: z
       .string()
       .trim()
@@ -71,6 +73,17 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
     @Inject(RealtimeGateway) private realtime: RealtimeGateway,
   ) {}
   private expiryTimer?: ReturnType<typeof timers.setInterval>;
+  private stripe?: Stripe;
+  private stripeClient() {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key?.startsWith('sk_test_'))
+      throw new BadRequestException('Stripe de prueba no está configurado en el servidor.');
+    return (this.stripe ??= new Stripe(key));
+  }
+  @Get('payment-options')
+  paymentOptions() {
+    return { stripeTest: Boolean(process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_')) };
+  }
   onModuleInit() {
     const timer = timers.setInterval(
       () =>
@@ -97,6 +110,7 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
     );
   }
 
+
   private async releaseExpired() {
     const expired = await this.db.pedido.findMany({
       where: {
@@ -118,7 +132,7 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
     event?: {
       id: string;
       decision: 'APROBAR' | 'RECHAZAR';
-      method?: 'TARJETA_PRUEBA' | 'QR_PRUEBA';
+      method?: 'QR_PRUEBA';
       reference?: string;
     },
   ) {
@@ -535,6 +549,76 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  @Post('orders/:id/stripe-test-checkout')
+  async stripeTestCheckout(@Req() req: AuthRequest, @Param('id') id: string) {
+    uuid.parse(id);
+    await this.releaseExpired();
+    const channel = requestChannel(req);
+    const order = await this.db.pedido.findFirst({
+      where: { id, usuario_id: req.user.id, canal: channel, estado: 'PENDIENTE_PAGO' },
+      include: { detalle_pedido: true, pago: true },
+    });
+    if (!order || !order.pago[0]) throw new BadRequestException('El pedido ya no admite pagos.');
+    const payment = order.pago[0];
+    const stripe = this.stripeClient();
+    if (payment.proveedor === 'STRIPE_TEST' && payment.referencia?.startsWith('cs_')) {
+      const prior = await stripe.checkout.sessions.retrieve(payment.referencia);
+      if (prior.status === 'open' && prior.url) return { url: prior.url, sessionId: prior.id };
+      throw new BadRequestException('La sesión de pago venció. Crea un pedido nuevo.');
+    }
+    if (payment.proveedor !== simulatedProvider(channel))
+      throw new BadRequestException('Este pedido usa otro método de pago.');
+    const origin = new URL(process.env.WEB_ORIGIN || 'http://localhost:5173').origin;
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      locale: 'es',
+      client_reference_id: order.id,
+      metadata: { orderId: order.id, userId: req.user.id },
+      success_url: `${origin}/?stripe_session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/?stripe_cancelled=1`,
+      expires_at: Math.floor(Date.now() / 1000) + 31 * 60,
+      line_items: order.detalle_pedido.map((line) => ({
+        quantity: line.cantidad,
+        price_data: {
+          currency: 'bob',
+          unit_amount: Math.round(Number(line.precio_unitario) * 100),
+          product_data: { name: `${line.descripcion_snapshot} · talla ${line.talla_snapshot}` },
+        },
+      })),
+    });
+    if (!session.url) throw new BadRequestException('Stripe no devolvió una página de pago.');
+    await this.db.$transaction(async (tx) => {
+      await tx.pago.update({ where: { id: payment.id }, data: { proveedor: 'STRIPE_TEST', referencia: session.id } });
+      await tx.reserva_stock.updateMany({
+        where: { detalle_pedido: { pedido_id: order.id }, estado: 'ACTIVA' },
+        data: { vence_en: new Date(Date.now() + 36 * 60_000) },
+      });
+    });
+    return { url: session.url, sessionId: session.id };
+  }
+
+  @Get('stripe-test-checkout')
+  async verifyStripeTestCheckout(@Req() req: AuthRequest, @Query('session_id') sessionId: string) {
+    if (!sessionId?.startsWith('cs_test_')) throw new BadRequestException('Sesión de Stripe inválida.');
+    const session = await this.stripeClient().checkout.sessions.retrieve(sessionId);
+    const orderId = session.metadata?.orderId;
+    if (!uuid.safeParse(orderId).success || session.metadata?.userId !== req.user.id || session.livemode)
+      throw new BadRequestException('Esta sesión no pertenece a tu cuenta de prueba.');
+    const order = await this.db.pedido.findFirst({
+      where: { id: orderId, usuario_id: req.user.id, canal: requestChannel(req) }, include: { pago: true },
+    });
+    if (!order || order.pago[0]?.proveedor !== 'STRIPE_TEST' || order.pago[0]?.referencia !== session.id ||
+        session.currency !== 'bob' || session.amount_total !== Math.round(Number(order.total) * 100))
+      throw new BadRequestException('El pago no coincide con el pedido.');
+    if (session.payment_status === 'paid' && order.estado === 'PENDIENTE_PAGO') {
+      await this.closePending(order.id, 'CONFIRMADO', {
+        id: session.id, decision: 'APROBAR', reference: session.id,
+      });
+    }
+    const current = await this.db.pedido.findUniqueOrThrow({ where: { id: order.id } });
+    return { estado: current.estado, pagado: session.payment_status === 'paid' };
+  }
+
   @Post('demo-wallet/scan')
   async payFromDemoWallet(@Req() req: AuthRequest, @Body() body: unknown) {
     const input = demoWalletScan.parse(body);
@@ -552,7 +636,7 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
     });
     if (!order) throw new BadRequestException('No puedes pagar este pedido con tu billetera demo.');
     const payment = order.pago[0];
-    if (!payment || Number(payment.monto).toFixed(2) !== Number(rawAmount).toFixed(2))
+    if (!payment || !payment.proveedor.startsWith('SIMULADO_') || Number(payment.monto).toFixed(2) !== Number(rawAmount).toFixed(2))
       throw new BadRequestException('El monto del QR no coincide con el pedido.');
 
     const prior = await this.db.evento_pago.findUnique({

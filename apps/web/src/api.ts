@@ -2,6 +2,25 @@ import { tenantSlug } from './tenant';
 let accessToken = '';
 let authRevision = 0;
 let closingSession = false;
+const requestTimeoutMs = 20_000;
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), requestTimeoutMs);
+  const abortFromCaller = () => controller.abort();
+  init.signal?.addEventListener('abort', abortFromCaller, { once: true });
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted && !init.signal?.aborted)
+      throw new Error('La solicitud tardó demasiado. Verifica que el servidor local esté activo e inténtalo otra vez.');
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+    init.signal?.removeEventListener('abort', abortFromCaller);
+  }
+}
+
 export const setToken = (value: string) => {
   authRevision++;
   accessToken = value;
@@ -11,7 +30,7 @@ export async function refresh() {
   if (closingSession) throw new Error('La sesión se está cerrando.');
   const revision = authRevision;
   if (!refreshPromise)
-    refreshPromise = fetch('/api/auth/refresh', {
+    refreshPromise = fetchWithTimeout('/api/auth/refresh', {
       method: 'POST',
       credentials: 'include',
       headers: { 'X-Tenant-Slug': tenantSlug() },
@@ -37,7 +56,7 @@ export async function logoutSession() {
   authRevision++;
   try {
     await refreshPromise?.catch(() => {});
-    const response = await fetch('/api/auth/logout', {
+    const response = await fetchWithTimeout('/api/auth/logout', {
       method: 'POST',
       credentials: 'include',
       headers: { 'X-Tenant-Slug': tenantSlug() },
@@ -55,7 +74,11 @@ export async function api(path: string, options: RequestInit = {}, retry = true)
   if (accessToken) headers.set('Authorization', 'Bearer ' + accessToken);
   if (options.body && !(options.body instanceof FormData))
     headers.set('Content-Type', 'application/json');
-  const response = await fetch('/api' + path, { ...options, headers, credentials: 'include' });
+  const response = await fetchWithTimeout('/api' + path, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
   if (response.status === 401 && retry && !path.startsWith('/auth/')) {
     await refresh();
     return api(path, options, false);

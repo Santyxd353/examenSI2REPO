@@ -72,6 +72,12 @@ const money = (n: number) =>
     currency: 'BOB',
     maximumFractionDigits: 0,
   }).format(n);
+const locationLabel = (location: { nombre: string; tipo: 'TIENDA' | 'ALMACEN' }) => {
+  const kind = location.tipo === 'TIENDA' ? 'Sucursal' : 'Almacén';
+  return location.nombre.toLocaleLowerCase('es-BO').startsWith(kind.toLocaleLowerCase('es-BO'))
+    ? location.nombre
+    : `${kind} ${location.nombre}`;
+};
 function GarmentArt({ color = '#d5c6b0' }: { color?: string }) {
   return (
     <svg viewBox="0 0 300 300" aria-hidden="true">
@@ -102,7 +108,9 @@ function GarmentArt({ color = '#d5c6b0' }: { color?: string }) {
 export function App() {
   const accountEpoch = useRef(0),
     viewEpoch = useRef(0);
-  const [page, setPage] = useState<'catalogo' | 'avatar' | 'admin' | 'commerce'>('catalogo'),
+  const [page, setPage] = useState<'catalogo' | 'avatar' | 'admin' | 'commerce'>(() =>
+      typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('stripe_session_id')
+        ? 'commerce' : 'catalogo'),
     [user, setUser] = useState<any>(null),
     [authOpen, setAuthOpen] = useState(false),
     [register, setRegister] = useState(false);
@@ -655,7 +663,7 @@ export function App() {
                       <option value="">Todas las sucursales y almacenes</option>
                       {catalogLocations.map((location) => (
                         <option value={location.id} key={location.id}>
-                          {location.tipo === 'TIENDA' ? 'Sucursal' : 'Almacén'} · {location.nombre}
+                          {locationLabel(location)}
                         </option>
                       ))}
                     </select>
@@ -805,10 +813,7 @@ export function App() {
                         <div className="location-stock" aria-label="Disponibilidad por ubicación">
                           {v.ubicaciones.map((location) => (
                             <span key={location.id}>
-                              <b>
-                                {location.tipo === 'TIENDA' ? 'Sucursal' : 'Almacén'}{' '}
-                                {location.nombre}
-                              </b>
+                              <b>{locationLabel(location)}</b>
                               {location.disponible} u.
                             </span>
                           ))}

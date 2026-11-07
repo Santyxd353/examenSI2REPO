@@ -21,6 +21,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx scripts/seed.ts",
     "db:seed:reports": "tsx scripts/seed-reports.ts",
+    "db:seed:branches": "tsx scripts/seed-branch-inventory.ts",
     "db:prepare-test": "tsx scripts/prepare-test.ts",
     "user:grant-admin": "tsx scripts/grant-admin.ts",
     "tenant:create": "tsx scripts/create-tenant.ts",
@@ -50,6 +51,7 @@
     "rxjs": "^7.8.2",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
+    "stripe": "^23.1.0",
     "three": "^0.183.0",
     "zod": "^4.1.0"
   },

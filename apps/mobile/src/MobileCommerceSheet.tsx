@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
   Image,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -47,8 +49,6 @@ export type MobileOrder = {
   devolucion: { id: string; estado: string }[];
 };
 
-type DemoPaymentMethod = 'TARJETA_PRUEBA' | 'QR_PRUEBA';
-
 type Props = {
   visible: boolean;
   lines: MobileCartLine[];
@@ -64,12 +64,6 @@ type Props = {
   onLocationChange: (location: CatalogLocation) => void;
   onChangeQuantity: (variantId: string, quantity: number) => Promise<void>;
   onCheckout: (address: string, addressId?: string) => Promise<boolean>;
-  onPay: (
-    orderId: string,
-    decision: 'APROBAR' | 'RECHAZAR',
-    method: DemoPaymentMethod,
-    reference: string,
-  ) => Promise<void>;
   onReload: () => Promise<void>;
 };
 
@@ -94,7 +88,6 @@ export function MobileCommerceSheet({
   onLocationChange,
   onChangeQuantity,
   onCheckout,
-  onPay,
   onReload,
 }: Props) {
   const insets = useSystemBars();
@@ -104,6 +97,11 @@ export function MobileCommerceSheet({
   const [checkoutFeedback, setCheckoutFeedback] = useState('');
   const [paymentOrder, setPaymentOrder] = useState<MobileOrder | null>(null);
   const [walletOpen, setWalletOpen] = useState(false);
+  const [stripeEnabled, setStripeEnabled] = useState(false);
+  const [stripeSessionId, setStripeSessionId] = useState('');
+  const [stripeBusy, setStripeBusy] = useState(false);
+  const [stripeError, setStripeError] = useState('');
+  const [stripeMessage, setStripeMessage] = useState('');
   const unavailable = lines.some((line) => line.available < line.quantity || line.price <= 0);
 
   useEffect(() => {
@@ -117,6 +115,82 @@ export function MobileCommerceSheet({
       setAddress(addressText(preferred));
     }
   }, [visible, addresses]);
+
+  useEffect(() => {
+    if (!visible) return;
+    void api('/commerce/payment-options')
+      .then((options: { stripeTest: boolean }) => setStripeEnabled(Boolean(options.stripeTest)))
+      .catch(() => setStripeEnabled(false));
+  }, [visible]);
+
+  async function verifyStripe() {
+    if (!stripeSessionId) return;
+    setStripeBusy(true);
+    setStripeError('');
+    try {
+      const result: { pagado: boolean; estado: string } = await api(
+        `/commerce/stripe-test-checkout?session_id=${encodeURIComponent(stripeSessionId)}`,
+      );
+      await onReload();
+      if (result.pagado && result.estado === 'CONFIRMADO') {
+        setStripeMessage('Stripe confirmó el pago de prueba. Pedido confirmado.');
+        setStripeSessionId('');
+        setPaymentOrder(null);
+      } else {
+        setStripeMessage('El pago aún no aparece confirmado en Stripe.');
+      }
+    } catch (reason) {
+      setStripeError((reason as Error).message);
+    } finally {
+      setStripeBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!stripeSessionId) return;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void verifyStripe();
+    });
+    return () => subscription.remove();
+  }, [stripeSessionId]);
+
+  useEffect(() => {
+    if (!paymentOrder || paymentOrder.pago[0]?.proveedor === 'STRIPE_TEST') return;
+    const interval = setInterval(() => void onReload(), 3000);
+    return () => clearInterval(interval);
+  }, [paymentOrder?.id, paymentOrder?.pago[0]?.proveedor, onReload]);
+
+  useEffect(() => {
+    if (!paymentOrder) return;
+    const current = orders.find((order) => order.id === paymentOrder.id);
+    if (current && current.estado !== 'PENDIENTE_PAGO') {
+      setPaymentOrder(null);
+      setStripeMessage(current.estado === 'CONFIRMADO'
+        ? 'Pago confirmado. Tu pedido está listo para continuar.'
+        : `El pedido cambió a ${current.estado.replaceAll('_', ' ')}.`);
+    }
+  }, [orders, paymentOrder]);
+
+  async function openStripe(order: MobileOrder) {
+    setStripeBusy(true);
+    setStripeError('');
+    setStripeMessage('');
+    try {
+      const checkout: { url: string; sessionId: string } = await api(
+        `/commerce/orders/${order.id}/stripe-test-checkout`, { method: 'POST' },
+      );
+      setStripeSessionId(checkout.sessionId);
+      setPaymentOrder({
+        ...order,
+        pago: order.pago.map((payment) => ({ ...payment, proveedor: 'STRIPE_TEST' })),
+      });
+      await Linking.openURL(checkout.url);
+    } catch (reason) {
+      setStripeError((reason as Error).message);
+    } finally {
+      setStripeBusy(false);
+    }
+  }
 
   async function checkout() {
     const blocker = checkoutBlocker({
@@ -180,6 +254,7 @@ export function MobileCommerceSheet({
 
           {!!error && <Text style={styles.error}>{error}</Text>}
           {!!message && <Text style={styles.message}>{message}</Text>}
+          {!!stripeMessage && <Text style={styles.message}>{stripeMessage}</Text>}
 
           {tab === 'cart' ? (
             <CartContent
@@ -218,13 +293,13 @@ export function MobileCommerceSheet({
         </View>
         <DemoPaymentSheet
           order={paymentOrder}
-          busy={busy}
+          busy={busy || stripeBusy}
+          stripeEnabled={stripeEnabled}
+          stripePending={Boolean(stripeSessionId)}
+          stripeError={stripeError}
           onClose={() => setPaymentOrder(null)}
-          onPay={async (decision, method, reference) => {
-            if (!paymentOrder) return;
-            await onPay(paymentOrder.id, decision, method, reference);
-            setPaymentOrder(null);
-          }}
+          onStripe={() => paymentOrder && openStripe(paymentOrder)}
+          onVerifyStripe={verifyStripe}
         />
         <DemoWalletScanner
           visible={walletOpen}
@@ -486,10 +561,9 @@ function OrdersContent({
           </View>
           {order.estado === 'PENDIENTE_PAGO' && (
             <View style={styles.paymentBox}>
-              <Text style={styles.paymentTitle}>Lúmina Pay · demostración</Text>
+              <Text style={styles.paymentTitle}>Pago de prueba</Text>
               <Text style={styles.paymentCopy}>
-                Elige QR o tarjeta de prueba. No se cobra dinero real ni se solicitan datos
-                bancarios.
+                Paga con Stripe Checkout o escanea el QR de demostración. No se cobra dinero real.
               </Text>
               <View style={styles.paymentActions}>
                 <Pressable
@@ -516,101 +590,40 @@ function OrdersContent({
 function DemoPaymentSheet({
   order,
   busy,
+  stripeEnabled,
+  stripePending,
+  stripeError,
   onClose,
-  onPay,
+  onStripe,
+  onVerifyStripe,
 }: {
   order: MobileOrder | null;
   busy: boolean;
+  stripeEnabled: boolean;
+  stripePending: boolean;
+  stripeError: string;
   onClose: () => void;
-  onPay: (
-    decision: 'APROBAR' | 'RECHAZAR',
-    method: DemoPaymentMethod,
-    reference: string,
-  ) => Promise<void>;
+  onStripe: () => void;
+  onVerifyStripe: () => void;
 }) {
-  const [method, setMethod] = useState<DemoPaymentMethod>('TARJETA_PRUEBA');
-  const [reference, setReference] = useState('4242');
-
-  useEffect(() => {
-    if (!order) return;
-    setMethod('TARJETA_PRUEBA');
-    setReference('4242');
-  }, [order?.id]);
-
   if (!order) return null;
-  const referenceValid = reference.trim().length >= 4;
-  const submit = (decision: 'APROBAR' | 'RECHAZAR') =>
-    void onPay(
-      decision,
-      method,
-      method === 'TARJETA_PRUEBA'
-        ? `CARD-${reference.padStart(4, '0').slice(-4)}`
-        : reference.trim().toUpperCase(),
-    );
+  const stripeOrder = order.pago[0]?.proveedor === 'STRIPE_TEST';
 
   return (
     <Modal transparent visible animationType="fade" onRequestClose={onClose}>
       <View style={styles.gatewayOverlay}>
         <View style={styles.gatewayCard}>
           <Text style={styles.gatewayBadge}>✓ ENTORNO DE PRUEBA</Text>
-          <Text style={styles.gatewayTitle}>Lúmina Pay</Text>
+          <Text style={styles.gatewayTitle}>Finaliza tu compra</Text>
           <Text style={styles.gatewayCopy}>
             Pedido {order.numero}\nTotal {money(Number(order.total))}
           </Text>
           <Text style={styles.gatewayNotice}>
-            Esta pasarela es académica: no procesa dinero ni guarda tarjetas reales.
+            Stripe funciona en modo de prueba. El QR es una simulación académica.
           </Text>
-          <View style={styles.gatewayMethods}>
-            <Pressable
-              style={[
-                styles.gatewayMethod,
-                method === 'TARJETA_PRUEBA' && styles.gatewayMethodActive,
-              ]}
-              onPress={() => {
-                setMethod('TARJETA_PRUEBA');
-                setReference('4242');
-              }}
-            >
-              <Text
-                style={[
-                  styles.gatewayMethodText,
-                  method === 'TARJETA_PRUEBA' && styles.gatewayMethodTextActive,
-                ]}
-              >
-                ▣ Tarjeta
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.gatewayMethod, method === 'QR_PRUEBA' && styles.gatewayMethodActive]}
-              onPress={() => {
-                setMethod('QR_PRUEBA');
-                setReference('LUMINA-QR-01');
-              }}
-            >
-              <Text
-                style={[
-                  styles.gatewayMethodText,
-                  method === 'QR_PRUEBA' && styles.gatewayMethodTextActive,
-                ]}
-              >
-                ▦ QR
-              </Text>
-            </Pressable>
-          </View>
-          <Text style={styles.gatewayLabel}>
-            {method === 'TARJETA_PRUEBA'
-              ? 'Últimos 4 dígitos de tarjeta ficticia'
-              : 'QR generado para este pedido'}
-          </Text>
-          {method === 'TARJETA_PRUEBA' ? (
-            <TextInput
-              value={reference}
-              keyboardType="number-pad"
-              maxLength={4}
-              onChangeText={(value) => setReference(value.replace(/\D/g, '').slice(0, 4))}
-              style={styles.gatewayInput}
-            />
-          ) : (
+          {!stripeOrder && (
+            <>
+            <Text style={styles.gatewayLabel}>QR generado para este pedido</Text>
             <View style={styles.gatewayQr}>
               <QRCode
                 value={paymentQrPayload(order)}
@@ -622,32 +635,30 @@ function DemoPaymentSheet({
                 Escanéalo desde Lúmina Pay Demo en otro dispositivo.
               </Text>
             </View>
+            <Text style={styles.gatewayWaiting}>Esperando el escaneo del QR…</Text>
+            </>
           )}
-          <View style={styles.gatewayActions}>
-            <Pressable disabled={busy} style={styles.gatewayCancel} onPress={onClose}>
-              <Text style={styles.gatewayCancelText}>Cancelar</Text>
-            </Pressable>
+          {stripeEnabled && (
             <Pressable
-              disabled={busy || (method === 'TARJETA_PRUEBA' && !referenceValid)}
-              style={[styles.gatewayReject, (busy || !referenceValid) && styles.disabled]}
-              onPress={() => submit('RECHAZAR')}
-            >
-              <Text style={styles.gatewayRejectText}>Rechazar</Text>
-            </Pressable>
-          </View>
-          {method === 'TARJETA_PRUEBA' ? (
-            <Pressable
-              disabled={busy || !referenceValid}
-              style={[styles.gatewayPay, (busy || !referenceValid) && styles.disabled]}
-              onPress={() => submit('APROBAR')}
+              disabled={busy}
+              style={[styles.gatewayPay, busy && styles.disabled]}
+              onPress={onStripe}
             >
               <Text style={styles.gatewayPayText}>
-                {busy ? 'Procesando…' : 'Pagar en modo prueba'}
+                {busy ? 'Abriendo Stripe…' : 'Pagar con Stripe Checkout'}
               </Text>
             </Pressable>
-          ) : (
-            <Text style={styles.gatewayWaiting}>Esperando el escaneo del QR…</Text>
           )}
+          {stripeEnabled && <Text style={styles.gatewayNotice}>Stripe se abrirá en el navegador. Regresa a la app para comprobar el pago.</Text>}
+          {stripePending && (
+            <Pressable disabled={busy} style={styles.gatewayPay} onPress={onVerifyStripe}>
+              <Text style={styles.gatewayPayText}>Comprobar pago de Stripe</Text>
+            </Pressable>
+          )}
+          {!!stripeError && <Text style={styles.error}>{stripeError}</Text>}
+          <Pressable disabled={busy} style={styles.gatewayCancel} onPress={onClose}>
+            <Text style={styles.gatewayCancelText}>Cerrar</Text>
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -1027,36 +1038,12 @@ const styles = StyleSheet.create({
   gatewayTitle: { color: green, fontSize: 25, fontWeight: '900', marginTop: 15 },
   gatewayCopy: { color: '#38443c', fontSize: 11, lineHeight: 17, marginTop: 7, fontWeight: '700' },
   gatewayNotice: { color: '#737c75', fontSize: 9, lineHeight: 13, marginTop: 9 },
-  gatewayMethods: { flexDirection: 'row', gap: 8, marginTop: 17 },
-  gatewayMethod: {
-    flex: 1,
-    minHeight: 43,
-    borderWidth: 1,
-    borderColor: '#d5dad3',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-  },
-  gatewayMethodActive: { borderColor: green, backgroundColor: '#e7f1e8' },
-  gatewayMethodText: { color: '#58635a', fontSize: 10, fontWeight: '700' },
-  gatewayMethodTextActive: { color: green, fontWeight: '900' },
   gatewayLabel: {
     color: '#354139',
     fontSize: 10,
     fontWeight: '800',
     marginTop: 16,
     marginBottom: 7,
-  },
-  gatewayInput: {
-    borderWidth: 1,
-    borderColor: '#d2d7d1',
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    color: '#1f2923',
-    paddingHorizontal: 12,
-    minHeight: 45,
-    fontSize: 12,
   },
   gatewayQr: {
     alignItems: 'center',
@@ -1068,19 +1055,8 @@ const styles = StyleSheet.create({
     padding: 13,
   },
   gatewayQrText: { color: '#657066', fontSize: 9, textAlign: 'center', lineHeight: 13 },
-  gatewayActions: { flexDirection: 'row', gap: 8, marginTop: 17 },
   gatewayCancel: { flex: 1, minHeight: 43, alignItems: 'center', justifyContent: 'center' },
   gatewayCancelText: { color: '#667068', fontSize: 10, fontWeight: '800' },
-  gatewayReject: {
-    flex: 1,
-    minHeight: 43,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#d8aaa0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gatewayRejectText: { color: '#9d3d2c', fontSize: 10, fontWeight: '800' },
   gatewayPay: {
     minHeight: 46,
     marginTop: 8,
