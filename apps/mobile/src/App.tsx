@@ -29,6 +29,9 @@ import {
 } from './api';
 import { AdminDashboard } from './AdminDashboard';
 import { AdminNavigator } from './navigation/AdminNavigator';
+import { StaffHome } from './navigation/StaffHome';
+import { canUseBusinessWorkspace } from './modules/registry';
+import { offlineAccess } from './offline/access';
 import { useSystemBars } from './systemBars';
 import { CatalogScreen } from './CatalogScreen';
 import { connectRealtime } from './realtime';
@@ -40,7 +43,6 @@ import type { Layout, Torso } from './pose';
 import type { Catalog, CatalogLocation, Identity, Product, Variant } from './types';
 
 type Page = 'catalog' | 'ar';
-const isAdministrator = (identity: Identity) => identity.roles.includes('Administrador');
 
 export function App() {
   const [user, setUser] = useState<Identity | null>(null);
@@ -124,7 +126,7 @@ export function App() {
         setUser(identity);
         if (identity)
           void bootstrapOfflineVault(identity).catch((reason) => setError(reason.message));
-        if (identity && !isAdministrator(identity)) await loadCatalog('');
+        if (identity && !canUseBusinessWorkspace(identity)) await loadCatalog('');
       })
       .catch((reason) => setError(reason.message))
       .finally(() => setLoading(false));
@@ -138,7 +140,28 @@ export function App() {
   useEffect(() => (user ? watchOfflineReconnect(user) : undefined), [user]);
 
   useEffect(() => {
-    if (!user || !location || (isAdministrator(user) && !adminClientMode)) return;
+    if (!user) return;
+    return offlineAccess.subscribe(() => {
+      const current = offlineAccess.current();
+      if (current && current.actorId === user.id && current.tenantId === user.tenant?.id) return;
+      catalogRequest.current++;
+      setUser(null);
+      setSelection(null);
+      setLocation(null);
+      setPage('catalog');
+      setAdminClientMode(false);
+      setCatalog({
+        products: [],
+        locations: [],
+        filters: { brands: [], colors: [], sizes: [] },
+        categories: [],
+      });
+      setError('La sesión terminó. Inicia sesión para continuar.');
+    });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !location || (canUseBusinessWorkspace(user) && !adminClientMode)) return;
     void loadCatalog(location.id).catch((reason) => setError(reason.message));
     return connectRealtime(location.id, () => {
       void loadCatalog(location.id).catch(() => {});
@@ -165,7 +188,7 @@ export function App() {
             setUser(identity);
             void bootstrapOfflineVault(identity).catch((reason) => setError(reason.message));
             setAdminClientMode(false);
-            if (!isAdministrator(identity)) await loadCatalog('');
+            if (!canUseBusinessWorkspace(identity)) await loadCatalog('');
           } catch (reason) {
             setError((reason as Error).message);
           }
@@ -185,21 +208,33 @@ export function App() {
       />
     );
 
-  if (isAdministrator(user) && !adminClientMode)
+  if (canUseBusinessWorkspace(user) && !adminClientMode)
     return (
       <AdminNavigator
         user={user}
-        home={(onNavigate) => (
-          <AdminDashboard
-            user={user}
-            onClientMode={async () => {
-              await loadCatalog('');
-              setAdminClientMode(true);
-            }}
-            onNavigate={onNavigate}
-            onLogout={closeAccount}
-          />
-        )}
+        home={(onNavigate) =>
+          user.permissions.includes('reportes:consultar') ? (
+            <AdminDashboard
+              user={user}
+              onClientMode={async () => {
+                await loadCatalog('');
+                setAdminClientMode(true);
+              }}
+              onNavigate={onNavigate}
+              onLogout={closeAccount}
+            />
+          ) : (
+            <StaffHome
+              user={user}
+              onNavigate={onNavigate}
+              onClientMode={async () => {
+                await loadCatalog('');
+                setAdminClientMode(true);
+              }}
+              onLogout={closeAccount}
+            />
+          )
+        }
       />
     );
 
@@ -244,7 +279,7 @@ export function App() {
       onCatalogRefresh={() => loadCatalog(location?.id || '')}
       onIdentityChange={setUser}
       onAdminMode={
-        isAdministrator(user)
+        canUseBusinessWorkspace(user)
           ? () => {
               setPage('catalog');
               setAdminClientMode(false);

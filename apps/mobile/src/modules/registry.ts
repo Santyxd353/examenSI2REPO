@@ -72,7 +72,7 @@ export const mobileBusinessModules: readonly ModuleDefinition[] = [
   {
     id: 'business',
     label: 'Mi negocio',
-    permission: 'usuarios:gestionar',
+    permission: 'suscripcion:gestionar',
     description: 'Tienda y plan',
   },
 ] as const;
@@ -82,4 +82,14 @@ export function modulesForIdentity(identity: Identity): ModuleDefinition[] {
   return mobileBusinessModules.filter(
     (module) => !module.permission || grants.has(module.permission),
   );
+}
+
+export function canUseBusinessWorkspace(identity: Identity) {
+  return modulesForIdentity(identity).some((module) => module.id !== 'home');
+}
+export function activeBusinessModule(
+  identity: Identity,
+  module: MobileBusinessModule,
+): MobileBusinessModule {
+  return modulesForIdentity(identity).some((item) => item.id === module) ? module : 'home';
 }

@@ -1,6 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { modulesForIdentity, type MobileBusinessModule } from '../modules/registry';
+import {
+  modulesForIdentity,
+  activeBusinessModule,
+  type MobileBusinessModule,
+} from '../modules/registry';
 import { useSystemBars } from '../systemBars';
 import { BusinessScreen } from '../BusinessScreen';
 import { SyncScreen } from '../SyncScreen';
@@ -12,11 +16,12 @@ type Props = {
   home: (onNavigate: (module: MobileBusinessModule) => void) => ReactNode;
 };
 
-/** Navegación de administración; B13 conectará los módulos comerciales reales. */
+/** La navegación aplica los permisos actuales, también al cambiar de rol. */
 export function AdminNavigator({ user, home }: Props) {
   const insets = useSystemBars();
   const modules = modulesForIdentity(user);
-  const [active, setActive] = useState<MobileBusinessModule>('home');
+  const [requested, setActive] = useState<MobileBusinessModule>('home');
+  const active = activeBusinessModule(user, requested);
   const navigate = (module: MobileBusinessModule) => {
     if (modules.some((item) => item.id === module)) setActive(module);
   };

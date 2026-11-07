@@ -1,6 +1,44 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { modulesForIdentity } from '../src/modules/registry';
+import {
+  modulesForIdentity,
+  canUseBusinessWorkspace,
+  activeBusinessModule,
+} from '../src/modules/registry';
+import type { Identity } from '../src/types';
+
+const identity = (permissions: string[]): Identity => ({
+  id: 'one',
+  nombres: 'Ana',
+  apellidos: 'QA',
+  correo: 'ana@qa.test',
+  roles: ['Analista'],
+  permissions,
+  tenant: { id: 'tenant', slug: 'tienda', name: 'Tienda' },
+});
+
+test('vendedor y analista ingresan al espacio de trabajo según permisos; la clienta queda en el catálogo', () => {
+  assert.equal(canUseBusinessWorkspace(identity(['ventas:registrar'])), true);
+  assert.equal(canUseBusinessWorkspace(identity(['reportes:consultar'])), true);
+  assert.equal(
+    canUseBusinessWorkspace(identity(['catalogo:consultar', 'compras:realizar'])),
+    false,
+  );
+});
+test('Mi negocio requiere el permiso de suscripción y un módulo revocado vuelve al inicio', () => {
+  assert.ok(
+    modulesForIdentity(identity(['suscripcion:gestionar'])).some(
+      (module) => module.id === 'business',
+    ),
+  );
+  assert.ok(
+    !modulesForIdentity(identity(['usuarios:gestionar'])).some(
+      (module) => module.id === 'business',
+    ),
+  );
+  assert.equal(activeBusinessModule(identity(['ventas:registrar']), 'analysis'), 'home');
+  assert.equal(activeBusinessModule(identity(['reportes:consultar']), 'analysis'), 'analysis');
+});
 
 test('el registro muestra solamente módulos permitidos para la tienda actual', () => {
   const modules = modulesForIdentity({

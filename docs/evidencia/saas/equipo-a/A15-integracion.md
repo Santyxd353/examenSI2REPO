@@ -21,6 +21,7 @@ Las operaciones antiguas incompletas se conservan cifradas y bloqueadas para rev
 - El asistente utiliza A12: audio M4A/AAC limitado a treinta segundos, transcripción editable, propuesta revisable y aplicación explícita desde los filtros. Sin conexión se mantienen los filtros manuales.
 - Análisis de datos utiliza A13: trabajos durables, selección de datasets/modelos/pronósticos, permisos por plan, métricas con referencia o N/A, segmentación del resultado descargado y propuestas de reposición sin movimientos de stock.
 - Mi negocio interpreta los derechos reales de `/tenant/subscription`, incluidos reservas de consumo, precio BOB, vencimiento y solo lectura.
+- El acceso al espacio de trabajo depende de permisos, también para vendedor y analista. El inicio del vendedor no solicita reportes sin autorización; un módulo revocado vuelve al inicio y el bloqueo de sesión limpia los datos visibles. Mi negocio requiere el permiso específico de suscripción.
 
 Estas funciones tienen comprobación de lógica y compilación; ello no equivale a aceptación visual o funcional en un teléfono físico.
 
@@ -43,10 +44,10 @@ Resultados observados hasta este avance:
 | Comprobación | Resultado |
 | --- | --- |
 | Contratos y motor compartido | 25 pruebas aprobadas |
-| Unitarios móviles, incluido SQLite real y WebCrypto en Node | 59 pruebas aprobadas |
+| Unitarios móviles, incluido SQLite real y WebCrypto en Node | 61 pruebas aprobadas |
 | TypeScript móvil | Aprobado |
 | Compatibilidad de dependencias Expo | Aprobada |
-| Exportación Android/Hermes | Aprobada: 987 módulos, bundle de aproximadamente 3,1 MB |
+| Exportación Android/Hermes | Aprobada: 988 módulos, bundle de aproximadamente 3,1 MB |
 | Compilación API/web | Aprobada |
 | Suite completa API del candidato de trabajo | 47 suites y 233 pruebas aprobadas, 446 segundos |
 | Regresión de reintento web en la misma pestaña | 2 pruebas adicionales aprobadas |
@@ -73,7 +74,6 @@ node scripts/check-saas-integrated.cjs
 
 - Revisar e integrar los tres commits B publicados después de la base: `c9d2db3`, `eebd68a` y `89accbf`, sobre pagos de compra con QR y Stripe TEST. Todavía no forman parte de este avance.
 - Conectar la descarga nativa de hasta diez prendas al manifiesto privado A08 y al vestidor AR. Los helpers B anteriores no bastan como evidencia de ese flujo.
-- Completar el acceso al portal de trabajo de vendedor/analista y comprobar su navegación por permisos.
 - Cerrar A06/B14: regeneración de avatar sin fotos purgadas y evidencia de inferencia válida desde fotos reales autorizadas.
 - Aceptación en dispositivo: cierre y reapertura, pérdida de red, claves, cámara, audio, conflictos y dashboards offline. La compilación Hermes no sustituye estas pruebas.
 - Revisión final de la rama y trazabilidad RF/CU. Las métricas analíticas siguen siendo de demostración sintética; su calidad y limitaciones se conservan en A13.
