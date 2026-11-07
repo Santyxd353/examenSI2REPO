@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import {
   Home,
   Shirt,
@@ -8,19 +8,34 @@ import {
   ShoppingBag,
   ClipboardList,
   BarChart3,
+  BrainCircuit,
   Settings,
   Wifi,
   WifiOff,
+  CloudUpload,
 } from 'lucide-react';
 import { Admin } from '../Admin';
-import { Reports } from '../Reports';
+import { ReportBuilder } from '../reporting/ReportBuilder';
+import type { ReportIdentity } from '../reporting/report-data';
+import { AnalyticsLab } from '../analytics/AnalyticsLab';
 import { Sales } from '../Sales';
 import { OrdersAdmin } from '../OrdersAdmin';
 import { api } from '../api';
-import { businessModules, BusinessModule, TenantInfo } from './modules';
+import { businessModules, BusinessModule, canUseModule, TenantInfo } from './modules';
+import type { OfflineSession } from '../offline/scope';
 import { BusinessOverview } from './BusinessOverview';
 import './workspace.css';
 
+const SubscriptionPanel = lazy(() =>
+  import('./Subscription').then((module) => ({ default: module.SubscriptionPanel })),
+);
+const Team = lazy(() => import('./Team').then((module) => ({ default: module.Team })));
+const Locations = lazy(() =>
+  import('./Locations').then((module) => ({ default: module.Locations })),
+);
+const SyncWorkspace = lazy(() =>
+  import('./SyncWorkspace').then((module) => ({ default: module.SyncWorkspace })),
+);
 const icons = {
   home: Home,
   catalog: Shirt,
@@ -30,7 +45,9 @@ const icons = {
   sales: ShoppingBag,
   orders: ClipboardList,
   reports: BarChart3,
+  analysis: BrainCircuit,
   business: Settings,
+  sync: CloudUpload,
 };
 
 export function AdminWorkspace({
@@ -38,18 +55,32 @@ export function AdminWorkspace({
   categories,
   permissions,
   onCatalogChanged,
-}: Parameters<typeof Admin>[0]) {
-  const [selected, setSelected] = useState<BusinessModule>('home');
+  offlineSession,
+  enableOffline,
+  localName,
+  reportIdentity,
+}: Parameters<typeof Admin>[0] & {
+  offlineSession: OfflineSession | null;
+  enableOffline: (signal: AbortSignal) => Promise<OfflineSession>;
+  localName?: string;
+  reportIdentity?: ReportIdentity;
+}) {
+  const [selected, setSelected] = useState<BusinessModule>(() =>
+    permissions.includes('suscripcion:gestionar') &&
+    new URLSearchParams(window.location.search).has('checkout')
+      ? 'business'
+      : !navigator.onLine && offlineSession
+        ? 'sync'
+        : 'home',
+  );
   const [tenant, setTenant] = useState<TenantInfo | null>(null);
   const [error, setError] = useState('');
   const [online, setOnline] = useState(navigator.onLine);
-  const allowed = businessModules.filter(
-    (module) => !module.permission || permissions.includes(module.permission),
-  );
+  const allowed = businessModules.filter((module) => canUseModule(module, permissions));
   useEffect(() => {
-    void api('/tenant')
-      .then(setTenant)
-      .catch((reason) => setError(reason.message));
+    if (!allowed.some((module) => module.id === selected)) setSelected('home');
+  }, [permissions, selected]);
+  useEffect(() => {
     const connection = () => setOnline(navigator.onLine);
     window.addEventListener('online', connection);
     window.addEventListener('offline', connection);
@@ -58,6 +89,23 @@ export function AdminWorkspace({
       window.removeEventListener('offline', connection);
     };
   }, []);
+  useEffect(() => {
+    if (!online) return;
+    let active = true;
+    void api('/tenant')
+      .then((value) => {
+        if (active) {
+          setTenant(value);
+          setError('');
+        }
+      })
+      .catch((reason) => {
+        if (active) setError(reason.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [online]);
   const open = (module: BusinessModule) => {
     if (allowed.some((item) => item.id === module)) setSelected(module);
   };
@@ -66,8 +114,10 @@ export function AdminWorkspace({
       <aside className="business-sidebar" aria-label="Módulos administrativos">
         <div className="business-sidebar-title">
           <span>MI ESPACIO</span>
-          <strong>{tenant?.name || 'Administración'}</strong>
-          <small>{tenant?.subscription.planName || 'Cargando plan…'}</small>
+          <strong>{tenant?.name || localName || 'Administración'}</strong>
+          <small>
+            {tenant?.subscription.planName || (online ? 'Cargando plan…' : 'Copia local')}
+          </small>
         </div>
         <nav>
           {allowed.map((module) => {
@@ -88,7 +138,7 @@ export function AdminWorkspace({
       </aside>
       <div className="business-content">
         <div className="business-context">
-          <span>{tenant?.name || 'Mi tienda'}</span>
+          <span>{tenant?.name || localName || 'Mi tienda'}</span>
           <span className={online ? 'connected' : 'disconnected'}>
             {online ? <Wifi size={14} /> : <WifiOff size={14} />}
             {online ? 'Con conexión' : 'Sin conexión'}
@@ -103,72 +153,73 @@ export function AdminWorkspace({
         )}
         {selected === 'home' ? (
           <BusinessOverview permissions={permissions} tenant={tenant} onOpen={open} />
-        ) : ['catalog', 'inventory', 'locations', 'team'].includes(selected) ? (
+        ) : selected === 'team' || selected === 'locations' ? (
+          <Suspense fallback={<p role="status">Abriendo módulo…</p>}>
+            {selected === 'team' ? (
+              <Team
+                readOnly={tenant?.readOnly ?? true}
+                online={online}
+                limit={tenant?.subscription.limits.staff}
+              />
+            ) : (
+              <Locations
+                readOnly={tenant?.readOnly ?? true}
+                online={online}
+                limit={tenant?.subscription.limits.locations}
+              />
+            )}
+          </Suspense>
+        ) : selected === 'sync' ? (
+          <Suspense fallback={<p role="status">Abriendo sincronización…</p>}>
+            <SyncWorkspace
+              session={offlineSession}
+              online={online}
+              permissions={permissions}
+              enable={enableOffline}
+            />
+          </Suspense>
+        ) : ['catalog', 'inventory'].includes(selected) ? (
           <Admin
             key={selected}
-            module={selected as 'catalog' | 'inventory' | 'locations' | 'team'}
+            module={selected as 'catalog' | 'inventory'}
             products={products}
             categories={categories}
             permissions={permissions}
             onCatalogChanged={onCatalogChanged}
           />
+        ) : selected === 'analysis' ? (
+          reportIdentity && (
+            <AnalyticsLab
+              key={reportIdentity.tenantId + ':' + reportIdentity.actorId}
+              identity={reportIdentity}
+              online={online}
+              session={offlineSession}
+              enableOffline={enableOffline}
+              readOnly={tenant?.readOnly ?? true}
+              features={tenant?.subscription.features ?? []}
+              multiLocation={['negocio', 'piloto'].includes(tenant?.subscription.plan ?? '')}
+            />
+          )
         ) : selected === 'reports' ? (
-          <Reports />
+          reportIdentity && (
+            <ReportBuilder
+              key={reportIdentity.tenantId + ':' + reportIdentity.actorId}
+              identity={reportIdentity}
+              online={online}
+              session={offlineSession}
+              enableOffline={enableOffline}
+              readOnly={tenant?.readOnly ?? true}
+              aiEnabled={tenant?.subscription.features.includes('ai') ?? false}
+            />
+          )
         ) : selected === 'sales' ? (
           <Sales />
         ) : selected === 'orders' ? (
           <OrdersAdmin />
         ) : (
-          <section className="business-plan">
-            <span className="eyebrow">MI NEGOCIO Y SUSCRIPCIÓN</span>
-            <h1>{tenant?.name || 'Mi negocio'}</h1>
-            <p>
-              Identificador de tienda: <strong>{tenant?.slug}</strong>
-            </p>
-            <dl>
-              <dt>Plan</dt>
-              <dd>{tenant?.subscription.planName}</dd>
-              <dt>Estado</dt>
-              <dd>
-                {(
-                  {
-                    ACTIVE: 'Activo',
-                    TRIALING: 'Período de prueba',
-                    EXPIRED: 'Vencido',
-                    PAST_DUE: 'Pago pendiente',
-                    CANCELED: 'Cancelado',
-                    SUSPENDED: 'Suspendido',
-                  } as Record<string, string>
-                )[tenant?.subscription.status || ''] || tenant?.subscription.status}
-              </dd>
-              <dt>Vigencia</dt>
-              <dd>
-                {tenant?.subscription.periodEnd
-                  ? new Date(tenant.subscription.periodEnd).toLocaleDateString('es-BO')
-                  : 'Sin vencimiento registrado'}
-              </dd>
-            </dl>
-            <h2>Capacidad del plan</h2>
-            {tenant?.subscription.plan === 'piloto' && (
-              <p>El espacio inicial conserva sus datos sin cuotas comerciales.</p>
-            )}
-            <dl>
-              {Object.entries(tenant?.subscription.limits || {}).map(([key, value]) => (
-                <div key={key}>
-                  <dt>
-                    {(
-                      {
-                        locations: 'Ubicaciones',
-                        staff: 'Personal',
-                        products: 'Productos',
-                      } as Record<string, string>
-                    )[key] || key}
-                  </dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
+          <Suspense fallback={<p role="status">Consultando tu plan…</p>}>
+            <SubscriptionPanel />
+          </Suspense>
         )}
       </div>
     </div>

@@ -22,7 +22,9 @@ export function AdminNavigator({ user, home }: Props) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <SafeAreaView
+      style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
+    >
       <ScrollView
         horizontal
         contentContainerStyle={styles.tabs}
@@ -40,7 +42,9 @@ export function AdminNavigator({ user, home }: Props) {
             onPress={() => navigate(module.id)}
             style={[styles.tab, module.id === active && styles.tabActive]}
           >
-            <Text style={[styles.tabText, module.id === active && styles.tabTextActive]}>{module.label}</Text>
+            <Text style={[styles.tabText, module.id === active && styles.tabTextActive]}>
+              {module.label}
+            </Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -51,7 +55,7 @@ export function AdminNavigator({ user, home }: Props) {
       ) : active === 'sync' ? (
         <SyncScreen user={user} />
       ) : (
-        <AdminOperationsScreen module={active} />
+        <AdminOperationsScreen module={active} user={user} />
       )}
     </SafeAreaView>
   );
@@ -59,9 +63,25 @@ export function AdminNavigator({ user, home }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fbfaf6' },
-  tabRail: { flexGrow: 0, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e4dc', shadowColor: '#173e2a', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 },
+  tabRail: {
+    flexGrow: 0,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e4dc',
+    shadowColor: '#173e2a',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
   tabs: { gap: 8, paddingHorizontal: 16, paddingVertical: 10 },
-  tab: { borderColor: '#d8ded8', borderRadius: 18, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 8, backgroundColor: '#fbfaf6' },
+  tab: {
+    borderColor: '#d8ded8',
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    backgroundColor: '#fbfaf6',
+  },
   tabActive: { backgroundColor: '#173e2a', borderColor: '#173e2a' },
   tabText: { color: '#586258', fontSize: 10, fontWeight: '700' },
   tabTextActive: { color: '#fff' },

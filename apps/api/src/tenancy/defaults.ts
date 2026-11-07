@@ -18,9 +18,11 @@ export async function seedTenantRoles(client: PrismaClient) {
       'pedidos:gestionar',
       'reportes:consultar',
       'modelos:gestionar',
+      'suscripcion:gestionar',
+      'analitica:entrenar',
     ],
     Vendedor: ['inventario:consultar', 'inventario:gestionar', 'ventas:registrar'],
-    Analista: ['inventario:consultar', 'reportes:consultar'],
+    Analista: ['inventario:consultar', 'reportes:consultar', 'analitica:entrenar'],
   };
   for (const [roleName, permissions] of Object.entries(grants)) {
     const role = await client.rol.findUniqueOrThrow({ where: { nombre: roleName } });

@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Plus, ReceiptText, ShoppingBag, Trash2 } from 'lucide-react';
 import { api } from './api';
+import { useOperationIdentity } from './useOperationIdentity';
 
 type Variant = {
   id: string;
@@ -32,6 +33,7 @@ const money = (value: number | string) =>
   new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(Number(value));
 
 export function Sales() {
+  const saleIdentity = useOperationIdentity();
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationId, setLocationId] = useState('');
   const [variantId, setVariantId] = useState('');
@@ -88,16 +90,17 @@ export function Sales() {
     setError('');
     setMessage('');
     try {
+      const payload = {
+        locationId,
+        customerName: String(form.get('customerName') || '').trim() || undefined,
+        paymentMethod: form.get('paymentMethod'),
+        items: cart.map((item) => ({ variantId: item.id, quantity: item.quantity })),
+      };
       const sale = await api('/sales', {
         method: 'POST',
-        body: JSON.stringify({
-          locationId,
-          customerName: String(form.get('customerName') || '').trim() || undefined,
-          paymentMethod: form.get('paymentMethod'),
-          idempotency: crypto.randomUUID(),
-          items: cart.map((item) => ({ variantId: item.id, quantity: item.quantity })),
-        }),
+        body: JSON.stringify({ ...payload, idempotency: saleIdentity.forPayload(payload) }),
       });
+      saleIdentity.complete(payload);
       setCart([]);
       formElement.reset();
       setMessage(`Venta ${sale.numero} confirmada por ${money(sale.total)}.`);

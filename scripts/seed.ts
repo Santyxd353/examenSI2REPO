@@ -127,7 +127,7 @@ export async function seed(client: PrismaClient = db) {
           fisico: 8 + i,
           reservado: 0,
           comprometido: 0,
-          version: 0,
+          version: 1,
         },
       });
       const key = 'public/garment-' + talla + '.glb';

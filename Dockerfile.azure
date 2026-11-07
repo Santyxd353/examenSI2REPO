@@ -7,6 +7,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
+COPY packages ./packages
 RUN npm ci
 
 COPY prisma ./prisma
@@ -48,11 +49,13 @@ RUN mkdir -p /opt/models \
 
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/packages ./packages
 COPY package.json package-lock.json ./
 COPY tsconfig.json ./
 COPY prisma ./prisma
-COPY scripts/seed.ts scripts/seed-women.ts scripts/grant-admin.ts scripts/create-tenant.ts scripts/migrate-tenants.ts ./scripts/
+COPY scripts/seed.ts scripts/seed-women.ts scripts/prepare-offline-resources.ts scripts/grant-admin.ts scripts/create-tenant.ts scripts/migrate-tenants.ts ./scripts/
 COPY apps/api/src/tenancy ./apps/api/src/tenancy
+COPY apps/api/src/offline/resource-integrity.ts ./apps/api/src/offline/resource-integrity.ts
 COPY catalog-assets/women ./catalog-assets/women
 COPY workers/avatar ./workers/avatar
 COPY docker/azure-entrypoint.sh /usr/local/bin/azure-entrypoint

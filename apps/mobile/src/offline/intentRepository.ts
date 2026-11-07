@@ -8,7 +8,12 @@ export type OfflineIntent = Readonly<{
   payload: string;
   baseVersion: number | null;
   dependsOn: readonly string[];
-  state: 'PENDING' | 'SENDING' | 'APPLIED' | 'CONFLICT' | 'BLOCKED';
+  state: 'PENDING' | 'SENDING' | 'APPLIED' | 'CONFLICT' | 'BLOCKED' | 'DISCARDED';
+  entityId?: string;
+  createdAt?: string;
+  message?: string;
+  confirmedAt?: string;
+  confirmedVersion?: number;
 }>;
 
 export interface OfflineTransaction {
@@ -53,15 +58,27 @@ export class MemoryOfflineStore implements OfflineStore {
   }
 
   async insertIntent(intent: OfflineIntent) {
-    if (this.intentRows.some((row) => row.operationId === intent.operationId)) throw new Error('operationId duplicado');
+    if (this.intentRows.some((row) => row.operationId === intent.operationId))
+      throw new Error('operationId duplicado');
     this.intentRows.push(intent);
   }
 
   async upsertProjection(projection: LocalProjection) {
     const key = `${offlineScopeKey(projection.scope)}:${projection.entityId}`;
-    this.projectionRows = [...this.projectionRows.filter((row) => `${offlineScopeKey(row.scope)}:${row.entityId}` !== key), projection];
+    this.projectionRows = [
+      ...this.projectionRows.filter(
+        (row) => `${offlineScopeKey(row.scope)}:${row.entityId}` !== key,
+      ),
+      projection,
+    ];
   }
 
-  intents(scope: OfflineScope) { return this.intentRows.filter((row) => offlineScopeKey(row.scope) === offlineScopeKey(scope)); }
-  projections(scope: OfflineScope) { return this.projectionRows.filter((row) => offlineScopeKey(row.scope) === offlineScopeKey(scope)); }
+  intents(scope: OfflineScope) {
+    return this.intentRows.filter((row) => offlineScopeKey(row.scope) === offlineScopeKey(scope));
+  }
+  projections(scope: OfflineScope) {
+    return this.projectionRows.filter(
+      (row) => offlineScopeKey(row.scope) === offlineScopeKey(scope),
+    );
+  }
 }

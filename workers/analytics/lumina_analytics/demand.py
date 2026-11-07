@@ -94,8 +94,6 @@ def recursive_forecast(
     if len(matrix.index) < 28:
         raise ValueError("MODEL_DATA_INSUFFICIENT: se requieren 28 días de historia")
     future_dates = pd.date_range(origin + pd.Timedelta(days=1), periods=horizon_days, freq="D")
-    if not future_dates.isin(context.actual_matrix.index).all():
-        raise ValueError("La ventana solicitada está fuera de la cobertura del panel")
 
     series_index = matrix.columns
     predictions: list[pd.DataFrame] = []
@@ -115,7 +113,7 @@ def recursive_forecast(
 
         result = series_index.to_frame(index=False)
         result["date"] = day
-        result["actual_units"] = context.actual_matrix.loc[day].to_numpy(dtype=float)
+        result["actual_units"] = context.actual_matrix.reindex([day]).iloc[0].to_numpy(dtype=float)
         result["predicted_units"] = predicted
         predictions.append(result)
         matrix.loc[day] = predicted

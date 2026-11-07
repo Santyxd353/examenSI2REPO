@@ -7,6 +7,8 @@ export type BusinessModule =
   | 'sales'
   | 'orders'
   | 'reports'
+  | 'analysis'
+  | 'sync'
   | 'business';
 export const businessModules: {
   id: BusinessModule;
@@ -53,12 +55,31 @@ export const businessModules: {
     description: 'Resultados comerciales',
   },
   {
+    id: 'analysis',
+    label: 'Análisis de datos',
+    permission: 'reportes:consultar',
+    description: 'Demanda, anomalías y reposición',
+  },
+  {
     id: 'business',
     label: 'Mi negocio y plan',
-    permission: 'usuarios:gestionar',
+    permission: 'suscripcion:gestionar',
     description: 'Tienda y suscripción',
   },
+  {
+    id: 'sync',
+    label: 'Sincronización',
+    permission: 'inventario:gestionar',
+    description: 'Catálogo e inventario sin conexión',
+  },
 ];
+export function canUseModule(module: (typeof businessModules)[number], permissions: string[]) {
+  return (
+    !module.permission ||
+    permissions.includes(module.permission) ||
+    (module.id === 'sync' && permissions.includes('catalogo:gestionar'))
+  );
+}
 
 export type TenantInfo = {
   id: string;

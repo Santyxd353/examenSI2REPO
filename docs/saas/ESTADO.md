@@ -1,25 +1,33 @@
 # Estado de Lúmina SaaS
 
-Actualización documental: 31/10/2026. Entrega prevista: 07/11/2026.
+Actualización de desarrollo: 06/11/2026. Entrega prevista: 07/11/2026.
 
-La prioridad confirmada es terminar primero el documento ICONIX y desarrollar
-la ampliación según esa especificación. La evidencia técnica del primer
-incremento que figura abajo corresponde al 20/10; no se ha vuelto a ejecutar
-ni desplegar la aplicación durante esta actualización documental.
+El documento ICONIX v2.0 es la base del desarrollo. El equipo A inició ejecución
+en desarrollo/servidor-web con worktree aislado. A00 volvió a verificar100pruebas,
+build y administración en Chromium; A01 publica contratos/fixtures compartidos.
+Las evidencias nuevas están en docs/evidencia/saas/equipo-a. No se ha desplegado
+esta ampliación; las verificaciones históricas del20/10 se conservan abajo.
 
 | Área | Estado | Evidencia |
 | --- | --- | --- |
 | Alcance y prioridades | Definidos inicialmente | ALCANCE_Y_ENTREGA.md; decisiones del usuario sobre SaaS, offline web/Android, Stripe y QR simulado |
 | Base SaaS y aislamiento | Implementado en rama de trabajo | Contexto por petición, base y archivos por tienda, tokens vinculados, cookies y claves móviles separadas; pruebas HTTP, ORM, SQL, transacciones, eventos y purga |
-| Provisión y planes | Implementado en rama de trabajo | CLI de alta, migraciones por tienda, prueba de 14 días, expiración y límites transaccionales ante altas concurrentes; precios sin publicar |
-| Administración por módulos | Implementado en web | Inicio, catálogo, inventario, ubicaciones, ventas, pedidos, equipo, reportes y negocio; prueba de administradora, vendedora y analista |
+| Provisión y planes | A03 verificado localmente | Portal global y CLI, autenticación de control separada, planes149/299/599BOB, consumo/entitlements, cuotas transaccionales y períodos por aniversario. Checkout TEST y QR verificados en A04; cuenta Stripe externa pendiente |
+| Administración por módulos | Equipo, ubicaciones, sincronización, reportes y análisis web verificados | Alta, edición, suspensión, reactivación, permisos, responsables y conflictos. A13 añade entrenamiento, evaluación, pronóstico y reposición. Ver equipo-a/A14-handoff.md y A13-api-handoff.md |
 | Identidad de tienda Android | Implementado en código | Selector en inicio de sesión, tokens y WebSocket por tienda; tipos y compatibilidad Expo aprobados. No se ha generado un APK nuevo |
-| Inventario y paquete offline | Pendiente | Requiere contexto de tienda y protocolo durable |
-| Reportes y dashboards offline | Pendiente | Requiere conjunto local y definición común de reportes |
-| IA por texto/voz | Pendiente | Proveedor y credenciales por configurar |
-| ML evaluado | Parcial, verificado localmente | B01–B03 en `desarrollo/android-ml`: corpus sintético reproducible, demanda con evaluación temporal y anomalías/reposición mediante CLI; falta integración API/UI, datos comerciales autorizados y supervisión de jobs |
-| Suscripciones Stripe/QR | Pendiente | Esencial Bs149, Profesional Bs299, Negocio Bs599 por tienda/mes; Stripe TEST y QR_SIMULATED para entrega académica. Configuración y flujos por implementar |
+| Catálogo y comercio A05 | Verificado localmente | Edición/archivo/versiones/precios/promociones/fotos; inventario transaccional y transferencia con comprobante; compras WEB/APP/POS, devoluciones y reportes sin duplicación. 29 suites/160 pruebas, build y Chromium aprobados; ver equipo-a/A05-catalogo-comercio.md y A05-handoff.md |
+| Avatar y vestidor A06 | Cuotas/privacidad/validación y web verificados; regeneración pendiente B14 | 34 suites/181 pruebas, shared13 y build aprobados. Exportación Blender real desde parámetros QA; Chromium recupera respuesta perdida y añade M/Negro exacta al carrito. No acredita inferencia exitosa de fotos reales ni regeneración; ver equipo-a/A06-avatar-handoff.md. CSP corregida para visor Blob privado. Sin despliegue |
+| Servidor de sincronización offline A07 | Servidor y web verificados en local | Bootstrap con clave envuelta por tienda, actor y dispositivo. Cinco operaciones con recibos atómicos, dependencias, conflictos y permisos actuales. Adaptación Android B08 pendiente. Ver equipo-a/A07-handoff.md |
+| Copia y prendas offline A08 | Servidor verificado en local | Cortes paginados verificables, staging privado y hasta diez prendas. Pruebas con 12 referencias, GLB g18-1 en web y PNG AR en Android. Ver equipo-a/A08-descargas-handoff.md |
+| Offline web A09 | Verificado en Chromium | Reapertura sin red, descargas cifradas, visor local, cola de catálogo e inventario, conflicto y reenvío sin duplicación. Android físico queda en B09 y B15. Ver equipo-a/A09-web-offline.md |
+| Reportes y dashboards offline | Motor A10 verificado en Node y Chromium | Centavos, cobertura, filtros, selección cruzada, widgets y CSV con fixture común. Queda la paridad de la integración en Android. Ver equipo-a/A10-motor-reportes.md |
+| Reportes A11 | API de definiciones y conjuntos verificada | Versiones, cupo concurrente, conjuntos por cuenta y ubicación, ejecución y CSV. Ver equipo-a/A11-definiciones.md |
+| Reportes web A12 | Dashboard offline y asistencia verificados localmente | Filtros y selección cruzada sin red. Texto y voz con proveedor simulado, validación y cuota. La llamada al proveedor real requiere credenciales. Ver equipo-a/A12-dashboard-web.md y A12-asistencia-handoff.md |
+| ML A13 | API, cola, modelos y web verificados en local | Dataset de 197.100 filas, entrenamiento real de demanda y anomalías, métricas persistidas, 504 predicciones y 72 sugerencias de demostración. Reapertura web offline verificada. La evaluación conserva WAPE alto y precisión baja del detector. APK y nueva VM pendientes. Ver equipo-a/A13-api-handoff.md |
+| Suscripciones Stripe/QR | A04 verificado localmente | QR real de simulación, renovación/cambio/cancelación idempotentes y UI móvil. Stripe probado con eventos firmados del SDK; sesión externa pendiente de cuenta TEST configurada.135pruebas generales aprobadas. No desplegado |
 | Documento ICONIX nuevo | Especificación objetivo en Word y JSON | `docs/Lumina_SaaS_ICONIX_Grupo18.docx` y `iconix/especificacion.json`: 54 requisitos, 27 casos, 111 diagramas, 59 tablas; dos carátulas, índice navegable, recomendaciones, bibliografía y QR. No acredita implementación de los incrementos pendientes |
+| Contratos compartidos A01/G0a | Verificado localmente | Esquemas/DTO/planes, hash canónico, dinero exacto y fixtures.14 pruebas de contrato tras A07; paridad API/Vite/WebCrypto. Motor reporting y validación Android pendientes |
+| Esquema A02/A14 | Migrado y verificado solo en local | Seis tablas y ampliaciones ICONIX, Prisma regenerado, migración control versionada,19suites/108tests y ensayo real de respaldo/restauración. A14 añade responsable y versiones de equipo/ubicación sin nuevas tablas. Despliegue pendiente |
 
 ## Verificación del primer incremento
 
@@ -37,6 +45,6 @@ La revisión del incremento cerró defectos de cambio de tienda entre pestañas,
 
 Se actualizaron los parches Expo compatibles y `shell-quote` a 1.11.0. La auditoría móvil todavía informa quince alertas altas transitivas de la cadena de herramientas, derivadas de `braces` y `node-forge`; no se ejecutó una actualización forzada incompatible. Revisar los parches disponibles antes de la entrega del APK.
 
-La rama es `desarrollo/saas-offline`. Este estado no significa que SaaS esté publicado ni que offline, cobros, nueva IA o ML estén terminados. La ampliación modular y offline de Administración Android corresponde al siguiente incremento descrito en `02_OFFLINE.md`.
+La rama de integración es `desarrollo/saas-offline`. El despliegue de esta ampliación queda pendiente para la nueva VM. La integración y validación física de Android se sigue en A15 y B15.
 
 Reglas: no convertir una tarea en «implementada» sin interfaz, lógica, autorización y verificación. No mezclar datos sintéticos con métricas de negocio reales.

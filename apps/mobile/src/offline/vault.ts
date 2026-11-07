@@ -1,18 +1,25 @@
 import * as SecureStore from 'expo-secure-store';
-import { secureStoreKey } from '../auth/secureStoreKey';
-import { offlineScopeKey, type OfflineScope } from './scope';
+import { offlineAccess } from './access';
+import { createKeyVault } from './keyVault';
+import type { OfflineScope } from './scope';
 
-const keyName = (scope: OfflineScope) => secureStoreKey('lumina', 'offline', 'dek', offlineScopeKey(scope));
+const vault = createKeyVault(offlineAccess, {
+  get: SecureStore.getItemAsync,
+  set: (key, value) =>
+    SecureStore.setItemAsync(key, value, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    }),
+  remove: SecureStore.deleteItemAsync,
+});
 
 /** Guarda únicamente el DEK activo de un ámbito; la cola SQLite se conserva. */
-export async function storeActiveDek(scope: OfflineScope, dekBase64: string) {
-  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(dekBase64)) throw new Error('El DEK no tiene formato base64.');
-  await SecureStore.setItemAsync(keyName(scope), dekBase64, {
-    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-  });
-}
+export const storeActiveDek = async (scope: OfflineScope, key: string) => {
+  await vault.store(scope, key);
+  offlineAccess.notify();
+};
+export const readOfflineKeys = vault.read;
 
-export const readActiveDek = (scope: OfflineScope) => SecureStore.getItemAsync(keyName(scope));
+export const readActiveDek = async (scope: OfflineScope) => (await vault.read(scope)).active;
 
 /** Logout conservando pendientes: borra la clave activa, no la base ni la cola. */
-export const lockOfflineScope = (scope: OfflineScope) => SecureStore.deleteItemAsync(keyName(scope));
+export const lockOfflineScope = () => vault.lock();

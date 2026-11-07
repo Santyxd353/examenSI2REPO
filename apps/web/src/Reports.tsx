@@ -185,7 +185,7 @@ export function Reports() {
         <>
           <div className="kpi-grid">
             <article>
-              <span>Ventas confirmadas</span>
+              <span>Ventas brutas confirmadas</span>
               <strong>{money(report.kpis.ventas)}</strong>
             </article>
             <article>

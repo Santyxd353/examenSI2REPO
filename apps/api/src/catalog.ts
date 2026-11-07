@@ -13,20 +13,32 @@ import {
   UploadedFile,
   UploadedFiles,
   BadRequestException,
+  ConflictException,
   NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { createHash, randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { PNG } from 'pngjs';
 import { z } from 'zod';
 import { Db } from './db';
-import { AuthGuard, AuthRequest, requirePermission } from './auth';
+import { AuthGuard, AuthRequest, AuthService, requirePermission } from './auth';
 import { removeStored, storedPath, publicAssetPath } from './storage';
 import { assignAssortment } from './assortment';
 import { RealtimeGateway } from './realtime';
 import { requireCapacity } from './tenancy/capacity';
+import {
+  CatalogEditSchema,
+  CatalogArchiveSchema,
+  CatalogProductSchema,
+  UuidSchema,
+} from '@lumina/contracts';
+import { catalogDetail, mutateCatalog } from './catalog/catalog.service';
+import { Prisma } from '@prisma/client';
+import { TenantRegistry } from './tenancy/platform';
+import { currentTenant } from './tenancy/context';
+import { lockOperation } from './commerce/idempotency';
 
 const garmentInput = z
   .object({
@@ -111,7 +123,214 @@ export class CatalogController {
   constructor(
     @Inject(Db) private db: Db,
     @Inject(RealtimeGateway) private realtime: RealtimeGateway,
+    @Inject(TenantRegistry) private registry: TenantRegistry,
+    @Inject(AuthService) private auth: AuthService,
   ) {}
+  private async writable<T>(req: AuthRequest, work: () => Promise<T>) {
+    const tenant = currentTenant();
+    if (!tenant) throw new BadRequestException('Selecciona la tienda.');
+    return this.registry.withWriteAccess(tenant, async () => {
+      req.user = await this.auth.verify(req.headers.authorization?.replace(/^Bearer /, ''));
+      requirePermission(req.user, 'catalogo:gestionar');
+      return work();
+    });
+  }
+  private async touchResource(
+    tx: Prisma.TransactionClient,
+    actorId: string,
+    productId: string,
+    variantId?: string,
+    expected?: number,
+  ) {
+    await lockOperation(tx, 'catalog', 'mutation');
+    const product = await tx.producto.findUnique({ where: { id: productId } });
+    if (!product) throw new NotFoundException('Producto no encontrado.');
+    if (expected !== undefined && expected !== product.version)
+      throw new ConflictException({
+        code: 'VERSION_CONFLICT',
+        message: 'La prenda cambió. Recarga su versión antes de editar las fotos.',
+        details: { currentVersion: product.version },
+      });
+    await tx.producto.update({
+      where: { id: productId },
+      data: { version: { increment: 1 }, actualizado_en: new Date() },
+    });
+    if (variantId)
+      await tx.variante.update({
+        where: { id: variantId },
+        data: { version: { increment: 1 }, actualizado_en: new Date() },
+      });
+    await tx.auditoria.create({
+      data: {
+        actor_id: actorId,
+        accion: 'CATALOG_RESOURCE',
+        entidad: 'producto',
+        entidad_id: productId,
+        correlacion: randomUUID(),
+        cambios: { variantId: variantId ?? null, previousVersion: product.version },
+        creado_en: new Date(),
+      },
+    });
+  }
+  @Get('manage')
+  @UseGuards(AuthGuard)
+  async manage(@Req() r: AuthRequest) {
+    requirePermission(r.user, 'catalogo:gestionar');
+    const products = await this.db.producto.findMany({
+      select: { id: true },
+      orderBy: { nombre: 'asc' },
+    });
+    return {
+      products: await Promise.all(products.map((p) => catalogDetail(this.db, p.id))),
+      categories: await this.db.categoria.findMany({
+        where: { activa: true },
+        orderBy: { nombre: 'asc' },
+      }),
+    };
+  }
+  @Post('products')
+  @UseGuards(AuthGuard)
+  async createProduct(@Req() r: AuthRequest, @Body() body: unknown) {
+    const product = CatalogProductSchema.parse(body);
+    return this.db.$transaction((tx) =>
+      mutateCatalog(
+        tx,
+        { actor: r.user, operationId: randomUUID() },
+        { kind: 'CATALOG_CREATE', entityId: product.id, baseVersion: null, payload: { product } },
+      ),
+    );
+  }
+  @Patch('products/:id')
+  @UseGuards(AuthGuard)
+  async editProduct(@Req() r: AuthRequest, @Param('id') rawId: string, @Body() body: unknown) {
+    const id = UuidSchema.parse(rawId),
+      input = CatalogEditSchema.parse(body);
+    return this.db.$transaction((tx) =>
+      mutateCatalog(
+        tx,
+        { actor: r.user, operationId: randomUUID() },
+        {
+          kind: 'CATALOG_UPDATE',
+          entityId: id,
+          baseVersion: input.baseVersion,
+          payload: { patch: input.patch },
+        },
+      ),
+    );
+  }
+  @Post('products/:id/archive')
+  @UseGuards(AuthGuard)
+  async archiveProduct(@Req() r: AuthRequest, @Param('id') rawId: string, @Body() body: unknown) {
+    const id = UuidSchema.parse(rawId),
+      input = CatalogArchiveSchema.parse(body);
+    return this.db.$transaction((tx) =>
+      mutateCatalog(
+        tx,
+        { actor: r.user, operationId: randomUUID() },
+        {
+          kind: 'CATALOG_ARCHIVE',
+          entityId: id,
+          baseVersion: input.baseVersion,
+          payload: { reason: input.reason },
+        },
+      ),
+    );
+  }
+  @Post('products/:id/photos')
+  @UseGuards(AuthGuard)
+  @UseInterceptors(
+    FilesInterceptor('fotos', 8, {
+      storage: memoryStorage(),
+      limits: { files: 8, fileSize: 5 * 1024 * 1024, fields: 2 },
+    }),
+  )
+  async addPhotos(
+    @Req() req: AuthRequest,
+    @Param('id') rawId: string,
+    @Body() raw: unknown,
+    @UploadedFiles() files?: Express.Multer.File[],
+  ) {
+    requirePermission(req.user, 'catalogo:gestionar');
+    const id = UuidSchema.parse(rawId);
+    const input = z
+      .strictObject({
+        baseVersion: z.coerce.number().int().positive(),
+        license: z.string().trim().min(3).max(255),
+      })
+      .parse(raw);
+    if (!files?.length) throw new BadRequestException('Selecciona al menos una foto.');
+    const photos = files.map((file) => ({ file, ...galleryMime(file), key: '' }));
+    const written: string[] = [];
+    try {
+      return await this.writable(req, async () => {
+        await mkdir(storedPath('public/catalog-gallery'), { recursive: true });
+        for (const photo of photos) {
+          photo.key = `public/catalog-gallery/${randomUUID()}.${photo.extension}`;
+          await writeFile(storedPath(photo.key), photo.file.buffer, { flag: 'wx' });
+          written.push(photo.key);
+        }
+        return this.db.$transaction(async (tx) => {
+          await this.touchResource(tx, req.user.id, id, undefined, input.baseVersion);
+          const count = await tx.recurso_catalogo.count({
+            where: { producto_id: id, uso: 'GALERIA', estado: 'PUBLICADO' },
+          });
+          if (count + photos.length > 30)
+            throw new BadRequestException('La galería admite hasta 30 fotos visibles.');
+          await tx.recurso_catalogo.createMany({
+            data: photos.map((photo, index) => ({
+              producto_id: id,
+              clave_objeto: photo.key,
+              tipo_mime: photo.mime,
+              orden: count + index,
+              texto_alternativo: `Prenda, vista ${count + index + 1}`,
+              licencia: input.license,
+              uso: 'GALERIA',
+              estado: 'PUBLICADO',
+            })),
+          });
+          return catalogDetail(tx, id);
+        });
+      });
+    } catch (error) {
+      await Promise.all(written.map(removeStored));
+      throw error;
+    }
+  }
+  @Patch('products/:id/photos/:resourceId')
+  @UseGuards(AuthGuard)
+  async photoVisibility(
+    @Req() req: AuthRequest,
+    @Param('id') rawId: string,
+    @Param('resourceId') rawResourceId: string,
+    @Body() raw: unknown,
+  ) {
+    requirePermission(req.user, 'catalogo:gestionar');
+    const id = UuidSchema.parse(rawId),
+      resourceId = UuidSchema.parse(rawResourceId);
+    const input = z
+      .strictObject({ baseVersion: z.number().int().positive(), visible: z.boolean() })
+      .parse(raw);
+    return this.db.$transaction(async (tx) => {
+      await this.touchResource(tx, req.user.id, id, undefined, input.baseVersion);
+      const resource = await tx.recurso_catalogo.findFirst({
+        where: { id: resourceId, producto_id: id, uso: 'GALERIA' },
+      });
+      if (!resource) throw new NotFoundException('Foto no encontrada.');
+      if (
+        input.visible &&
+        resource.estado !== 'PUBLICADO' &&
+        (await tx.recurso_catalogo.count({
+          where: { producto_id: id, uso: 'GALERIA', estado: 'PUBLICADO' },
+        })) >= 30
+      )
+        throw new BadRequestException('La galería admite hasta 30 fotos visibles.');
+      await tx.recurso_catalogo.update({
+        where: { id: resourceId },
+        data: { estado: input.visible ? 'PUBLICADO' : 'BORRADOR' },
+      });
+      return catalogDetail(tx, id);
+    });
+  }
   @Get()
   async list(
     @Query('search') search = '',
@@ -121,6 +340,9 @@ export class CatalogController {
     @Query('color') color = '',
     @Query('size') size = '',
     @Query('channel') rawChannel = 'WEB',
+    @Query('minPriceMinor') minPriceMinor?: string,
+    @Query('maxPriceMinor') maxPriceMinor?: string,
+    @Query('sort') rawSort = 'featured',
   ) {
     const channel = z.enum(['WEB', 'APP']).catch('WEB').parse(rawChannel.toUpperCase());
     const locationId = z.string().uuid().safeParse(location).success ? location : null;
@@ -128,6 +350,35 @@ export class CatalogController {
     const brandFilter = brand.trim().slice(0, 100);
     const colorFilter = color.trim().slice(0, 50);
     const sizeFilter = size.trim().slice(0, 20);
+    const bounds = z
+      .object({
+        min: z.coerce.number().int().min(0).max(100000000).optional(),
+        max: z.coerce.number().int().min(0).max(100000000).optional(),
+      })
+      .refine(
+        (v) => v.min === undefined || v.max === undefined || v.min <= v.max,
+        'El precio mínimo no puede superar al máximo.',
+      )
+      .parse({ min: minPriceMinor, max: maxPriceMinor });
+    const sort = z
+      .enum(['featured', 'name_asc', 'newest', 'price_asc', 'price_desc'])
+      .parse(rawSort);
+    const asOf = new Date();
+    let priceRank: Map<string, number> | null = null;
+    if (bounds.min !== undefined || bounds.max !== undefined || sort.startsWith('price_')) {
+      const rows = await this.db.$queryRaw<{ product_id: string; price: Prisma.Decimal }[]>`
+        SELECT v.producto_id AS product_id, MIN(current.price) AS price FROM variante v
+        JOIN producto p ON p.id=v.producto_id AND p.estado='PUBLICADO'
+        CROSS JOIN LATERAL (SELECT ROUND(pc.importe*(1-pc.descuento_pct/100),2)*100 AS price FROM precio_canal pc
+          WHERE pc.variante_id=v.id AND pc.canal=${channel} AND pc.desde<=${asOf} AND (pc.hasta IS NULL OR pc.hasta>${asOf}) ORDER BY pc.desde DESC LIMIT 1) current
+        WHERE v.activa AND current.price>=${bounds.min ?? 0} AND current.price<=${bounds.max ?? 100000000}
+          ${colorFilter ? Prisma.sql`AND LOWER(v.color)=LOWER(${colorFilter})` : Prisma.empty}
+          ${sizeFilter ? Prisma.sql`AND LOWER(v.talla)=LOWER(${sizeFilter})` : Prisma.empty}
+          ${locationId ? Prisma.sql`AND EXISTS(SELECT 1 FROM disponibilidad_canal d JOIN ubicacion u ON u.id=d.ubicacion_id WHERE d.variante_id=v.id AND d.ubicacion_id=${locationId}::uuid AND d.canal=${channel} AND d.habilitada AND u.activa)` : Prisma.empty}
+        GROUP BY v.producto_id`;
+      priceRank = new Map(rows.map((row) => [row.product_id, Number(row.price)]));
+    }
+
     const sizeOrder = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
     const compareSizes = (a: string, b: string) => {
       const left = sizeOrder.indexOf(a.toUpperCase());
@@ -137,6 +388,7 @@ export class CatalogController {
     const products = await this.db.producto.findMany({
       where: {
         estado: 'PUBLICADO',
+        ...(priceRank ? { id: { in: [...priceRank.keys()] } } : {}),
         ...(searchFilter
           ? {
               OR: [
@@ -164,12 +416,20 @@ export class CatalogController {
           : {}),
         ...(z.string().uuid().safeParse(category).success ? { categoria_id: category } : {}),
       },
-      orderBy: { creado_en: 'asc' },
+      orderBy:
+        sort === 'name_asc' ? { nombre: 'asc' } : { creado_en: sort === 'newest' ? 'desc' : 'asc' },
       include: { categoria: { select: { nombre: true } } },
-      take: 60,
+      ...(priceRank ? {} : { take: 61 }),
     });
+    if (priceRank && sort.startsWith('price_'))
+      products.sort(
+        (a, b) =>
+          (priceRank!.get(a.id)! - priceRank!.get(b.id)!) * (sort === 'price_desc' ? -1 : 1) ||
+          a.nombre.localeCompare(b.nombre, 'es'),
+      );
+    const hasMore = products.length > 60;
     const result = [];
-    for (const p of products) {
+    for (const p of products.slice(0, 60)) {
       const variants = await this.db.variante.findMany({
         where: {
           producto_id: p.id,
@@ -202,7 +462,7 @@ export class CatalogController {
             })
           : null;
         if (locationId && !policy?.habilitada) continue;
-        const now = new Date();
+        const now = asOf;
         const price = await this.db.precio_canal.findFirst({
           where: {
             variante_id: v.id,
@@ -252,10 +512,23 @@ export class CatalogController {
           orderBy: { version: 'desc' },
         });
         const arResource = arResources.find((resource) => resource.variante_id === v.id);
-        if (price)
+        const effective = price
+          ? price.importe
+              .mul(new Prisma.Decimal(100).minus(price.descuento_pct))
+              .div(100)
+              .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+              .toNumber()
+          : null;
+        const cents = effective === null ? null : Math.round(effective * 100);
+        if (
+          price &&
+          cents !== null &&
+          cents >= (bounds.min ?? 0) &&
+          cents <= (bounds.max ?? 100000000)
+        )
           disponibles.push({
             ...v,
-            precio: Number(price.importe) * (1 - Number(price.descuento_pct) / 100),
+            precio: effective!,
             moneda: price.moneda,
             disponible: stock[0].available,
             ubicaciones: locations,
@@ -266,7 +539,7 @@ export class CatalogController {
       }
       if (
         disponibles.length ||
-        (!locationId && !brandFilter && !colorFilter && !sizeFilter && !search)
+        (!priceRank && !locationId && !brandFilter && !colorFilter && !sizeFilter && !search)
       )
         result.push({
           ...p,
@@ -291,6 +564,8 @@ export class CatalogController {
       [...new Set(values)].sort((a, b) => a.localeCompare(b, 'es'));
     return {
       products: result,
+      hasMore,
+      asOf: asOf.toISOString(),
       filters: {
         brands: sorted(
           filterProducts
@@ -359,85 +634,88 @@ export class CatalogController {
         await writeFile(storedPath(photo.key), photo.file.buffer, { flag: 'wx' });
         written.push(photo.key);
       }
-      created = await this.db.$transaction(async (tx) => {
-        await requireCapacity(tx, 'products');
-        const existingCategory = await tx.categoria.findFirst({
-          where: { nombre: { equals: data.tipoPrenda, mode: 'insensitive' } },
-        });
-        const category =
-          existingCategory ??
-          (await tx.categoria.create({
+      created = await this.writable(r, () =>
+        this.db.$transaction(async (tx) => {
+          await lockOperation(tx, 'catalog', 'mutation');
+          await requireCapacity(tx, 'products');
+          const existingCategory = await tx.categoria.findFirst({
+            where: { nombre: { equals: data.tipoPrenda, mode: 'insensitive' } },
+          });
+          const category =
+            existingCategory ??
+            (await tx.categoria.create({
+              data: {
+                nombre: data.tipoPrenda,
+                descripcion: 'Tipo de prenda del catálogo',
+                activa: true,
+              },
+            }));
+          const product = await tx.producto.create({
             data: {
-              nombre: data.tipoPrenda,
-              descripcion: 'Tipo de prenda del catálogo',
-              activa: true,
-            },
-          }));
-        const product = await tx.producto.create({
-          data: {
-            categoria_id: category.id,
-            nombre: data.nombre,
-            descripcion: data.descripcion,
-            material: data.material,
-            marca: data.marca,
-            estado: 'PUBLICADO',
-            creado_en: new Date(),
-          },
-        });
-        const createdVariants = [];
-        const now = new Date();
-        for (const [index, variant] of variants.entries()) {
-          const created = await tx.variante.create({
-            data: {
-              producto_id: product.id,
-              sku: `G18-${randomUUID().replace(/-/g, '').slice(0, 16)}-${index + 1}`,
-              talla: variant.talla,
-              color: variant.color,
-              color_hex: variant.colorHex,
-              activa: true,
+              categoria_id: category.id,
+              nombre: data.nombre,
+              descripcion: data.descripcion,
+              material: data.material,
+              marca: data.marca,
+              estado: 'PUBLICADO',
+              creado_en: new Date(),
             },
           });
-          createdVariants.push(created);
-          await tx.precio_canal.createMany({
-            data: (['WEB', 'APP', 'TIENDA'] as const).map((canal) => ({
-              variante_id: created.id,
-              canal,
-              moneda: 'BOB',
-              importe: data.precio,
-              descuento_pct: 0,
-              desde: now,
+          const createdVariants = [];
+          const now = new Date();
+          for (const [index, variant] of variants.entries()) {
+            const created = await tx.variante.create({
+              data: {
+                producto_id: product.id,
+                sku: `G18-${randomUUID().replace(/-/g, '').slice(0, 16)}-${index + 1}`,
+                talla: variant.talla,
+                color: variant.color,
+                color_hex: variant.colorHex,
+                activa: true,
+              },
+            });
+            createdVariants.push(created);
+            await tx.precio_canal.createMany({
+              data: (['WEB', 'APP', 'TIENDA'] as const).map((canal) => ({
+                variante_id: created.id,
+                canal,
+                moneda: 'BOB',
+                importe: data.precio,
+                descuento_pct: 0,
+                desde: now,
+              })),
+            });
+          }
+          const locations = await tx.ubicacion.findMany({
+            where: { activa: true },
+            select: { id: true },
+          });
+          await assignAssortment(
+            tx,
+            createdVariants.map((variant) => variant.id),
+            locations.map((location) => location.id),
+          );
+          await tx.recurso_catalogo.createMany({
+            data: photos.map((photo, index) => ({
+              producto_id: product.id,
+              clave_objeto: photo.key,
+              tipo_mime: photo.mime,
+              orden: index,
+              texto_alternativo: `${data.nombre}, vista ${index + 1}`,
+              licencia: data.licencia,
+              uso: 'GALERIA',
+              estado: 'PUBLICADO',
             })),
           });
-        }
-        const locations = await tx.ubicacion.findMany({
-          where: { activa: true },
-          select: { id: true },
-        });
-        await assignAssortment(
-          tx,
-          createdVariants.map((variant) => variant.id),
-          locations.map((location) => location.id),
-        );
-        await tx.recurso_catalogo.createMany({
-          data: photos.map((photo, index) => ({
-            producto_id: product.id,
-            clave_objeto: photo.key,
-            tipo_mime: photo.mime,
-            orden: index,
-            texto_alternativo: `${data.nombre}, vista ${index + 1}`,
-            licencia: data.licencia,
-            uso: 'GALERIA',
-            estado: 'PUBLICADO',
-          })),
-        });
-        return {
-          id: product.id,
-          nombre: product.nombre,
-          variantes: createdVariants.map((variant) => variant.id),
-          ubicaciones: locations.map((location) => location.id),
-          fotos: photos.length,
-        };
-      });
+          return {
+            id: product.id,
+            nombre: product.nombre,
+            variantes: createdVariants.map((variant) => variant.id),
+            ubicaciones: locations.map((location) => location.id),
+            fotos: photos.length,
+          };
+        }),
+      );
     } catch (error) {
       await Promise.all(written.map((key) => removeStored(key)));
       throw error;
@@ -452,9 +730,8 @@ export class CatalogController {
 
   @Get('ar-resources')
   @UseGuards(AuthGuard)
-  async arResources(@Req() r: AuthRequest, @Query('offlineLimit') rawOfflineLimit?: string) {
+  async arResources(@Req() r: AuthRequest) {
     requirePermission(r.user, 'catalogo:gestionar');
-    const offlineLimit = z.coerce.number().int().min(0).max(10).catch(0).parse(rawOfflineLimit);
     const resources = await this.db.recurso_catalogo.findMany({
       where: { uso: 'AR' },
       include: {
@@ -462,9 +739,8 @@ export class CatalogController {
         variante: { select: { talla: true, color: true } },
       },
       orderBy: { id: 'desc' },
-      ...(offlineLimit ? { take: offlineLimit } : {}),
     });
-    return Promise.all(resources.map(async (resource) => ({
+    return resources.map((resource) => ({
       id: resource.id,
       productoId: resource.producto_id,
       varianteId: resource.variante_id,
@@ -475,8 +751,7 @@ export class CatalogController {
       textoAlternativo: resource.texto_alternativo,
       licencia: resource.licencia,
       imagePath: publicAssetPath(resource.clave_objeto),
-      checksum: createHash('sha256').update(await readFile(storedPath(resource.clave_objeto))).digest('hex'),
-    })));
+    }));
   }
 
   @Post('ar-resources')
@@ -513,20 +788,25 @@ export class CatalogController {
     await mkdir(storedPath('public/catalog-ar'), { recursive: true });
     await writeFile(storedPath(key), file.buffer, { flag: 'wx' });
     try {
-      return await this.db.recurso_catalogo.create({
-        data: {
-          producto_id: variant.producto_id,
-          variante_id: data.varianteId,
-          clave_objeto: key,
-          tipo_mime: 'image/png',
-          orden: 0,
-          texto_alternativo: data.textoAlternativo,
-          licencia: data.licencia,
-          uso: 'AR',
-          estado: 'BORRADOR',
-        },
-        select: { id: true, estado: true },
-      });
+      return await this.writable(r, () =>
+        this.db.$transaction(async (tx) => {
+          await this.touchResource(tx, r.user.id, variant.producto_id, data.varianteId);
+          return tx.recurso_catalogo.create({
+            data: {
+              producto_id: variant.producto_id,
+              variante_id: data.varianteId,
+              clave_objeto: key,
+              tipo_mime: 'image/png',
+              orden: 0,
+              texto_alternativo: data.textoAlternativo,
+              licencia: data.licencia,
+              uso: 'AR',
+              estado: 'BORRADOR',
+            },
+            select: { id: true, estado: true },
+          });
+        }),
+      );
     } catch (error) {
       await removeStored(key);
       throw error;
@@ -547,6 +827,7 @@ export class CatalogController {
         where: { id: resourceId, uso: 'AR', variante_id: { not: null } },
       });
       if (!resource) throw new NotFoundException('Imagen AR no encontrada.');
+      await this.touchResource(tx, r.user.id, resource.producto_id, resource.variante_id!);
       if (estado === 'PUBLICADO') {
         const bytes = await readFile(storedPath(resource.clave_objeto)).catch(() => {
           throw new BadRequestException(

@@ -1,12 +1,26 @@
 import * as SecureStore from 'expo-secure-store';
-import { createOfflineIdentity, canRestoreOfflineIdentity, type OfflineIdentity } from './auth/offlineIdentity';
+import {
+  createOfflineIdentity,
+  canRestoreOfflineIdentity,
+  type OfflineIdentity,
+} from './auth/offlineIdentity';
 import { createSessionScope, type ScopeKey } from './auth/sessionScope';
 import { secureStoreKey } from './auth/secureStoreKey';
 import { ApiProblem, type ApiProblemPayload } from './errors/ApiProblem';
 import { createApiHeaders } from './transport/headers';
 import type { Identity } from './types';
+import { offlineAccess } from './offline/access';
+import { lockOfflineScope } from './offline/vault';
+import { getOfflineDeviceId } from './offline/device';
+import { createSerialTasks } from './auth/serialTasks';
 
-type AuthReply = { accessToken: string; refreshToken: string; user: Identity; message?: string; code?: string };
+type AuthReply = {
+  accessToken: string;
+  refreshToken: string;
+  user: Identity;
+  message?: string;
+  code?: string;
+};
 
 const TENANT_KEY = secureStoreKey('lumina', 'tenant');
 const OFFLINE_IDENTITY_KEY = (tenant: string) => secureStoreKey('lumina', 'identity', tenant);
@@ -14,13 +28,16 @@ const sessionKey = (kind: 'access' | 'refresh', tenant: string) =>
   secureStoreKey('lumina', 'session', kind, tenant);
 const scope = createSessionScope('lumina');
 
-export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://172-191-104-91.sslip.io/api').replace(/\/$/, '');
+export const API_URL = (
+  process.env.EXPO_PUBLIC_API_URL || 'https://172-191-104-91.sslip.io/api'
+).replace(/\/$/, '');
 export const REALTIME_URL = API_URL.replace(/\/api$/, '');
 
 let accessToken = '';
 let refreshToken = '';
 let refreshPending: { scope: ScopeKey; promise: Promise<void> } | null = null;
 let clearPromise: Promise<void> | null = null;
+const authWrites = createSerialTasks();
 
 export const getTenantSlug = () => scope.current().tenantSlug;
 export const getAccessToken = () => accessToken;
@@ -56,10 +73,24 @@ async function scopedFetch(url: string, init: RequestInit, requestScope: ScopeKe
 }
 
 async function persistOfflineIdentity(identity: Identity, requestScope: ScopeKey) {
+  await authWrites.run(async () => {
+    scope.assertCurrent(requestScope);
+    const record = createOfflineIdentity(identity, requestScope);
+    await SecureStore.setItemAsync(
+      OFFLINE_IDENTITY_KEY(requestScope.tenantSlug),
+      JSON.stringify(record),
+    );
+    scope.assertCurrent(requestScope);
+  });
+  await authorizeOfflineIdentity(identity, requestScope);
+}
+
+async function authorizeOfflineIdentity(identity: Identity, requestScope: ScopeKey) {
+  const deviceId = await getOfflineDeviceId();
   scope.assertCurrent(requestScope);
-  const record = createOfflineIdentity(identity, requestScope);
-  await SecureStore.setItemAsync(OFFLINE_IDENTITY_KEY(requestScope.tenantSlug), JSON.stringify(record));
-  scope.assertCurrent(requestScope);
+  if (!identity.tenant || identity.tenant.slug !== requestScope.tenantSlug)
+    throw new Error('La identidad no corresponde a esta tienda.');
+  offlineAccess.bind({ tenantId: identity.tenant.id, actorId: identity.id, deviceId });
 }
 
 async function readOfflineIdentity(requestScope: ScopeKey): Promise<OfflineIdentity | null> {
@@ -74,27 +105,34 @@ async function readOfflineIdentity(requestScope: ScopeKey): Promise<OfflineIdent
 }
 
 async function saveTokens(access: string, refresh: string, requestScope: ScopeKey) {
-  scope.assertCurrent(requestScope);
-  accessToken = access;
-  refreshToken = refresh;
-  await Promise.all([
-    SecureStore.setItemAsync(sessionKey('access', requestScope.tenantSlug), access),
-    SecureStore.setItemAsync(sessionKey('refresh', requestScope.tenantSlug), refresh),
-  ]);
-  scope.assertCurrent(requestScope);
+  await authWrites.run(async () => {
+    scope.assertCurrent(requestScope);
+    accessToken = access;
+    refreshToken = refresh;
+    await Promise.all([
+      SecureStore.setItemAsync(sessionKey('access', requestScope.tenantSlug), access),
+      SecureStore.setItemAsync(sessionKey('refresh', requestScope.tenantSlug), refresh),
+    ]);
+    scope.assertCurrent(requestScope);
+  });
 }
 
 export async function clearSession() {
   if (clearPromise) return clearPromise;
   const requestScope = scope.capture();
   scope.invalidate();
+  const offlineLock = lockOfflineScope();
   accessToken = '';
   refreshToken = '';
-  const pending = Promise.all([
-    SecureStore.deleteItemAsync(sessionKey('access', requestScope.tenantSlug)),
-    SecureStore.deleteItemAsync(sessionKey('refresh', requestScope.tenantSlug)),
-    SecureStore.deleteItemAsync(OFFLINE_IDENTITY_KEY(requestScope.tenantSlug)),
-  ])
+  const pending = authWrites
+    .run(() =>
+      Promise.all([
+        offlineLock,
+        SecureStore.deleteItemAsync(sessionKey('access', requestScope.tenantSlug)),
+        SecureStore.deleteItemAsync(sessionKey('refresh', requestScope.tenantSlug)),
+        SecureStore.deleteItemAsync(OFFLINE_IDENTITY_KEY(requestScope.tenantSlug)),
+      ]),
+    )
     .then(() => undefined)
     .finally(() => {
       if (clearPromise === pending) clearPromise = null;
@@ -106,7 +144,6 @@ export async function clearSession() {
 export async function selectTenant(slug: string) {
   assertValidTenant(slug);
   if (slug === getTenantSlug()) return;
-  await refreshPending?.promise.catch(() => {});
   await clearSession();
   scope.switchTenant(slug);
   await SecureStore.setItemAsync(TENANT_KEY, slug);
@@ -127,7 +164,8 @@ async function rotate(requestScope: ScopeKey) {
       requestScope,
     )
       .then(async (response) => {
-        if (!response.ok) throw ApiProblem.fromHttp(response.status, await responsePayload(response));
+        if (!response.ok)
+          throw ApiProblem.fromHttp(response.status, await responsePayload(response));
         const data = (await response.json()) as AuthReply;
         await saveTokens(data.accessToken, data.refreshToken, requestScope);
         await persistOfflineIdentity(data.user, requestScope);
@@ -142,13 +180,27 @@ async function rotate(requestScope: ScopeKey) {
 
 // Las rutas existentes aún no declaran todos sus DTO. Las nuevas rutas deben usar
 // `api<T>()`; el valor por defecto conserva compatibilidad durante la migración.
-export async function api<T = any>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
+export async function api<T = any>(
+  path: string,
+  options: RequestInit = {},
+  retry = true,
+): Promise<T> {
   const requestScope = scope.capture();
   const headers = createApiHeaders(options.headers, requestScope, accessToken, options.body);
 
   const response = await scopedFetch(`${API_URL}${path}`, { ...options, headers }, requestScope);
   if (response.status === 401 && retry && !path.startsWith('/auth/mobile/')) {
-    await rotate(requestScope);
+    try {
+      await rotate(requestScope);
+    } catch (reason) {
+      if (
+        scope.isCurrent(requestScope) &&
+        reason instanceof ApiProblem &&
+        [401, 403].includes(reason.status)
+      )
+        await clearSession();
+      throw reason;
+    }
     scope.assertCurrent(requestScope);
     return api<T>(path, options, false);
   }
@@ -177,7 +229,10 @@ export async function restoreSession(): Promise<Identity | null> {
   } catch (reason) {
     if (ApiProblem.isNetwork(reason)) {
       const offline = await readOfflineIdentity(requestScope);
-      if (offline && scope.isCurrent(requestScope)) return offline.identity;
+      if (offline && scope.isCurrent(requestScope)) {
+        await authorizeOfflineIdentity(offline.identity, requestScope);
+        return offline.identity;
+      }
       throw reason;
     }
     if (scope.isCurrent(requestScope)) await clearSession();
@@ -204,7 +259,8 @@ async function authenticate(path: string, payload: Record<string, string>): Prom
   return data.user;
 }
 
-export const login = (correo: string, clave: string) => authenticate('/auth/mobile/login', { correo, clave });
+export const login = (correo: string, clave: string) =>
+  authenticate('/auth/mobile/login', { correo, clave });
 
 export const registerClient = (nombres: string, apellidos: string, correo: string, clave: string) =>
   authenticate('/auth/mobile/register', { nombres, apellidos, correo, clave });
@@ -219,7 +275,8 @@ export async function logout() {
   try {
     await fetch(`${API_URL}/auth/mobile/logout`, {
       method: 'POST',
-      signal: controller.signal,
+      // Node y React Native declaran firmas distintas para onabort; el controlador es el mismo transporte.
+      signal: controller.signal as NonNullable<Parameters<typeof fetch>[1]>['signal'],
       headers: { 'Content-Type': 'application/json', 'X-Tenant-Slug': tenantSlug },
       body: JSON.stringify({ refreshToken: currentRefresh }),
     });

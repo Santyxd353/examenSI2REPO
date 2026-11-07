@@ -154,21 +154,28 @@ model consentimiento {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model consulta_analitica {
-  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  usuario_id        String            @db.Uuid
-  modelo_id         String?           @db.Uuid
-  tipo              String            @db.VarChar(15)
-  pregunta          String?
-  interpretacion    Json
-  filtros           Json
-  resultado_resumen Json?
-  estado            String            @db.VarChar(20)
-  creada_en         DateTime          @db.Timestamptz(6)
-  modelo_analitico  modelo_analitico? @relation(fields: [modelo_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_consulta_analitica_modelo_id")
-  usuario           usuario           @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_consulta_analitica_usuario_id")
+  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id            String              @db.Uuid
+  modelo_id             String?             @db.Uuid
+  tipo                  String              @db.VarChar(15)
+  pregunta              String?
+  interpretacion        Json
+  filtros               Json
+  resultado_resumen     Json?
+  estado                String              @db.VarChar(20)
+  creada_en             DateTime            @db.Timestamptz(6)
+  definicion_reporte_id String?             @db.Uuid
+  canal_entrada         String              @default("FORMULARIO") @db.VarChar(10)
+  proveedor_ia          String?             @db.VarChar(80)
+  modelo_ia             String?             @db.VarChar(100)
+  definicion_reporte    definicion_reporte? @relation(fields: [definicion_reporte_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_consulta_analitica_definicion_reporte_id")
+  modelo_analitico      modelo_analitico?   @relation(fields: [modelo_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_consulta_analitica_modelo_id")
+  usuario               usuario             @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_consulta_analitica_usuario_id")
+  consumo_cuota         consumo_cuota?
 
   @@index([modelo_id], map: "ix_consulta_analitica_modelo_id")
   @@index([usuario_id], map: "ix_consulta_analitica_usuario_id")
+  @@index([definicion_reporte_id], map: "ix_consulta_analitica_definicion_reporte_id")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -285,23 +292,31 @@ model dispositivo {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model ejecucion_analitica {
-  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  modelo_id        String           @db.Uuid
-  solicitante_id   String           @db.Uuid
-  desde            DateTime         @db.Date
-  hasta            DateTime         @db.Date
-  filtros          Json
-  metricas         Json?
-  estado           String           @db.VarChar(20)
-  creada_en        DateTime         @db.Timestamptz(6)
-  anomalia         anomalia[]
-  modelo_analitico modelo_analitico @relation(fields: [modelo_id], references: [id], onUpdate: NoAction, map: "fk_ejecucion_analitica_modelo_id")
-  usuario          usuario          @relation(fields: [solicitante_id], references: [id], onUpdate: NoAction, map: "fk_ejecucion_analitica_solicitante_id")
-  prediccion       prediccion[]
-  recomendacion    recomendacion[]
+  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  modelo_id              String                  @db.Uuid
+  solicitante_id         String                  @db.Uuid
+  desde                  DateTime                @db.Date
+  hasta                  DateTime                @db.Date
+  filtros                Json
+  metricas               Json?
+  estado                 String                  @db.VarChar(20)
+  creada_en              DateTime                @db.Timestamptz(6)
+  conjunto_id            String?                 @db.Uuid
+  ambito_ubicaciones     Json                    @default("[]")
+  modo                   String                  @default("REGLA") @db.VarChar(20)
+  resultado_demostracion Json?
+  terminada_en           DateTime?               @db.Timestamptz(6)
+  limitaciones           Json                    @default("[]")
+  anomalia               anomalia[]
+  conjunto_entrenamiento conjunto_entrenamiento? @relation(fields: [conjunto_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_ejecucion_analitica_conjunto_id")
+  modelo_analitico       modelo_analitico        @relation(fields: [modelo_id], references: [id], onUpdate: NoAction, map: "fk_ejecucion_analitica_modelo_id")
+  usuario                usuario                 @relation(fields: [solicitante_id], references: [id], onUpdate: NoAction, map: "fk_ejecucion_analitica_solicitante_id")
+  prediccion             prediccion[]
+  recomendacion          recomendacion[]
 
   @@index([modelo_id], map: "ix_ejecucion_analitica_modelo_id")
   @@index([solicitante_id], map: "ix_ejecucion_analitica_solicitante_id")
+  @@index([conjunto_id], map: "ix_ejecucion_analitica_conjunto_id")
 }
 
 model evento_pago {
@@ -411,17 +426,26 @@ model item_carrito {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model modelo_analitico {
-  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tipo                String                @db.VarChar(20)
-  nombre              String                @db.VarChar(80)
-  version             String                @db.VarChar(40)
-  parametros          Json
-  metricas_validacion Json?
-  estado              String                @db.VarChar(20)
-  consulta_analitica  consulta_analitica[]
-  ejecucion_analitica ejecucion_analitica[]
+  id                        String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tipo                      String                  @db.VarChar(20)
+  nombre                    String                  @db.VarChar(80)
+  version                   String                  @db.VarChar(40)
+  parametros                Json
+  metricas_validacion       Json?
+  estado                    String                  @db.VarChar(20)
+  conjunto_entrenamiento_id String?                 @db.Uuid
+  algoritmo                 String?                 @db.VarChar(100)
+  clave_artefacto           String?                 @db.VarChar(500)
+  sha256_artefacto          String?                 @db.Char(64)
+  entrenado_en              DateTime?               @db.Timestamptz(6)
+  procedencia               String                  @default("REGLA_LEGADA") @db.VarChar(20)
+  consulta_analitica        consulta_analitica[]
+  ejecucion_analitica       ejecucion_analitica[]
+  metrica_modelo            metrica_modelo[]
+  conjunto_entrenamiento    conjunto_entrenamiento? @relation(fields: [conjunto_entrenamiento_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_modelo_analitico_conjunto_entrenamiento_id")
 
   @@unique([tipo, nombre, version])
+  @@index([conjunto_entrenamiento_id], map: "ix_modelo_analitico_conjunto_entrenamiento_id")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -641,6 +665,8 @@ model producto {
   material         String             @db.VarChar(150)
   estado           String             @db.VarChar(20)
   creado_en        DateTime           @db.Timestamptz(6)
+  version          Int                @default(1)
+  actualizado_en   DateTime           @default(now()) @db.Timestamptz(6)
   categoria        categoria          @relation(fields: [categoria_id], references: [id], onUpdate: NoAction, map: "fk_producto_categoria_id")
   recurso_catalogo recurso_catalogo[]
   variante         variante[]
@@ -801,6 +827,7 @@ model trabajo_avatar {
   creado_en        DateTime          @db.Timestamptz(6)
   iniciado_en      DateTime?         @db.Timestamptz(6)
   terminado_en     DateTime?         @db.Timestamptz(6)
+  consumo_cuota    consumo_cuota?
   avatar           avatar?           @relation(fields: [avatar_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_trabajo_avatar_avatar_id")
   captura_corporal captura_corporal? @relation(fields: [captura_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_trabajo_avatar_captura_id")
   usuario          usuario           @relation(fields: [usuario_id], references: [id], onUpdate: NoAction, map: "fk_trabajo_avatar_usuario_id")
@@ -813,6 +840,9 @@ model trabajo_avatar {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model ubicacion {
+  version Int @default(1)
+  responsable_id String? @db.Uuid
+  responsable usuario? @relation("responsable_ubicacion", fields: [responsable_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_ubicacion_responsable")
   id                                                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   padre_id                                          String?                @db.Uuid
   nombre                                            String                 @db.VarChar(120)
@@ -831,20 +861,23 @@ model ubicacion {
   usuario_ubicacion                                 usuario_ubicacion[]
 
   @@index([padre_id], map: "ix_ubicacion_padre_id")
+  @@index([responsable_id], map: "ix_ubicacion_responsable_id")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model usuario {
-  id                                          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  nombres                                     String                @db.VarChar(100)
-  apellidos                                   String                @db.VarChar(120)
-  correo                                      String                @unique @db.VarChar(160)
-  clave_hash                                  String                @db.VarChar(255)
-  telefono                                    String?               @db.VarChar(30)
-  estado                                      String                @db.VarChar(20)
+  version Int @default(1)
+  ubicaciones_responsables ubicacion[] @relation("responsable_ubicacion")
+  id                                          String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombres                                     String                     @db.VarChar(100)
+  apellidos                                   String                     @db.VarChar(120)
+  correo                                      String                     @unique @db.VarChar(160)
+  clave_hash                                  String                     @db.VarChar(255)
+  telefono                                    String?                    @db.VarChar(30)
+  estado                                      String                     @db.VarChar(20)
   preferencias                                Json
-  creado_en                                   DateTime              @db.Timestamptz(6)
+  creado_en                                   DateTime                   @db.Timestamptz(6)
   anomalia                                    anomalia[]
   auditoria                                   auditoria[]
   avatar                                      avatar[]
@@ -852,10 +885,14 @@ model usuario {
   captura_corporal                            captura_corporal[]
   carrito                                     carrito[]
   configuracion                               configuracion[]
+  conjunto_entrenamiento                      conjunto_entrenamiento[]
+  conjunto_reporte                            conjunto_reporte[]
   consentimiento                              consentimiento[]
   consulta_analitica                          consulta_analitica[]
-  devolucion_devolucion_revisado_porTousuario devolucion[]          @relation("devolucion_revisado_porTousuario")
-  devolucion_devolucion_usuario_idTousuario   devolucion[]          @relation("devolucion_usuario_idTousuario")
+  consumo_cuota                               consumo_cuota[]
+  definicion_reporte                          definicion_reporte[]
+  devolucion_devolucion_revisado_porTousuario devolucion[]               @relation("devolucion_revisado_porTousuario")
+  devolucion_devolucion_usuario_idTousuario   devolucion[]               @relation("devolucion_usuario_idTousuario")
   direccion                                   direccion[]
   dispositivo                                 dispositivo[]
   ejecucion_analitica                         ejecucion_analitica[]
@@ -863,8 +900,9 @@ model usuario {
   modelo_prenda                               modelo_prenda[]
   movimiento_stock                            movimiento_stock[]
   notificacion                                notificacion[]
-  pedido_pedido_usuario_idTousuario           pedido[]              @relation("pedido_usuario_idTousuario")
-  pedido_pedido_vendedor_idTousuario          pedido[]              @relation("pedido_vendedor_idTousuario")
+  operacion_sincronizacion                    operacion_sincronizacion[]
+  pedido_pedido_usuario_idTousuario           pedido[]                   @relation("pedido_usuario_idTousuario")
+  pedido_pedido_vendedor_idTousuario          pedido[]                   @relation("pedido_vendedor_idTousuario")
   recomendacion                               recomendacion[]
   sesion                                      sesion[]
   sesion_vestidor                             sesion_vestidor[]
@@ -907,6 +945,8 @@ model variante {
   color                String                 @db.VarChar(50)
   color_hex            String?                @db.VarChar(7)
   activa               Boolean
+  version              Int                    @default(1)
+  actualizado_en       DateTime               @default(now()) @db.Timestamptz(6)
   detalle_pedido       detalle_pedido[]
   disponibilidad_canal disponibilidad_canal[]
   evento_vestidor      evento_vestidor[]
@@ -921,4 +961,148 @@ model variante {
 
   @@unique([producto_id, talla, color])
   @@index([producto_id], map: "ix_variante_producto_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model conjunto_entrenamiento {
+  id                      String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre                  String                @db.VarChar(120)
+  version                 String                @db.VarChar(40)
+  origen                  String                @db.VarChar(20)
+  espacio_identificadores String                @db.VarChar(120)
+  esquema_version         Int
+  desde                   DateTime              @db.Date
+  hasta                   DateTime              @db.Date
+  cortes_temporales       Json
+  catalogo_referencia     Json
+  ubicaciones_referencia  Json
+  canales_referencia      Json
+  parametros_generacion   Json?
+  clave_datos             String                @db.VarChar(500)
+  sha256                  String                @db.Char(64)
+  filas                   BigInt
+  creado_por              String                @db.Uuid
+  creado_en               DateTime              @db.Timestamptz(6)
+  usuario                 usuario               @relation(fields: [creado_por], references: [id], onUpdate: NoAction, map: "fk_conjunto_entrenamiento_creado_por")
+  ejecucion_analitica     ejecucion_analitica[]
+  metrica_modelo          metrica_modelo[]
+  modelo_analitico        modelo_analitico[]
+
+  @@unique([nombre, version], map: "ux_conjunto_entrenamiento_nombre_version")
+  @@index([creado_por], map: "ix_conjunto_entrenamiento_creado_por")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model conjunto_reporte {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  definicion_id       String?             @db.Uuid
+  solicitante_id      String              @db.Uuid
+  definicion_version  Int?
+  definicion_snapshot Json
+  esquema_version     Int
+  cobertura           Json
+  ambito_autorizado   Json
+  clave_datos         String              @db.VarChar(500)
+  sha256              String              @db.Char(64)
+  filas               BigInt
+  bytes               BigInt
+  generado_en         DateTime            @db.Timestamptz(6)
+  vence_en            DateTime?           @db.Timestamptz(6)
+  definicion_reporte  definicion_reporte? @relation(fields: [definicion_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_conjunto_reporte_definicion_id")
+  usuario             usuario             @relation(fields: [solicitante_id], references: [id], onUpdate: NoAction, map: "fk_conjunto_reporte_solicitante_id")
+
+  @@index([definicion_id], map: "ix_conjunto_reporte_definicion_id")
+  @@index([solicitante_id], map: "ix_conjunto_reporte_solicitante_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model consumo_cuota {
+  id                           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recurso                      String              @db.VarChar(40)
+  periodo_desde                DateTime            @db.Timestamptz(6)
+  periodo_hasta                DateTime            @db.Timestamptz(6)
+  idempotencia                 String              @db.Uuid
+  actor_id                     String              @db.Uuid
+  trabajo_avatar_id            String?             @unique(map: "ux_consumo_cuota_trabajo_avatar_id") @db.Uuid
+  consulta_analitica_id        String?             @unique(map: "ux_consumo_cuota_consulta_analitica_id") @db.Uuid
+  cantidad                     Int
+  estado                       String              @db.VarChar(20)
+  plan_codigo_snapshot         String              @db.VarChar(40)
+  suscripcion_version_snapshot Int
+  limite_snapshot              Int
+  creado_en                    DateTime            @db.Timestamptz(6)
+  actualizado_en               DateTime            @db.Timestamptz(6)
+  usuario                      usuario             @relation(fields: [actor_id], references: [id], onUpdate: NoAction, map: "fk_consumo_cuota_actor_id")
+  consulta_analitica           consulta_analitica? @relation(fields: [consulta_analitica_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_consumo_cuota_consulta_analitica_id")
+  trabajo_avatar               trabajo_avatar?     @relation(fields: [trabajo_avatar_id], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "fk_consumo_cuota_trabajo_avatar_id")
+
+  @@unique([recurso, idempotencia], map: "ux_consumo_cuota_recurso_idempotencia")
+  @@index([actor_id], map: "ix_consumo_cuota_actor_id")
+  @@index([consulta_analitica_id], map: "ix_consumo_cuota_consulta_analitica_id")
+  @@index([trabajo_avatar_id], map: "ix_consumo_cuota_trabajo_avatar_id")
+  @@index([recurso, periodo_desde, periodo_hasta, estado], map: "ix_cuota_periodo_estado")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model definicion_reporte {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  autor_id           String               @db.Uuid
+  nombre             String               @db.VarChar(120)
+  version            Int
+  esquema_version    Int
+  especificacion     Json
+  diseno             Json
+  estado             String               @db.VarChar(20)
+  creada_en          DateTime             @db.Timestamptz(6)
+  actualizada_en     DateTime             @db.Timestamptz(6)
+  conjunto_reporte   conjunto_reporte[]
+  consulta_analitica consulta_analitica[]
+  usuario            usuario              @relation(fields: [autor_id], references: [id], onUpdate: NoAction, map: "fk_definicion_reporte_autor_id")
+
+  @@index([autor_id], map: "ix_definicion_reporte_autor_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model metrica_modelo {
+  id                     String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  modelo_id              String                 @db.Uuid
+  conjunto_id            String                 @db.Uuid
+  particion              String                 @db.VarChar(20)
+  nombre                 String                 @db.VarChar(40)
+  valor                  Decimal?               @db.Decimal(20, 8)
+  valor_referencia       Decimal?               @db.Decimal(20, 8)
+  horizonte_dias         Int
+  segmento               Json
+  segmento_hash          String                 @db.Char(64)
+  observaciones          BigInt
+  calculada_en           DateTime               @db.Timestamptz(6)
+  estado                 String                 @db.VarChar(20)
+  motivo_no_aplica       String?                @db.VarChar(200)
+  denominador            Decimal?               @db.Decimal(20, 8)
+  conjunto_entrenamiento conjunto_entrenamiento @relation(fields: [conjunto_id], references: [id], onUpdate: NoAction, map: "fk_metrica_modelo_conjunto_id")
+  modelo_analitico       modelo_analitico       @relation(fields: [modelo_id], references: [id], onUpdate: NoAction, map: "fk_metrica_modelo_modelo_id")
+
+  @@unique([modelo_id, conjunto_id, particion, nombre, horizonte_dias, segmento_hash], map: "ux_metrica_modelo_modelo_id_conjunto_id_particio_d7c6745f")
+  @@index([conjunto_id], map: "ix_metrica_modelo_conjunto_id")
+  @@index([modelo_id], map: "ix_metrica_modelo_modelo_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model operacion_sincronizacion {
+  id                         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actor_id                   String   @db.Uuid
+  dispositivo_instalacion_id String   @db.Uuid
+  tipo                       String   @db.VarChar(40)
+  entidad_tipo               String   @db.VarChar(30)
+  entidad_id                 String   @db.Uuid
+  version_base               Int?
+  hash_intencion             String   @db.Char(64)
+  estado_resultado           String   @db.VarChar(20)
+  resultado                  Json
+  recibida_en                DateTime @db.Timestamptz(6)
+  confirmada_en              DateTime @db.Timestamptz(6)
+  usuario                    usuario  @relation(fields: [actor_id], references: [id], onUpdate: NoAction, map: "fk_operacion_sincronizacion_actor_id")
+
+  @@index([actor_id, confirmada_en], map: "ix_operacion_sincronizacion_actor_fecha")
+  @@index([actor_id], map: "ix_operacion_sincronizacion_actor_id")
 }

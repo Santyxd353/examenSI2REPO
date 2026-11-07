@@ -54,10 +54,6 @@ Para mantener secretos fijos entre despliegues:
 ```powershell
 $env:AZURE_POSTGRES_PASSWORD = 'CONTRASENA_LARGA_Y_ALEATORIA'
 $env:AZURE_JWT_SECRET = 'SECRETO_JWT_DE_48_O_MAS_CARACTERES_ALEATORIOS'
-$env:AZURE_OFFLINE_VAULT_SECRET = 'BASE64_DE_32_BYTES'
-# Opcional: habilita el agente de reportes solo en el servidor.
-$env:OPENAI_API_KEY = 'CLAVE_PRIVADA_DEL_PROVEEDOR'
-$env:OPENAI_REPORTS_MODEL = 'MODELO_HABILITADO_EN_TU_CUENTA'
 ./scripts/deploy-azure.ps1 -SubscriptionId 'ID_DE_SUSCRIPCION'
 ```
 
@@ -82,9 +78,6 @@ Crear un registro de aplicación con federación OpenID Connect para este reposi
 | `AZURE_SUBSCRIPTION_ID` | Subscription ID. |
 | `AZURE_POSTGRES_PASSWORD` | Contraseña aleatoria de al menos 24 caracteres. |
 | `AZURE_JWT_SECRET` | Secreto aleatorio de al menos 48 caracteres. |
-| `AZURE_OFFLINE_VAULT_SECRET` | Clave base64 de 32 bytes para sobres offline. |
-| `OPENAI_API_KEY` | Opcional. Clave privada del agente, solo para el contenedor. |
-| `OPENAI_REPORTS_MODEL` | Opcional. Debe acompañar a `OPENAI_API_KEY`. |
 
 Variables opcionales:
 
@@ -138,7 +131,6 @@ Los archivos permanecen en Azure Files al desplegar otra revisión. PostgreSQL c
 - HTTPS externo queda habilitado y HTTP se rechaza.
 - ACR no usa cuenta administrativa; la descarga usa identidad administrada.
 - Contraseña PostgreSQL y secreto JWT se guardan como secretos de Container Apps.
-- La clave offline y, si se habilita, la clave del agente se guardan como secretos de Container Apps; no forman parte de la APK ni de las variables `EXPO_PUBLIC_*`.
 - Conexión PostgreSQL exige `sslmode=require`.
 - La regla `0.0.0.0` de PostgreSQL permite conexiones desde servicios Azure de cualquier suscripción que conozcan credenciales. Para un entorno comercial, mover Container Apps y PostgreSQL a red virtual con acceso privado.
 - Azure Files usa clave de cuenta en la configuración protegida del entorno Container Apps. Rotar la clave exige actualizar ese vínculo.

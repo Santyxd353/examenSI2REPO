@@ -27,6 +27,11 @@ export async function migrateOfflineDatabase(db: SQLiteDatabase) {
       report_key TEXT NOT NULL, payload TEXT NOT NULL, generated_at TEXT NOT NULL,
       PRIMARY KEY(tenant_id, actor_id, device_id, report_key)
     );
-    PRAGMA user_version = 3;
+    CREATE TABLE IF NOT EXISTS offline_private_record (
+      tenant_id TEXT NOT NULL, actor_id TEXT NOT NULL, device_id TEXT NOT NULL,
+      namespace TEXT NOT NULL, record_id TEXT NOT NULL, payload TEXT NOT NULL, saved_at TEXT NOT NULL,
+      PRIMARY KEY(tenant_id,actor_id,device_id,namespace,record_id)
+    );
+    PRAGMA user_version = 4;
   `);
 }

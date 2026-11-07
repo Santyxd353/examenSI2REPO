@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef, FormEvent } from 'react';
+import { moneyToMinor } from '@lumina/contracts';
+import { useEffect, useState, useRef, FormEvent, lazy, Suspense } from 'react';
 import {
   ArrowUpRight,
   ArrowRight,
@@ -16,13 +17,30 @@ import {
   Shirt,
   ShoppingBag,
   Trash2,
+  Download,
 } from 'lucide-react';
-import { api, privateModel, refresh, setToken, logoutSession } from './api';
+import {
+  api,
+  ApiError,
+  privateModel,
+  refresh,
+  setToken,
+  logoutSession,
+  setLocalSignout,
+} from './api';
 import { Viewer } from './Viewer';
 import { AdminWorkspace } from './admin/AdminWorkspace';
-import { businessModules } from './admin/modules';
+import { businessModules, canUseModule } from './admin/modules';
 import { Commerce } from './Commerce';
 import { tenantAsset, tenantSlug, selectTenant } from './tenant';
+import {
+  enableOffline,
+  restoreOffline,
+  sessionResponse,
+  verifyOfflineIdentity,
+} from './offline/session';
+import { lockSession, onSessionChange, restoreSession, type OfflineSession } from './offline/scope';
+import { prepareOfflineShell } from './offline/shell';
 type CatalogLocation = {
   id: string;
   nombre: string;
@@ -70,7 +88,8 @@ const money = (n: number) =>
   new Intl.NumberFormat('es-BO', {
     style: 'currency',
     currency: 'BOB',
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(n);
 function GarmentArt({ color = '#d5c6b0' }: { color?: string }) {
   return (
@@ -99,10 +118,33 @@ function GarmentArt({ color = '#d5c6b0' }: { color?: string }) {
     </svg>
   );
 }
+const PlatformProvision = lazy(() =>
+  import('./admin/PlatformProvision').then((module) => ({ default: module.PlatformProvision })),
+);
+const Downloads = lazy(() =>
+  import('./Downloads').then((module) => ({ default: module.Downloads })),
+);
 export function App() {
+  return new URLSearchParams(window.location.search).get('plataforma') === '1' ? (
+    <Suspense fallback={<p role="status">Cargando acceso de plataforma…</p>}>
+      <PlatformProvision />
+    </Suspense>
+  ) : (
+    <StoreApp />
+  );
+}
+function StoreApp() {
+  // Keep the same intent after a lost response; only hashes are retained, never photo bytes.
+  const uploadIdentity = useRef<{ fingerprint: string; id: string } | null>(null);
   const accountEpoch = useRef(0),
     viewEpoch = useRef(0);
-  const [page, setPage] = useState<'catalogo' | 'avatar' | 'admin' | 'commerce'>('catalogo'),
+  const offlineSetup = useRef<AbortController | null>(null);
+  const [online, setOnline] = useState(navigator.onLine);
+  const [offlineSession, setOfflineSession] = useState<OfflineSession | null>(null);
+  const [exitChoice, setExitChoice] = useState(false);
+  const [page, setPage] = useState<'catalogo' | 'avatar' | 'admin' | 'commerce' | 'downloads'>(
+      'catalogo',
+    ),
     [user, setUser] = useState<any>(null),
     [authOpen, setAuthOpen] = useState(false),
     [register, setRegister] = useState(false);
@@ -122,6 +164,10 @@ export function App() {
     [category, setCategory] = useState(''),
     [color, setColor] = useState(''),
     [size, setSize] = useState(''),
+    [minPrice, setMinPrice] = useState(''),
+    [maxPrice, setMaxPrice] = useState(''),
+    [priceSort, setPriceSort] = useState('featured'),
+    [catalogMore, setCatalogMore] = useState(false),
     [catalogVersion, setCatalogVersion] = useState(0),
     [catalogLoading, setCatalogLoading] = useState(true),
     [galleryIndex, setGalleryIndex] = useState<Record<string, number>>({}),
@@ -158,9 +204,24 @@ export function App() {
         if (category) params.set('category', category);
         if (color) params.set('color', color);
         if (size) params.set('size', size);
+        try {
+          if (minPrice) params.set('minPriceMinor', String(moneyToMinor(minPrice)));
+          if (maxPrice) params.set('maxPriceMinor', String(moneyToMinor(maxPrice)));
+        } catch {
+          if (active) {
+            setError('Indica precios con hasta dos decimales.');
+            setCatalogLoading(false);
+          }
+          return;
+        }
+        params.set('sort', priceSort);
+
         void api(`/catalog${params.size ? `?${params}` : ''}`)
           .then((data) => {
-            if (active) setVisibleProducts(data.products);
+            if (active) {
+              setVisibleProducts(data.products);
+              setCatalogMore(Boolean(data.hasMore));
+            }
           })
           .catch((reason) => {
             if (active) setError(reason.message);
@@ -175,18 +236,60 @@ export function App() {
       active = false;
       clearTimeout(timer);
     };
-  }, [catalogLocation, query, brand, category, color, size, catalogVersion]);
+  }, [
+    catalogLocation,
+    query,
+    brand,
+    category,
+    color,
+    size,
+    minPrice,
+    maxPrice,
+    priceSort,
+    catalogVersion,
+  ]);
   useEffect(() => {
     const epoch = accountEpoch.current;
+    if (navigator.onLine) void prepareOfflineShell().catch(() => {});
+    const connection = () => setOnline(navigator.onLine);
+    window.addEventListener('online', connection);
+    window.addEventListener('offline', connection);
     void api('/platform/stores')
       .then(setStores)
       .catch(() => {});
     refresh()
-      .then((d) => {
-        if (epoch === accountEpoch.current) setUser(d.user);
+      .then(async (d) => {
+        if (epoch !== accountEpoch.current) return;
+        setUser(d.user);
+        const local = await verifyOfflineIdentity(d.user).catch(() => null);
+        if (epoch === accountEpoch.current) setOfflineSession(local);
       })
-      .catch(() => {});
+      .catch(async (reason) => {
+        if (epoch !== accountEpoch.current) return;
+        if (reason instanceof ApiError && reason.status === 401) {
+          await verifyOfflineIdentity(null).catch(() => {});
+        } else if (!navigator.onLine || reason instanceof TypeError) {
+          const saved = await restoreOffline().catch(() => null);
+          if (saved && epoch === accountEpoch.current) {
+            setOfflineSession(saved.session);
+            setUser(saved.identity);
+            setPage(
+              saved.identity.permissions.some((permission) =>
+                ['catalogo:gestionar', 'inventario:gestionar'].includes(permission),
+              )
+                ? 'admin'
+                : 'downloads',
+            );
+            setError('');
+          }
+        }
+      });
     void loadCatalog().catch((e) => setError(e.message));
+    return () => {
+      window.removeEventListener('online', connection);
+      window.removeEventListener('offline', connection);
+      offlineSetup.current?.abort();
+    };
   }, []);
   const reload = async () => {
     const epoch = accountEpoch.current;
@@ -196,11 +299,67 @@ export function App() {
     setJobs(data.jobs);
   };
   useEffect(() => {
+    if (!offlineSession) return;
+    let active = true;
+    const stop = onSessionChange((slug) => {
+      if (slug !== offlineSession.slug) return;
+      void restoreSession(slug)
+        .then((current) => {
+          if (active && current?.leaseId !== offlineSession.leaseId) {
+            setOfflineSession(null);
+            setPage('catalogo');
+            if (!navigator.onLine) setUser(null);
+          }
+        })
+        .catch(() => {});
+    });
+    return () => {
+      active = false;
+      stop();
+    };
+  }, [offlineSession]);
+  useEffect(() => {
+    if (!offlineSession || !online) return;
+    const controller = new AbortController();
+    void (async () => {
+      await sessionResponse(offlineSession, '/api/auth/me', { signal: controller.signal });
+      const { syncPending, offlineChangesEvent } = await import('./offline/sync');
+      const result = await syncPending(offlineSession, controller.signal);
+      if (result.applied || result.conflicts) {
+        const { downloadSnapshot } = await import('./offline/downloads');
+        await downloadSnapshot(offlineSession, controller.signal);
+        window.dispatchEvent(new Event(offlineChangesEvent));
+      }
+    })().catch(async (error) => {
+      if (
+        controller.signal.aborted ||
+        !(error instanceof ApiError) ||
+        (error.status !== 401 && error.code !== 'OFFLINE_IDENTITY_CHANGED')
+      )
+        return;
+      await lockSession(offlineSession, 'keep').catch(() => {});
+      if (controller.signal.aborted) return;
+      setOfflineSession(null);
+      setUser(null);
+      setToken('');
+      setPage('catalogo');
+      setError('Inicia sesión con la cuenta de origen para recuperar tu copia local.');
+    });
+    return () => controller.abort();
+  }, [offlineSession, online]);
+  useEffect(() => {
     if (!user) return;
     void reload().catch(() => {});
     const t = setInterval(() => void reload().catch(() => {}), 4000);
     return () => clearInterval(t);
   }, [user]);
+  useEffect(() => {
+    if (
+      user?.permissions?.includes('suscripcion:gestionar') &&
+      new URLSearchParams(window.location.search).has('checkout')
+    )
+      setPage('admin');
+  }, [user?.id]);
   useEffect(
     () => () => {
       if (bodyUrl.startsWith('blob:')) URL.revokeObjectURL(bodyUrl);
@@ -214,11 +373,12 @@ export function App() {
     [garmentUrl],
   );
   useEffect(() => {
-    if (!authOpen) return;
+    if (!authOpen && !exitChoice) return;
     const previous = document.activeElement as HTMLElement | null;
     const handle = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setAuthOpen(false);
+        setExitChoice(false);
         return;
       }
       if (event.key !== 'Tab') return;
@@ -242,7 +402,7 @@ export function App() {
       document.removeEventListener('keydown', handle);
       previous?.focus();
     };
-  }, [authOpen]);
+  }, [authOpen, exitChoice]);
   const openAvatar = () => {
     setPage('avatar');
     if (!user) setAuthOpen(true);
@@ -284,8 +444,14 @@ export function App() {
       });
       accountEpoch.current++;
       viewEpoch.current++;
+      offlineSetup.current?.abort();
+      setLocalSignout(false);
       setToken(data.accessToken);
       setUser(data.user);
+      setOfflineSession(null);
+      const epoch = accountEpoch.current;
+      const local = await verifyOfflineIdentity(data.user).catch(() => null);
+      if (epoch === accountEpoch.current) setOfflineSession(local);
       setAuthOpen(false);
     } catch (e) {
       setError((e as Error).message);
@@ -293,15 +459,56 @@ export function App() {
       setBusy(false);
     }
   }
-  async function logout() {
+  async function openOffline(signal: AbortSignal) {
+    if (!user) throw new Error('Inicia sesión para guardar tu copia.');
+    const epoch = accountEpoch.current,
+      controller = new AbortController();
+    offlineSetup.current?.abort();
+    offlineSetup.current = controller;
+    signal.addEventListener('abort', () => controller.abort(), { once: true });
+    controller.signal.throwIfAborted();
+    await prepareOfflineShell();
+    const local = await enableOffline(user, controller.signal);
+    if (epoch !== accountEpoch.current || controller.signal.aborted) {
+      await lockSession(local, 'keep').catch(() => {});
+      throw new Error('La sesión cambió antes de habilitar la copia local.');
+    }
+    setOfflineSession(local);
+    return local;
+  }
+  async function switchStore(slug: string) {
+    try {
+      accountEpoch.current++;
+      viewEpoch.current++;
+      offlineSetup.current?.abort();
+      if (offlineSession) await lockSession(offlineSession, 'keep');
+      selectTenant(slug);
+    } catch (error) {
+      setError((error as Error).message);
+    }
+  }
+  async function logout(choice?: 'keep' | 'discard') {
+    if (offlineSession && !choice) {
+      setExitChoice(true);
+      return;
+    }
     const epoch = ++accountEpoch.current;
     viewEpoch.current++;
+    offlineSetup.current?.abort();
     setBusy(true);
     try {
-      await logoutSession();
+      if (offlineSession && choice) {
+        await lockSession(offlineSession, choice);
+        setLocalSignout(true);
+        setToken('');
+        // A closed local vault must stay locked even if the remote logout is unreachable.
+        if (navigator.onLine) await logoutSession().catch(() => {});
+      } else await logoutSession();
       if (epoch !== accountEpoch.current) return;
       accountEpoch.current++;
       setUser(null);
+      setOfflineSession(null);
+      setExitChoice(false);
       setAvatars([]);
       setJobs([]);
       setSession(null);
@@ -325,9 +532,33 @@ export function App() {
     setError('');
     try {
       const f = new FormData(form);
-      f.set('idempotencia', crypto.randomUUID());
+      const photos = await Promise.all(
+        ['frente', 'perfil', 'espalda'].map(async (view) => {
+          const file = f.get(view) as File;
+          const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+          return [
+            view,
+            file.type,
+            Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join(''),
+          ];
+        }),
+      );
+      if (epoch !== accountEpoch.current) return;
+      const fingerprint = JSON.stringify([
+        tenantSlug(),
+        user.id,
+        epoch,
+        f.get('altura'),
+        f.get('adulto'),
+        f.get('consentimiento'),
+        photos,
+      ]);
+      if (uploadIdentity.current?.fingerprint !== fingerprint)
+        uploadIdentity.current = { fingerprint, id: crypto.randomUUID() };
+      f.set('idempotencia', uploadIdentity.current.id);
       await api('/avatars', { method: 'POST', body: f });
       if (epoch !== accountEpoch.current) return;
+      uploadIdentity.current = null;
       setNotice('Fotos recibidas. Puedes consultar el progreso aquí.');
       form.reset();
       await reload();
@@ -487,6 +718,14 @@ export function App() {
           </button>
           {user && (
             <button
+              className={page === 'downloads' ? 'active' : ''}
+              onClick={() => setPage('downloads')}
+            >
+              <Download size={16} /> Descargas
+            </button>
+          )}
+          {user && (
+            <button
               className={page === 'commerce' ? 'active' : ''}
               onClick={() => setPage('commerce')}
             >
@@ -494,7 +733,7 @@ export function App() {
             </button>
           )}
           {businessModules.some(
-            (module) => module.permission && user?.permissions?.includes(module.permission),
+            (module) => module.permission && canUseModule(module, user?.permissions ?? []),
           ) && (
             <button className={page === 'admin' ? 'active' : ''} onClick={() => setPage('admin')}>
               Administración
@@ -506,7 +745,7 @@ export function App() {
             className="tenant-selector"
             aria-label="Tienda"
             value={tenantSlug()}
-            onChange={(event) => selectTenant(event.target.value)}
+            onChange={(event) => void switchStore(event.target.value)}
           >
             {!stores.some((store) => store.slug === tenantSlug()) && (
               <option value={tenantSlug()}>{tenantSlug()}</option>
@@ -520,7 +759,7 @@ export function App() {
           {user ? (
             <>
               <span>Hola, {user.nombres.split(' ')[0]}</span>
-              <button onClick={logout} aria-label="Cerrar sesión">
+              <button onClick={() => void logout()} aria-label="Cerrar sesión">
                 <LogOut size={18} />
               </button>
             </>
@@ -545,9 +784,11 @@ export function App() {
               ? 'Tu espacio / Mi avatar'
               : page === 'admin'
                 ? 'Administración / Mi negocio'
-                : 'Tienda / Carrito y pedidos'}
+                : page === 'downloads'
+                  ? 'Tu espacio / Descargas'
+                  : 'Tienda / Carrito y pedidos'}
         </div>
-        {error && !authOpen && (
+        {error && !authOpen && (online || page !== 'downloads') && (
           <div className="message error" role="alert">
             {error}
             <button aria-label="Cerrar aviso" onClick={() => setError('')}>
@@ -687,6 +928,41 @@ export function App() {
                       ))}
                     </select>
                   </label>
+                  <label className="location-filter">
+                    <span>Precio mínimo (Bs)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="1000000"
+                      step="0.01"
+                      value={minPrice}
+                      onChange={(event) => setMinPrice(event.target.value)}
+                    />
+                  </label>
+                  <label className="location-filter">
+                    <span>Precio máximo (Bs)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="1000000"
+                      step="0.01"
+                      value={maxPrice}
+                      onChange={(event) => setMaxPrice(event.target.value)}
+                    />
+                  </label>
+                  <label className="location-filter">
+                    <span>Ordenar colección</span>
+                    <select
+                      value={priceSort}
+                      onChange={(event) => setPriceSort(event.target.value)}
+                    >
+                      <option value="featured">Orden de colección</option>
+                      <option value="newest">Novedades</option>
+                      <option value="name_asc">Nombre A–Z</option>
+                      <option value="price_asc">Menor precio</option>
+                      <option value="price_desc">Mayor precio</option>
+                    </select>
+                  </label>
                   <label className="search">
                     <Search size={17} />
                     <input
@@ -696,7 +972,15 @@ export function App() {
                       onChange={(e) => setQuery(e.target.value)}
                     />
                   </label>
-                  {(catalogLocation || category || brand || color || size || query) && (
+                  {(catalogLocation ||
+                    category ||
+                    brand ||
+                    color ||
+                    size ||
+                    query ||
+                    minPrice ||
+                    maxPrice ||
+                    priceSort !== 'featured') && (
                     <button
                       className="clear-catalog-filters"
                       onClick={() => {
@@ -706,6 +990,9 @@ export function App() {
                         setColor('');
                         setSize('');
                         setQuery('');
+                        setMinPrice('');
+                        setMaxPrice('');
+                        setPriceSort('featured');
                       }}
                     >
                       Limpiar filtros
@@ -713,6 +1000,11 @@ export function App() {
                   )}
                 </div>
               </div>
+              {catalogMore && (
+                <p role="status">
+                  Se muestran hasta 60 prendas. Afina los filtros para encontrar más opciones.
+                </p>
+              )}
               <div className="product-grid">
                 {filtered.map((p, i) => {
                   const images = p.imagenes || [];
@@ -855,12 +1147,31 @@ export function App() {
               ))}
             </section>
           </>
+        ) : page === 'downloads' && user ? (
+          <Suspense fallback={<p role="status">Abriendo descargas…</p>}>
+            <Downloads
+              key={user.id}
+              session={offlineSession}
+              online={online}
+              enable={openOffline}
+              products={products}
+              categories={categories}
+            />
+          </Suspense>
         ) : page === 'admin' ? (
           <AdminWorkspace
             products={products}
             categories={categories}
             permissions={user?.permissions || []}
             onCatalogChanged={loadCatalog}
+            offlineSession={offlineSession}
+            enableOffline={openOffline}
+            localName={user?.tenant?.name}
+            reportIdentity={
+              user?.tenant?.id
+                ? { slug: tenantSlug(), actorId: user.id, tenantId: user.tenant.id }
+                : undefined
+            }
           />
         ) : page === 'commerce' ? (
           <Commerce locations={catalogLocations} onInventoryChanged={loadCatalog} />
@@ -1043,6 +1354,43 @@ export function App() {
         <p>Moda femenina. Tu perspectiva.</p>
         <span>GRUPO 18 · PROYECTO ACADÉMICO</span>
       </footer>
+      {exitChoice && (
+        <div className="modal-overlay">
+          <section
+            className="auth-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="local-logout-title"
+          >
+            <h2 id="local-logout-title">Cerrar sesión en este dispositivo</h2>
+            <p>
+              Conserva los cambios pendientes cifrados para recuperarlos al iniciar sesión, o
+              elimina la copia de este dispositivo.
+            </p>
+            <div className="offline-actions">
+              <button disabled={busy} autoFocus onClick={() => void logout('keep')}>
+                Conservar pendientes
+              </button>
+              <button
+                disabled={busy}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      '¿Eliminar todas las descargas y los cambios sin sincronizar de esta cuenta?',
+                    )
+                  )
+                    void logout('discard');
+                }}
+              >
+                Descartar copia
+              </button>
+              <button disabled={busy} onClick={() => setExitChoice(false)}>
+                Cancelar
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
       {authOpen && (
         <div className="modal-overlay" onClick={() => setAuthOpen(false)}>
           <section

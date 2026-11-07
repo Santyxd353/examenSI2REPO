@@ -1,2 +1,5 @@
 *.sh text eol=lf
 Dockerfile* text eol=lf
+prisma/migrations/202611010001_saas_offline_analytics/migration.sql text eol=lf
+prisma/platform/migrations/*.sql text eol=lf
+prisma/migrations/202611040001_team_locations/migration.sql text eol=lf

@@ -96,6 +96,18 @@ afterAll(async () => {
 });
 
 test('una tienda nueva tiene catálogo vacío y su administrador no modifica Lúmina', async () => {
+  const initial = await runForTenant(tenant, () =>
+    app.get(Db).ubicacion.findFirstOrThrow({
+      where: { nombre: 'Sucursal principal' },
+      include: { responsable: true, usuario_ubicacion: true },
+    }),
+  );
+  expect(initial.responsable?.correo).toBe(email);
+  expect(
+    initial.usuario_ubicacion.some(
+      (assignment) => assignment.usuario_id === initial.responsable_id,
+    ),
+  ).toBe(true);
   const catalog = await request(app.getHttpServer()).get('/api/catalog').set('X-Tenant-Slug', slug);
   expect(catalog.status).toBe(200);
   expect(catalog.body.products).toHaveLength(0);

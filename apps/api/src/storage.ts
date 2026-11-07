@@ -4,8 +4,10 @@ import { currentTenant, currentTenantSlug } from './tenancy/context';
 export const storageRoot = () =>
   resolve(currentTenant()?.storageDirectory || process.env.STORAGE_ROOT || '.local/storage');
 export function publicAssetPath(key: string) {
-  const asset = key.replace(/^public\//, '');
   const slug = currentTenantSlug();
+  const staged = /^private\/offline\/resources\/([a-f0-9-]{36})\.(png|jpg|webp|glb)$/.exec(key);
+  if (staged) return `/api/catalog/offline-media/${staged[1]}?store=${encodeURIComponent(slug)}`;
+  const asset = key.replace(/^public\//, '');
   return slug === 'lumina' ? `/assets/${asset}` : `/stores/${slug}/assets/${asset}`;
 }
 export function storedPath(key: string) {

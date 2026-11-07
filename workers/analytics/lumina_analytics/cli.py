@@ -87,6 +87,7 @@ def execute(job: AnalyticsJob) -> dict[str, str]:
         frame = pd.read_csv(panel)
         frame["date"] = pd.to_datetime(frame["date"]).dt.normalize()
         forecast = recursive_forecast(loaded["model"], frame, pd.Timestamp(origin), job.horizon_days or 0)
+        forecast = forecast.drop(columns=["actual_units"])
         forecast["date"] = forecast["date"].dt.date.astype(str)
         return write_result(job, {"modelVersion": loaded["metadata"].get("modelVersion"), "coverage": {"from": str(forecast["date"].min()), "to": str(forecast["date"].max())}, "rows": forecast.to_dict(orient="records"), "limitations": loaded["metadata"].get("limitations", [])})
 

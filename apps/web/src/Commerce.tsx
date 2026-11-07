@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, ShoppingBag } from 'lucide-react';
 import { api } from './api';
+import { useOperationIdentity } from './useOperationIdentity';
 
 type Cart = {
   item_carrito: {
@@ -20,6 +21,7 @@ type Order = {
     descripcion_snapshot: string;
     talla_snapshot: string;
     cantidad: number;
+    returnEligible: number;
   }[];
   pago: { estado: string; proveedor: string }[];
   devolucion: { id: string; estado: string }[];
@@ -35,6 +37,8 @@ export function Commerce({
   locations: Location[];
   onInventoryChanged: () => Promise<void>;
 }) {
+  const checkoutIdentity = useOperationIdentity();
+  const [returnOrder, setReturnOrder] = useState<Order | null>(null);
   const [cart, setCart] = useState<Cart | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [locationId, setLocationId] = useState('');
@@ -205,14 +209,15 @@ export function Commerce({
                 }
                 onClick={() =>
                   void run(async () => {
+                    const payload = { locationId, address };
                     const order = await api('/commerce/checkout', {
                       method: 'POST',
                       body: JSON.stringify({
-                        locationId,
-                        address,
-                        idempotency: crypto.randomUUID(),
+                        ...payload,
+                        idempotency: checkoutIdentity.forPayload(payload),
                       }),
                     });
+                    checkoutIdentity.complete(payload);
                     setMessage(
                       `Pedido ${order.numero} creado. Completa el pago de prueba antes de que venza la reserva.`,
                     );
@@ -285,33 +290,83 @@ export function Commerce({
               {['CONFIRMADO', 'PREPARANDO', 'DESPACHADO', 'ENTREGADO', 'CERRADO'].includes(
                 order.estado,
               ) &&
-                order.devolucion.length === 0 && (
+                order.detalle_pedido.some((line) => line.returnEligible > 0) && (
                   <button
                     className="text-button"
                     disabled={busy}
-                    onClick={() => {
-                      const reason = window.prompt(
-                        'Motivo de la devolución (mínimo 10 caracteres):',
-                      );
-                      if (!reason) return;
-                      void run(async () => {
-                        await api(`/commerce/orders/${order.id}/returns`, {
-                          method: 'POST',
-                          body: JSON.stringify({
-                            reason,
-                            items: order.detalle_pedido.map((line) => ({
-                              detailId: line.id,
-                              quantity: line.cantidad,
-                            })),
-                          }),
-                        });
-                        setMessage('Solicitud de devolución registrada para revisión.');
-                      });
-                    }}
+                    onClick={() => setReturnOrder(order)}
                   >
                     Solicitar devolución
                   </button>
                 )}
+              {returnOrder?.id === order.id && (
+                <form
+                  className="return-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const form = new FormData(event.currentTarget);
+                    const items = order.detalle_pedido
+                      .map((line) => ({
+                        detailId: line.id,
+                        quantity: Number(form.get(line.id) || 0),
+                      }))
+                      .filter((item) => item.quantity > 0);
+                    if (!items.length) {
+                      setError('Selecciona al menos una unidad para devolver.');
+                      return;
+                    }
+                    void run(async () => {
+                      const payload = { orderId: order.id, reason: form.get('reason'), items };
+                      await api(`/commerce/orders/${order.id}/returns`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                          reason: payload.reason,
+                          items,
+                          idempotency: checkoutIdentity.forPayload(payload),
+                        }),
+                      });
+                      checkoutIdentity.complete(payload);
+                      setReturnOrder(null);
+                      setMessage('Solicitud registrada para revisión.');
+                    });
+                  }}
+                >
+                  <h3>Prendas a devolver</h3>
+                  {order.detalle_pedido
+                    .filter((line) => line.returnEligible > 0)
+                    .map((line) => (
+                      <label key={line.id}>
+                        {line.descripcion_snapshot} · {line.talla_snapshot} (máximo{' '}
+                        {line.returnEligible})
+                        <input
+                          aria-label={`Cantidad a devolver: ${line.descripcion_snapshot}`}
+                          name={line.id}
+                          type="number"
+                          min="0"
+                          max={line.returnEligible}
+                          defaultValue="0"
+                          disabled={busy}
+                        />
+                      </label>
+                    ))}
+                  <label>
+                    Motivo
+                    <textarea
+                      name="reason"
+                      minLength={10}
+                      maxLength={500}
+                      required
+                      disabled={busy}
+                    />
+                  </label>
+                  <div className="commerce-actions">
+                    <button disabled={busy}>Enviar solicitud</button>
+                    <button type="button" disabled={busy} onClick={() => setReturnOrder(null)}>
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              )}
               {order.devolucion.map((row) => (
                 <small key={row.id}>Devolución: {row.estado.toLowerCase()}</small>
               ))}

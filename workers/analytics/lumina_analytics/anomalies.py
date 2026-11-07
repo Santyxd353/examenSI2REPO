@@ -160,6 +160,20 @@ def run_anomaly_training(
     threshold, validation_metrics = calibrate_threshold(anomaly_scores(model, validation), labels_for_features(validation, labels))
     test_scores = anomaly_scores(model, test)
     test_metrics = classification_metrics(labels_for_features(test, labels), test_scores >= threshold)
+    alert_rows = test.loc[test_scores >= threshold, ["date", "variant_id", "location_id", "channel"]].copy()
+    alert_rows["score"] = test_scores[test_scores >= threshold]
+    alert_rows = alert_rows.sort_values("score", ascending=False).head(500)
+    alerts = [
+        {
+            "date": row["date"].date().isoformat(),
+            "variantId": row["variant_id"],
+            "locationId": row["location_id"],
+            "channel": row["channel"],
+            "score": float(row["score"]),
+            "threshold": float(threshold),
+        }
+        for _, row in alert_rows.iterrows()
+    ]
     metadata = {
         "schemaVersion": "1.0",
         "datasetId": DATASET_ID,
@@ -185,6 +199,7 @@ def run_anomaly_training(
         "threshold": threshold,
         "validation": validation_metrics,
         "test": test_metrics,
+        "alerts": alerts,
         "artifact": artifact,
         "limitations": metadata["limitations"],
     }

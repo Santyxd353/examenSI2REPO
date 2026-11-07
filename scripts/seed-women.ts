@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'fs';
 import { resolve } from 'path';
+import { prepareOfflineResources } from './prepare-offline-resources';
 
 type CatalogItem = {
   code: string;
@@ -19,13 +20,17 @@ type CatalogItem = {
 
 const catalogRoot = resolve('catalog-assets/women');
 const items: CatalogItem[] = JSON.parse(readFileSync(resolve(catalogRoot, 'catalog.json'), 'utf8'));
-const storageRoot = resolve(process.env.STORAGE_ROOT || '.local/storage');
-const locationId = '10000000-0000-4000-8000-000000000001';
 const effectiveFrom = new Date('2026-01-01T00:00:00Z');
 
-export async function seedWomen(client: PrismaClient) {
+export async function seedWomen(
+  client: PrismaClient,
+  options?: { storageRoot: string; locationId: string },
+) {
+  const storageRoot = options?.storageRoot ?? resolve(process.env.STORAGE_ROOT || '.local/storage');
+  const locationId = options?.locationId ?? '10000000-0000-4000-8000-000000000001';
   if (items.length !== 12 || new Set(items.map((item) => item.code)).size !== 12)
     throw new Error('El catálogo femenino requiere doce referencias únicas.');
+  const models = await prepareOfflineResources(storageRoot);
 
   const categories = new Map<string, string>();
   for (const name of ['Vestidos', 'Faldas']) {
@@ -161,7 +166,7 @@ export async function seedWomen(client: PrismaClient) {
           fisico: 8 + sizeIndex,
           reservado: 0,
           comprometido: 0,
-          version: 0,
+          version: 1,
         },
       });
 
@@ -177,55 +182,44 @@ export async function seedWomen(client: PrismaClient) {
             tipo_mime: 'image/png',
             orden: 0,
             texto_alternativo: `${item.name}, vista frontal para prueba RA`,
-            licencia: 'Catálogo Grupo 18 / recurso RA generado',
+            licencia:
+              'Recorte académico Grupo 18 a partir de la referencia de catálogo del fabricante.',
+            embedding: { placement: { algorithm: 'torso-v1', kind: item.kind } },
             uso: 'AR',
             estado: 'PUBLICADO',
           },
         });
       }
 
-      const glbKey = `public/${item.kind}-${size}.glb`;
-      const glbFile = resolve(storageRoot, glbKey);
-      if (existsSync(glbFile)) {
-        const buffer = readFileSync(glbFile);
-        const document = JSON.parse(
-          buffer.subarray(20, 20 + buffer.readUInt32LE(12)).toString('utf8'),
-        );
-        const triangles = document.meshes
-          .flatMap((mesh: any) => mesh.primitives)
-          .reduce(
-            (count: number, primitive: any) =>
-              count + document.accessors[primitive.indices].count / 3,
-            0,
-          );
-        await client.modelo_prenda.upsert({
-          where: {
-            variante_id_plantilla_id_version: {
-              variante_id: variant.id,
-              plantilla_id: template.id,
-              version: 1,
-            },
-          },
-          update: { bytes: buffer.length, triangulos: triangles },
-          create: {
+      const model = models.get(item.kind + '-' + size)!;
+      await client.modelo_prenda.upsert({
+        where: {
+          variante_id_plantilla_id_version: {
             variante_id: variant.id,
             plantilla_id: template.id,
             version: 1,
-            clave_glb: glbKey,
-            ajuste: {
-              talla: size,
-              plantilla: 'g18-1',
-              tipo: item.kind,
-              representacion: 'referencial',
-            },
-            bytes: buffer.length,
-            triangulos: triangles,
-            licencia: 'Silueta 3D original Grupo 18, representación aproximada',
-            estado: 'PUBLICADO',
-            creado_en: new Date(),
           },
-        });
-      }
+        },
+        update: {},
+        create: {
+          variante_id: variant.id,
+          plantilla_id: template.id,
+          version: 1,
+          clave_glb: model.key,
+          ajuste: {
+            talla: size,
+            plantilla: 'g18-1',
+            tipo: item.kind,
+            representacion: 'referencial',
+            sha256: model.sha256,
+          },
+          bytes: model.bytes,
+          triangulos: model.triangles,
+          licencia: 'Silueta 3D original Grupo 18, representación aproximada',
+          estado: 'PUBLICADO',
+          creado_en: new Date(),
+        },
+      });
     }
   }
 

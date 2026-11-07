@@ -33,6 +33,7 @@ import { useSystemBars } from './systemBars';
 import { CatalogScreen } from './CatalogScreen';
 import { connectRealtime } from './realtime';
 import { bootstrapOfflineVault } from './offline/bootstrap';
+import { watchOfflineReconnect } from './offline/reconnect';
 import { detectPose, isPoseAvailable } from '../modules/pose-landmarker/src';
 import { garmentImageFrame, garmentKind, garmentOutline, projectTorso } from './pose';
 import type { Layout, Torso } from './pose';
@@ -121,7 +122,8 @@ export function App() {
     restoreSession()
       .then(async (identity) => {
         setUser(identity);
-        if (identity) void bootstrapOfflineVault(identity).catch((reason) => setError(reason.message));
+        if (identity)
+          void bootstrapOfflineVault(identity).catch((reason) => setError(reason.message));
         if (identity && !isAdministrator(identity)) await loadCatalog('');
       })
       .catch((reason) => setError(reason.message))
@@ -132,6 +134,8 @@ export function App() {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350);
     return () => clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => (user ? watchOfflineReconnect(user) : undefined), [user]);
 
   useEffect(() => {
     if (!user || !location || (isAdministrator(user) && !adminClientMode)) return;
@@ -329,7 +333,9 @@ function LoginScreen({
       >
         <View style={styles.loginHero}>
           <View style={styles.brandLine}>
-            <View style={styles.brandMark}><Text style={styles.brandMarkText}>✦</Text></View>
+            <View style={styles.brandMark}>
+              <Text style={styles.brandMarkText}>✦</Text>
+            </View>
             <Text style={styles.brand}>lúmina°</Text>
           </View>
           <Text style={styles.eyebrow}>MODA FEMENINA · EXPERIENCIA MÓVIL</Text>
@@ -348,127 +354,127 @@ function LoginScreen({
         </View>
 
         <View style={styles.loginCard}>
-        <View style={styles.authTabs}>
-          <Pressable
-            style={[styles.authTab, mode === 'login' && styles.authTabActive]}
-            onPress={() => switchMode('login')}
-          >
-            <Text style={[styles.authTabText, mode === 'login' && styles.authTabTextActive]}>
-              Ingresar
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.authTab, mode === 'register' && styles.authTabActive]}
-            onPress={() => switchMode('register')}
-          >
-            <Text style={[styles.authTabText, mode === 'register' && styles.authTabTextActive]}>
-              Crear cuenta
-            </Text>
-          </Pressable>
-        </View>
+          <View style={styles.authTabs}>
+            <Pressable
+              style={[styles.authTab, mode === 'login' && styles.authTabActive]}
+              onPress={() => switchMode('login')}
+            >
+              <Text style={[styles.authTabText, mode === 'login' && styles.authTabTextActive]}>
+                Ingresar
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.authTab, mode === 'register' && styles.authTabActive]}
+              onPress={() => switchMode('register')}
+            >
+              <Text style={[styles.authTabText, mode === 'register' && styles.authTabTextActive]}>
+                Crear cuenta
+              </Text>
+            </Pressable>
+          </View>
 
-        <TextInput
-          testID="qa-login-store"
-          accessibilityLabel="Identificador de tienda"
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={!busy}
-          placeholder="Identificador de tienda"
-          placeholderTextColor="#626a61"
-          style={styles.input}
-          value={store}
-          onChangeText={setStore}
-        />
-
-        {mode === 'register' && (
-          <>
-            <TextInput
-              accessibilityLabel="Nombres"
-              autoCapitalize="words"
-              placeholder="Nombres"
-              placeholderTextColor="#626a61"
-              selectionColor="#303a2e"
-              cursorColor="#303a2e"
-              style={styles.input}
-              value={nombres}
-              onChangeText={setNombres}
-            />
-            <TextInput
-              accessibilityLabel="Apellidos"
-              autoCapitalize="words"
-              placeholder="Apellidos"
-              placeholderTextColor="#626a61"
-              selectionColor="#303a2e"
-              cursorColor="#303a2e"
-              style={styles.input}
-              value={apellidos}
-              onChangeText={setApellidos}
-            />
-          </>
-        )}
-        <TextInput
-          testID="qa-login-email"
-          accessibilityLabel="Correo"
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          placeholder="Correo"
-          placeholderTextColor="#626a61"
-          selectionColor="#303a2e"
-          cursorColor="#303a2e"
-          style={styles.input}
-          value={correo}
-          onChangeText={setCorreo}
-        />
-        <TextInput
-          testID="qa-login-password"
-          accessibilityLabel="Contraseña"
-          placeholder={mode === 'register' ? 'Contraseña (mínimo 10 caracteres)' : 'Contraseña'}
-          placeholderTextColor="#626a61"
-          selectionColor="#303a2e"
-          cursorColor="#303a2e"
-          secureTextEntry
-          style={styles.input}
-          value={clave}
-          onChangeText={setClave}
-        />
-        {mode === 'register' && (
           <TextInput
-            accessibilityLabel="Confirmar contraseña"
-            placeholder="Confirmar contraseña"
+            testID="qa-login-store"
+            accessibilityLabel="Identificador de tienda"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!busy}
+            placeholder="Identificador de tienda"
+            placeholderTextColor="#626a61"
+            style={styles.input}
+            value={store}
+            onChangeText={setStore}
+          />
+
+          {mode === 'register' && (
+            <>
+              <TextInput
+                accessibilityLabel="Nombres"
+                autoCapitalize="words"
+                placeholder="Nombres"
+                placeholderTextColor="#626a61"
+                selectionColor="#303a2e"
+                cursorColor="#303a2e"
+                style={styles.input}
+                value={nombres}
+                onChangeText={setNombres}
+              />
+              <TextInput
+                accessibilityLabel="Apellidos"
+                autoCapitalize="words"
+                placeholder="Apellidos"
+                placeholderTextColor="#626a61"
+                selectionColor="#303a2e"
+                cursorColor="#303a2e"
+                style={styles.input}
+                value={apellidos}
+                onChangeText={setApellidos}
+              />
+            </>
+          )}
+          <TextInput
+            testID="qa-login-email"
+            accessibilityLabel="Correo"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            placeholder="Correo"
+            placeholderTextColor="#626a61"
+            selectionColor="#303a2e"
+            cursorColor="#303a2e"
+            style={styles.input}
+            value={correo}
+            onChangeText={setCorreo}
+          />
+          <TextInput
+            testID="qa-login-password"
+            accessibilityLabel="Contraseña"
+            placeholder={mode === 'register' ? 'Contraseña (mínimo 10 caracteres)' : 'Contraseña'}
             placeholderTextColor="#626a61"
             selectionColor="#303a2e"
             cursorColor="#303a2e"
             secureTextEntry
             style={styles.input}
-            value={confirmacion}
-            onChangeText={setConfirmacion}
+            value={clave}
+            onChangeText={setClave}
           />
-        )}
-        {!!(localError || error) && <Text style={styles.error}>{localError || error}</Text>}
-        <Pressable
-          testID="qa-login-submit"
-          accessibilityLabel={mode === 'register' ? 'Crear cuenta de cliente' : 'Ingresar'}
-          style={[styles.primary, disabled && styles.primaryDisabled]}
-          disabled={disabled}
-          onPress={() => void submit()}
-        >
-          <Text style={styles.primaryText}>
-            {busy
-              ? mode === 'register'
-                ? 'Creando cuenta…'
-                : 'Ingresando…'
-              : mode === 'register'
-                ? 'Crear cuenta de cliente'
-                : 'Ingresar'}
-          </Text>
-        </Pressable>
-        {mode === 'register' && (
-          <Text style={styles.clientNotice}>
-            Esta opción crea únicamente cuentas con rol Cliente. El personal se administra desde la
-            web.
-          </Text>
-        )}
+          {mode === 'register' && (
+            <TextInput
+              accessibilityLabel="Confirmar contraseña"
+              placeholder="Confirmar contraseña"
+              placeholderTextColor="#626a61"
+              selectionColor="#303a2e"
+              cursorColor="#303a2e"
+              secureTextEntry
+              style={styles.input}
+              value={confirmacion}
+              onChangeText={setConfirmacion}
+            />
+          )}
+          {!!(localError || error) && <Text style={styles.error}>{localError || error}</Text>}
+          <Pressable
+            testID="qa-login-submit"
+            accessibilityLabel={mode === 'register' ? 'Crear cuenta de cliente' : 'Ingresar'}
+            style={[styles.primary, disabled && styles.primaryDisabled]}
+            disabled={disabled}
+            onPress={() => void submit()}
+          >
+            <Text style={styles.primaryText}>
+              {busy
+                ? mode === 'register'
+                  ? 'Creando cuenta…'
+                  : 'Ingresando…'
+                : mode === 'register'
+                  ? 'Crear cuenta de cliente'
+                  : 'Ingresar'}
+            </Text>
+          </Pressable>
+          {mode === 'register' && (
+            <Text style={styles.clientNotice}>
+              Esta opción crea únicamente cuentas con rol Cliente. El personal se administra desde
+              la web.
+            </Text>
+          )}
         </View>
         <Text style={styles.privacy}>La sesión se almacena de forma segura en el dispositivo.</Text>
       </ScrollView>
@@ -715,7 +721,13 @@ const styles = StyleSheet.create({
   link: { color: '#65745e', fontWeight: '600' },
   list: { padding: 20, paddingBottom: 50 },
   intro: { marginBottom: 22 },
-  eyebrow: { color: '#6d7d72', fontSize: 9, fontWeight: '800', letterSpacing: 1.7, marginBottom: 10 },
+  eyebrow: {
+    color: '#6d7d72',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.7,
+    marginBottom: 10,
+  },
   title: {
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
     fontSize: 31,
@@ -783,7 +795,14 @@ const styles = StyleSheet.create({
   loginContentWide: { width: 500, alignSelf: 'center', paddingHorizontal: 0 },
   loginHero: { paddingTop: 12, paddingHorizontal: 3 },
   brandLine: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 17 },
-  brandMark: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: '#173e2a' },
+  brandMark: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#173e2a',
+  },
   brandMarkText: { color: '#fff', fontSize: 14 },
   loginTitle: {
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
@@ -794,8 +813,27 @@ const styles = StyleSheet.create({
   },
   loginSubtitle: { color: '#5e6d63', lineHeight: 19, fontSize: 12, maxWidth: 310 },
   loginTrust: { flexDirection: 'row', gap: 8, marginTop: 16 },
-  loginTrustText: { color: '#416553', backgroundColor: '#e6efe8', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 6, fontSize: 8, fontWeight: '800' },
-  loginCard: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e2da', borderRadius: 18, padding: 14, gap: 12, shadowColor: '#173e2a', shadowOpacity: 0.06, shadowRadius: 14, elevation: 2 },
+  loginTrustText: {
+    color: '#416553',
+    backgroundColor: '#e6efe8',
+    borderRadius: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    fontSize: 8,
+    fontWeight: '800',
+  },
+  loginCard: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e2da',
+    borderRadius: 18,
+    padding: 14,
+    gap: 12,
+    shadowColor: '#173e2a',
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 2,
+  },
   input: {
     minHeight: 50,
     borderWidth: 1,
@@ -821,7 +859,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 6,
   },
-  authTabActive: { backgroundColor: '#fff', shadowColor: '#173e2a', shadowOpacity: 0.08, shadowRadius: 4, elevation: 1 },
+  authTabActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#173e2a',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 1,
+  },
   authTabText: { color: '#6f776d', fontSize: 12, fontWeight: '700' },
   authTabTextActive: { color: '#303a2e' },
   primary: {

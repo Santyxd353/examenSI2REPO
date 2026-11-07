@@ -10,21 +10,50 @@ import { Db } from './db';
 import { AuthController, AuthService, AuthGuard } from './auth';
 import { CatalogController } from './catalog';
 import { AvatarsController } from './avatars';
+import { isAvatarPrivacyDeletion } from './avatars/lifecycle';
 import { FittingController } from './fitting';
 import { AvatarJobs } from './avatar-jobs';
-import { AnalyticsJobs } from './analytics-jobs';
+import { OfflineController } from './offline/offline.controller';
+import { DeviceKeysService } from './offline/device-keys.service';
+import { SyncService } from './offline/sync.service';
+import { SnapshotService } from './offline/snapshot.service';
+import { OutfitsService } from './offline/outfits.service';
+import { OfflineMaintenance } from './offline/offline-maintenance';
+import { ResourcesService } from './offline/resources.service';
+import { ResourcesController, OfflineMediaController } from './offline/resources.controller';
 import { LocationsController, StaffController } from './locations';
 import { AnalyticsController, CommercialAnalytics, ReportsController } from './reports';
+import { ReportDefinitionsController } from './reporting/definitions.controller';
+import { ReportDefinitionsService } from './reporting/definitions.service';
+import { ReportController } from './reporting/report.controller';
+import { ReportDatasetService } from './reporting/dataset.service';
+import { ReportAssistantController } from './reporting/assistant.controller';
+import { ReportAssistantService } from './reporting/assistant.service';
+import { ReportAiProvider } from './reporting/ai-provider';
+import { AnalysisJobsController } from './analytics/jobs.controller';
+import { AnalysisJobs } from './analytics/jobs.service';
+import { AnalysisResults } from './analytics/results.service';
+import { AnalyticsWorkerBridge } from './analytics/worker-bridge';
 import { SalesController } from './sales';
 import { CommerceController } from './commerce';
 import { ProfileController } from './profile';
 import { OrdersController } from './orders';
 import { RealtimeGateway } from './realtime';
 import { ApiErrors } from './errors';
+import { EntitlementsController, EntitlementsService } from './billing/entitlements.service';
+import { QuotaService } from './billing/quota.service';
+import { SubscriptionService } from './billing/subscription.service';
+import { SubscriptionController } from './billing/subscription.controller';
+import { StripeAdapter } from './billing/stripe.adapter';
+import { BillingWebhookController } from './billing/webhook.controller';
+import {
+  PlatformOperatorController,
+  PlatformOperatorService,
+  PlatformOperatorGuard,
+} from './tenancy/operator';
+import { PlanWriteInterceptor } from './billing/access.interceptor';
 import { storedPath, ensureStorage } from './storage';
 import { TenantRegistry, TenantController, PlatformController } from './tenancy/platform';
-import { OfflineKeyController, OfflineKeyService } from './offline-keys';
-import { OfflineSyncController, OfflineSyncService } from './offline-sync';
 import { runForTenant } from './tenancy/context';
 import { HttpException } from '@nestjs/common';
 @Controller('health')
@@ -36,6 +65,9 @@ class HealthController {
 @Module({
   controllers: [
     HealthController,
+    OfflineController,
+    ResourcesController,
+    OfflineMediaController,
     AuthController,
     CatalogController,
     AvatarsController,
@@ -43,6 +75,10 @@ class HealthController {
     LocationsController,
     StaffController,
     ReportsController,
+    ReportDefinitionsController,
+    ReportController,
+    ReportAssistantController,
+    AnalysisJobsController,
     AnalyticsController,
     SalesController,
     CommerceController,
@@ -50,33 +86,58 @@ class HealthController {
     OrdersController,
     TenantController,
     PlatformController,
-    OfflineKeyController,
-    OfflineSyncController,
+    EntitlementsController,
+    SubscriptionController,
+    BillingWebhookController,
+    PlatformOperatorController,
   ],
   providers: [
     Db,
     AuthService,
     AuthGuard,
     AvatarJobs,
-    AnalyticsJobs,
+    DeviceKeysService,
+    SyncService,
+    SnapshotService,
+    OutfitsService,
+    OfflineMaintenance,
+    ResourcesService,
     CommercialAnalytics,
+    ReportDefinitionsService,
+    ReportDatasetService,
+    ReportAssistantService,
+    ReportAiProvider,
+    AnalysisJobs,
+    AnalysisResults,
+    AnalyticsWorkerBridge,
     RealtimeGateway,
     TenantRegistry,
-    OfflineKeyService,
-    OfflineSyncService,
+    EntitlementsService,
+    QuotaService,
+    SubscriptionService,
+    StripeAdapter,
+    PlatformOperatorService,
+    PlatformOperatorGuard,
+    PlanWriteInterceptor,
   ],
 })
 class AppModule {}
 export async function createApp() {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 48)
     throw new Error('Configura JWT_SECRET con al menos 48 caracteres aleatorios.');
-  const app = await NestFactory.create(AppModule, { logger: false });
+  const app = await NestFactory.create(AppModule, { logger: false, rawBody: true });
   const registry = app.get(TenantRegistry);
   await registry.initialize();
   if (process.env.TRUST_PROXY === '1') app.getHttpAdapter().getInstance().set('trust proxy', 1);
   const origin = process.env.WEB_ORIGIN || 'http://localhost:5173';
   const allowedOrigins = [origin, origin.replace('localhost', '127.0.0.1')];
-  app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'same-site' },
+      // Authenticated models become local Blob URLs before Three.js loads them.
+      contentSecurityPolicy: { directives: { connectSrc: ["'self'", 'blob:'] } },
+    }),
+  );
   app.use(cookieParser());
   const webRoot =
     process.env.SERVE_WEB === 'true' ? resolve(process.env.WEB_ROOT || 'dist/web') : null;
@@ -89,6 +150,9 @@ export async function createApp() {
   }
   app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (/^\/api\/health\/?$/i.test(req.path)) return next();
+    if (req.method === 'POST' && /^\/api\/billing\/stripe\/webhook\/?$/i.test(req.path))
+      return next();
+    if (/^\/api\/platform\/operator\/(login|tenants)\/?$/i.test(req.path)) return next();
     if (
       ['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
       /^\/api\/platform\/stores\/?$/i.test(req.path)
@@ -100,17 +164,27 @@ export async function createApp() {
     )
       return next();
     try {
-      const pathStore = req.path.match(/^\/stores\/([^/]+)\/assets(?:\/|$)/i)?.[1];
+      const mediaStore = /^\/api\/catalog\/offline-media\/[^/]+\/?$/i.test(req.path)
+        ? req.query.store
+        : undefined;
+      if (mediaStore !== undefined && typeof mediaStore !== 'string')
+        throw new HttpException('Selecciona una tienda válida.', 400);
+      const pathStore = req.path.match(/^\/stores\/([^/]+)\/assets(?:\/|$)/i)?.[1] ?? mediaStore;
       const requested = req.headers['x-tenant-slug'];
       if (requested !== undefined && typeof requested !== 'string')
         throw new HttpException('Selecciona una tienda válida.', 400);
       if (pathStore && requested && pathStore !== requested)
         throw new HttpException('La imagen no pertenece a la tienda seleccionada.', 400);
       const tenant = await registry.resolve(pathStore || requested || 'lumina');
-      const readOnlyQuery = req.method === 'POST' && /^\/api\/analytics\/query\/?$/i.test(req.path);
+      const readOnlyQuery =
+        req.method === 'POST' &&
+        /^\/api\/(?:analytics\/query|reports\/(?:datasets|execute|export)|offline\/(?:sync|bootstrap|outfits))\/?$/i.test(
+          req.path,
+        );
       if (
         tenant.readOnly &&
         !readOnlyQuery &&
+        !isAvatarPrivacyDeletion(req.method, req.path) &&
         !['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
         !req.path.startsWith('/api/auth/') &&
         !req.path.startsWith('/api/tenant/subscription')
@@ -128,6 +202,29 @@ export async function createApp() {
     }
   });
   app.enableCors({ origin: allowedOrigins, credentials: true });
+  app.use(
+    ['/api/reports/interpret', '/api/reports/transcribe'],
+    rateLimit({
+      windowMs: 60_000,
+      limit: 20,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: {
+        code: 'REPORT_AI_RATE_LIMIT',
+        message: 'Espera un minuto antes de enviar más consultas.',
+      },
+    }),
+  );
+  app.use(
+    '/api/platform/operator/login',
+    rateLimit({
+      windowMs: 15 * 60000,
+      limit: 10,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { message: 'Demasiados intentos. Espera antes de volver a iniciar sesión.' },
+    }),
+  );
   app.use(
     '/api/auth',
     rateLimit({
@@ -164,6 +261,7 @@ export async function createApp() {
     });
   }
   app.useGlobalFilters(new ApiErrors());
+  app.useGlobalInterceptors(app.get(PlanWriteInterceptor));
   app.setGlobalPrefix('api');
   await app.init();
   return app;

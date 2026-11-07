@@ -2,13 +2,17 @@ const mockSecure = new Map<string, string>();
 const mockDelete = jest.fn(async (key: string) => {
   mockSecure.delete(key);
 });
+const mockSet = jest.fn(async (key: string, value: string) => {
+  mockSecure.set(key, value);
+});
+jest.mock('expo-crypto', () => ({ randomUUID: () => '00000000-0000-4000-8000-000000000009' }), {
+  virtual: true,
+});
 jest.mock(
   'expo-secure-store',
   () => ({
     getItemAsync: jest.fn(async (key: string) => mockSecure.get(key) || null),
-    setItemAsync: jest.fn(async (key: string, value: string) => {
-      mockSecure.set(key, value);
-    }),
+    setItemAsync: (key: string, value: string) => mockSet(key, value),
     deleteItemAsync: (key: string) => mockDelete(key),
   }),
   { virtual: true },
@@ -19,12 +23,27 @@ const reply = (data: unknown) => ({ ok: true, status: 200, json: async () => dat
 const session = (store: string) => ({
   accessToken: `access-${store}`,
   refreshToken: `refresh-${store}`,
-  user: { tenant: { slug: store } },
+  user: {
+    id: '00000000-0000-4000-8000-000000000001',
+    nombres: 'Ana',
+    apellidos: 'QA',
+    correo: 'ana@qa.test',
+    roles: ['Administrador'],
+    permissions: [],
+    tenant: {
+      id: '00000000-0000-4000-8000-000000000002',
+      slug: 'tienda-' + store,
+      name: 'Tienda QA',
+    },
+  },
 });
 
 beforeEach(() => {
   jest.resetModules();
   mockSecure.clear();
+  mockSet.mockImplementation(async (key: string, value: string) => {
+    mockSecure.set(key, value);
+  });
   mockDelete.mockImplementation(async (key: string) => {
     mockSecure.delete(key);
   });
@@ -32,6 +51,60 @@ beforeEach(() => {
 });
 afterAll(() => {
   global.fetch = originalFetch;
+});
+
+test('logout durante la persistencia no restaura tokens al terminar las escrituras antiguas', async () => {
+  global.fetch = jest.fn(async () => reply(session('a'))) as typeof fetch;
+  const client = require('../../mobile/src/api') as typeof import('../../mobile/src/api');
+  await client.selectTenant('tienda-a');
+  let started!: () => void, release!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const pause = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  mockSet.mockImplementation(async (key: string, value: string) => {
+    started();
+    await pause;
+    mockSecure.set(key, value);
+  });
+  const login = client.login('a@ejemplo.test', 'PruebaSegura2026!');
+  await waiting;
+  const logout = client.logout();
+  release();
+  await expect(login).rejects.toThrow(/cambió/);
+  await logout;
+  expect(
+    [...mockSecure.values()].filter(
+      (value) => value.startsWith('access-') || value.startsWith('refresh-'),
+    ),
+  ).toEqual([]);
+  expect(client.getAccessToken()).toBe('');
+});
+
+test('una revocación confirmada por el servidor cierra la sesión y bloquea las claves offline', async () => {
+  global.fetch = jest.fn(async (url) =>
+    String(url).endsWith('/login')
+      ? reply(session('a'))
+      : ({
+          ...reply({ message: 'Sesión revocada' }),
+          ok: false,
+          status: 401,
+          headers: new Headers({ 'Content-Type': 'application/json' }),
+        } as Response),
+  ) as typeof fetch;
+  const client = require('../../mobile/src/api') as typeof import('../../mobile/src/api');
+  await client.selectTenant('tienda-a');
+  await client.login('a@ejemplo.test', 'PruebaSegura2026!');
+  const access = require('../../mobile/src/offline/access').offlineAccess;
+  const vault = require('../../mobile/src/offline/vault');
+  const scope = access.current();
+  await vault.storeActiveDek(scope, 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=');
+  await expect(client.api('/reports/summary')).rejects.toThrow('Sesión revocada');
+  expect(client.getAccessToken()).toBe('');
+  expect(access.current()).toBeNull();
+  await expect(vault.readActiveDek(scope)).rejects.toThrow(/bloqueado/);
 });
 
 test('logout revoca en su tienda de origen aunque se seleccione otra mientras borra las claves', async () => {

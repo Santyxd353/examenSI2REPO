@@ -8,6 +8,8 @@ export type TenantContext = {
   storageDirectory: string;
   state: 'ACTIVE' | 'TRIAL' | 'SUSPENDED';
   readOnly?: boolean;
+  /** Internal lease is invalidated after completion, including escaped async callbacks. */
+  writeLease?: { active: boolean };
   subscription?: {
     plan: string;
     planName: string;
@@ -16,6 +18,11 @@ export type TenantContext = {
     periodEnd: string | null;
     limits: Record<string, number>;
     features: string[];
+    version?: number;
+    periodStart?: string | null;
+    trialEnd?: string | null;
+    activatedAt?: string;
+    cancelAtPeriodEnd?: boolean;
   };
 };
 

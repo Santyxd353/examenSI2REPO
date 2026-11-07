@@ -1,0 +1,21 @@
+{
+  "id": "00000000-0000-4000-8000-000000000101",
+  "nombre": "Vestido de algodón",
+  "descripcion": "Vestido femenino de demostración para validar el contrato.",
+  "material": "Algodón",
+  "marca": "Marca de prueba",
+  "coleccion": "Primavera",
+  "categoriaId": "00000000-0000-4000-8000-000000000102",
+  "variants": [{
+    "id": "00000000-0000-4000-8000-000000000103",
+    "sku": "QA-VESTIDO-ROSA-S",
+    "barcode": "784000000001",
+    "talla": "S",
+    "color": "Rosa",
+    "colorHex": "#d38fac",
+    "prices": {"WEB": 5000, "APP": 4900, "TIENDA": 4500},
+    "active": true,
+    "baseVersion": null
+  }],
+  "resources": []
+}

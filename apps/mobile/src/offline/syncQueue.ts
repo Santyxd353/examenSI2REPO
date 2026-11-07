@@ -1,25 +1,28 @@
-import { api } from '../api';
-import { orderedPending } from './dependencyGraph';
-import type { OfflineScope } from './scope';
-import { applySyncReceipt, type SyncReceipt } from './syncReceipt';
+import { api, captureSessionScope, assertCurrentSessionScope } from '../api';
+import { runSyncBatch } from './syncEngine';
+import { nativeRecordCipher, sha256 } from './nativeStorage';
+import { offlineScopeKey, type OfflineScope } from './scope';
 import type { SQLiteIntentRepository } from './sqliteIntentRepository';
 
-type SyncReply = { receipts: SyncReceipt[] };
-
-/** Sincroniza un lote ordenado; volver a llamar tras una caída de red es seguro por operationId. */
-export async function syncOfflineQueue(repository: SQLiteIntentRepository, scope: OfflineScope) {
-  const local = await repository.listIntents(scope);
-  const operations = orderedPending(local).slice(0, 50);
-  if (!operations.length) return [] as SyncReceipt[];
-  const reply = await api<SyncReply>('/offline/sync', {
-    method: 'POST',
-    body: JSON.stringify({
-      deviceId: scope.deviceId,
-      operations: operations.map(({ operationId, kind, baseVersion, payload }) => ({ operationId, kind, baseVersion, payload })),
-    }),
+const inFlight = new Map<string, Promise<unknown>>();
+/** Cada reintento conserva el sobre firmado; no se sobreescribe una intención tras un conflicto. */
+export function syncOfflineQueue(repository: SQLiteIntentRepository, scope: OfflineScope) {
+  const key = offlineScopeKey(scope);
+  if (inFlight.has(key)) return inFlight.get(key)!;
+  const session = captureSessionScope();
+  const result = runSyncBatch(repository, scope, {
+    digest: sha256,
+    guard: (current) => {
+      const check = nativeRecordCipher.guard(current);
+      return () => {
+        assertCurrentSessionScope(session);
+        check();
+      };
+    },
+    send: (body) => api<unknown>('/offline/sync', { method: 'POST', body: JSON.stringify(body) }),
+  }).finally(() => {
+    if (inFlight.get(key) === result) inFlight.delete(key);
   });
-  let reconciled = local;
-  for (const receipt of reply.receipts) reconciled = applySyncReceipt(reconciled, receipt);
-  await repository.replaceStates(scope, reconciled);
-  return reply.receipts;
+  inFlight.set(key, result);
+  return result;
 }

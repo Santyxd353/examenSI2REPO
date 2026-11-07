@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -12,12 +12,16 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { api } from './api';
+import { api, captureSessionScope, isCurrentSessionScope } from './api';
+import { ApiProblem } from './errors/ApiProblem';
 import { getOfflineDeviceId } from './offline/device';
 import { openOfflineDatabase } from './offline/db';
-import { loadOfflineDashboard, reportSnapshotKey, saveOfflineDashboard } from './modules/reports/offlineReport';
+import {
+  loadOfflineDashboard,
+  reportSnapshotKey,
+  saveOfflineDashboard,
+} from './modules/reports/offlineReport';
 import { shareReportCsv, shareReportPdf } from './modules/reports/reportExport';
-import { ReportAssistant } from './modules/reports/ReportAssistant';
 import type { MobileBusinessModule } from './modules/registry';
 import type { Identity } from './types';
 
@@ -79,8 +83,12 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState('');
   const [exporting, setExporting] = useState(false);
+  const revision = useRef(0);
 
   const load = useCallback(async () => {
+    const token = ++revision.current,
+      session = captureSessionScope();
+    const active = () => token === revision.current && isCurrentSessionScope(session);
     setLoading(true);
     setError('');
     const from = isoDaysAgo(days);
@@ -89,25 +97,48 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
     try {
       const params = new URLSearchParams({ from, to });
       const current = await api<Report>(`/reports/summary?${params}`);
+      if (!active()) return;
       setReport(current);
       const scope = await offlineScopeFor(user);
-      if (scope) await saveOfflineDashboard(await openOfflineDatabase(), scope, key, current);
+      if (scope)
+        try {
+          await saveOfflineDashboard(await openOfflineDatabase(), scope, key, current);
+        } catch {
+          if (active())
+            setError(
+              'Reporte actualizado. Prepara el modo offline desde Reportes para guardar una copia segura.',
+            );
+        }
     } catch (reason) {
-      const scope = await offlineScopeFor(user);
-      const cached = scope ? await loadOfflineDashboard(await openOfflineDatabase(), scope, key) : null;
-      if (cached) {
+      if (!active()) return;
+      try {
+        if (!ApiProblem.isNetwork(reason)) throw reason;
+        const scope = await offlineScopeFor(user);
+        const cached = scope
+          ? await loadOfflineDashboard(await openOfflineDatabase(), scope, key)
+          : null;
+        if (!active()) return;
+        if (!cached) throw reason;
         setReport(cached.report);
-        setError(`Sin conexión. Mostrando el último dashboard guardado (${new Date(cached.generatedAt).toLocaleString('es-BO')}).`);
-      } else {
-        setError((reason as Error).message);
+        setError(
+          `Sin conexión. Último corte guardado: ${new Date(cached.generatedAt).toLocaleString('es-BO')}.`,
+        );
+      } catch (failure) {
+        if (active()) {
+          setReport(null);
+          setError((failure as Error).message);
+        }
       }
     } finally {
-      setLoading(false);
+      if (active()) setLoading(false);
     }
   }, [days, user]);
 
   useEffect(() => {
     void load();
+    return () => {
+      revision.current++;
+    };
   }, [load]);
 
   const maxProductSales = Math.max(1, ...(report?.products.map((item) => item.ventas) || [0]));
@@ -172,8 +203,8 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
           </View>
           <Text style={styles.heroTitle}>Hola, {user.nombres.split(' ')[0]}.</Text>
           <Text style={styles.heroCopy}>
-            Revisa el desempeño de {user.tenant?.name || 'tu tienda'} y gestiona lo importante
-            desde un solo lugar.
+            Revisa el desempeño de {user.tenant?.name || 'tu tienda'} y gestiona lo importante desde
+            un solo lugar.
           </Text>
           <View style={styles.heroDetails}>
             <View>
@@ -181,7 +212,9 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
               <Text style={styles.heroDetailValue}>{welcomeDate()}</Text>
             </View>
             <View style={styles.roleBadge}>
-              <Text style={styles.roleBadgeText}>{user.roles.includes('Administrador') ? 'ADMIN' : 'EQUIPO'}</Text>
+              <Text style={styles.roleBadgeText}>
+                {user.roles.includes('Administrador') ? 'ADMIN' : 'EQUIPO'}
+              </Text>
             </View>
           </View>
           <Pressable
@@ -249,7 +282,24 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
           ))}
         </View>
 
-        {report ? <View style={styles.exports}><Pressable disabled={exporting} style={styles.exportButton} onPress={() => void exportReport('csv')}><Text style={styles.exportText}>{exporting ? 'Preparando…' : 'Exportar CSV'}</Text></Pressable><Pressable disabled={exporting} style={[styles.exportButton, styles.exportPdf]} onPress={() => void exportReport('pdf')}><Text style={[styles.exportText, styles.exportPdfText]}>Exportar PDF</Text></Pressable></View> : null}
+        {report ? (
+          <View style={styles.exports}>
+            <Pressable
+              disabled={exporting}
+              style={styles.exportButton}
+              onPress={() => void exportReport('csv')}
+            >
+              <Text style={styles.exportText}>{exporting ? 'Preparando…' : 'Exportar CSV'}</Text>
+            </Pressable>
+            <Pressable
+              disabled={exporting}
+              style={[styles.exportButton, styles.exportPdf]}
+              onPress={() => void exportReport('pdf')}
+            >
+              <Text style={[styles.exportText, styles.exportPdfText]}>Exportar PDF</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {!!error && <Text style={styles.error}>{error}</Text>}
 
@@ -264,7 +314,11 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
               <KpiCard label="Ventas" value={money(report.kpis.ventas)} tone="dark" wide={isWide} />
               <KpiCard label="Pedidos" value={String(report.kpis.pedidos)} wide={isWide} />
               <KpiCard label="Unidades" value={String(report.kpis.unidades)} wide={isWide} />
-              <KpiCard label="Ticket promedio" value={money(report.kpis.ticketPromedio)} wide={isWide} />
+              <KpiCard
+                label="Ticket promedio"
+                value={money(report.kpis.ticketPromedio)}
+                wide={isWide}
+              />
             </View>
 
             <View style={styles.insight}>
@@ -276,7 +330,15 @@ export function AdminDashboard({ user, onClientMode, onNavigate, onLogout }: Pro
                 <Text style={styles.insightText}>{report.summary}</Text>
               </View>
             </View>
-            <ReportAssistant from={isoDaysAgo(days)} to={today()} />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => onNavigate('reports-analysis')}
+              style={styles.logoutButton}
+            >
+              <Text style={{ color: '#173e2a', fontWeight: '800', fontSize: 11 }}>
+                Abrir reportes personalizados y asistente
+              </Text>
+            </Pressable>
 
             <View style={styles.panel}>
               <View style={styles.panelHeader}>
@@ -378,7 +440,13 @@ function QuickAction({
 }) {
   return (
     <Pressable accessibilityRole="button" style={styles.quickAction} onPress={onPress}>
-      <View style={[styles.quickIcon, tone === 'sand' && styles.quickIconSand, tone === 'rose' && styles.quickIconRose]}>
+      <View
+        style={[
+          styles.quickIcon,
+          tone === 'sand' && styles.quickIconSand,
+          tone === 'rose' && styles.quickIconRose,
+        ]}
+      >
         <Text style={styles.quickIconText}>{icon}</Text>
       </View>
       <Text style={styles.quickLabel}>{label}</Text>
@@ -387,7 +455,17 @@ function QuickAction({
   );
 }
 
-function KpiCard({ label, value, tone, wide }: { label: string; value: string; tone?: 'dark'; wide: boolean }) {
+function KpiCard({
+  label,
+  value,
+  tone,
+  wide,
+}: {
+  label: string;
+  value: string;
+  tone?: 'dark';
+  wide: boolean;
+}) {
   return (
     <View style={[styles.kpi, wide && styles.kpiWide, tone === 'dark' && styles.kpiDark]}>
       <Text style={[styles.kpiLabel, tone === 'dark' && styles.kpiLabelDark]}>{label}</Text>
@@ -453,8 +531,13 @@ const styles = StyleSheet.create({
   heroTopline: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   eyebrow: { color: '#b9cbbd', fontSize: 9, letterSpacing: 1.8, fontWeight: '700' },
   onlineBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 10,
-    paddingHorizontal: 8, paddingVertical: 5, backgroundColor: '#ffffff17',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    backgroundColor: '#ffffff17',
   },
   onlineDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#a5e2a6' },
   onlineText: { color: '#d7e8d6', fontSize: 7, fontWeight: '900', letterSpacing: 0.7 },
@@ -467,12 +550,23 @@ const styles = StyleSheet.create({
   },
   heroCopy: { color: '#d7e2da', fontSize: 11, lineHeight: 17, marginTop: 8, maxWidth: 320 },
   heroDetails: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginTop: 18, paddingTop: 13, borderTopWidth: 1, borderTopColor: '#ffffff24',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 18,
+    paddingTop: 13,
+    borderTopWidth: 1,
+    borderTopColor: '#ffffff24',
   },
   heroDetailLabel: { color: '#adc2b1', fontSize: 7, fontWeight: '900', letterSpacing: 1.1 },
   heroDetailValue: { color: '#fff', fontSize: 10, marginTop: 3, textTransform: 'capitalize' },
-  roleBadge: { borderWidth: 1, borderColor: '#86aa8d', borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5 },
+  roleBadge: {
+    borderWidth: 1,
+    borderColor: '#86aa8d',
+    borderRadius: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
   roleBadgeText: { color: '#dff0e0', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
   clientButton: {
     alignSelf: 'flex-start',
@@ -487,16 +581,35 @@ const styles = StyleSheet.create({
   clientButtonText: { color: green, fontWeight: '900', fontSize: 11 },
   disabled: { opacity: 0.55 },
   quickSection: { marginTop: 22 },
-  quickHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  quickHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
   quickTitle: { color: '#1b2720', fontSize: 16, fontWeight: '900' },
   quickHint: { color: '#8d968e', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
   quickGrid: { flexDirection: 'row', gap: 8 },
   quickGridWide: { maxWidth: 560 },
   quickAction: {
-    flex: 1, minHeight: 124, backgroundColor: '#fff', borderColor: border, borderWidth: 1,
-    borderRadius: 14, padding: 11, justifyContent: 'flex-end',
+    flex: 1,
+    minHeight: 124,
+    backgroundColor: '#fff',
+    borderColor: border,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 11,
+    justifyContent: 'flex-end',
   },
-  quickIcon: { width: 31, height: 31, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e7f0e8', marginBottom: 14 },
+  quickIcon: {
+    width: 31,
+    height: 31,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e7f0e8',
+    marginBottom: 14,
+  },
   quickIconSand: { backgroundColor: '#f4ecdd' },
   quickIconRose: { backgroundColor: '#f4e6e8' },
   quickIconText: { color: green, fontSize: 18, fontWeight: '900' },
@@ -523,7 +636,14 @@ const styles = StyleSheet.create({
   refreshText: { color: green, fontSize: 22 },
   periods: { flexDirection: 'row', gap: 7, marginVertical: 15 },
   exports: { flexDirection: 'row', gap: 8, marginBottom: 2 },
-  exportButton: { flex: 1, minHeight: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e7f0e8' },
+  exportButton: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e7f0e8',
+  },
   exportPdf: { backgroundColor: '#173e2a' },
   exportText: { color: '#173e2a', fontSize: 10, fontWeight: '900' },
   exportPdfText: { color: '#fff' },

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, RefreshCw } from 'lucide-react';
 import { api } from '../api';
-import { BusinessModule, businessModules, TenantInfo } from './modules';
+import { BusinessModule, businessModules, canUseModule, TenantInfo } from './modules';
 
 const money = (value: number | string) =>
   new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(Number(value));
@@ -88,7 +88,7 @@ export function BusinessOverview({
       )}
       <div className="business-module-grid">
         {businessModules
-          .filter((module) => module.id !== 'home' && permissions.includes(module.permission))
+          .filter((module) => module.id !== 'home' && canUseModule(module, permissions))
           .map((module) => (
             <button key={module.id} onClick={() => onOpen(module.id)}>
               <ArrowUpRight size={20} />
