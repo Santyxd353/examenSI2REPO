@@ -95,19 +95,58 @@ test('carrito, reserva, pago simulado e idempotencia', async () => {
     .auth(token, { type: 'bearer' })
     .send(payload);
   expect(retry.body.id).toBe(checkout.body.id);
+  const legacyCard = await request(app.getHttpServer())
+    .post(`/api/commerce/orders/${checkout.body.id}/payment`)
+    .auth(token, { type: 'bearer' })
+    .send({
+      decision: 'APROBAR',
+      idempotency: randomUUID(),
+      method: 'TARJETA_PRUEBA',
+      reference: 'CARD-4242',
+    });
+  expect(legacyCard.status).toBe(400);
   const payId = randomUUID();
   const payment = await request(app.getHttpServer())
     .post(`/api/commerce/orders/${checkout.body.id}/payment`)
     .auth(token, { type: 'bearer' })
-    .send({ decision: 'APROBAR', idempotency: payId });
+    .send({
+      decision: 'APROBAR',
+      idempotency: payId,
+      method: 'QR_PRUEBA',
+      reference: 'LUMINA-QR-01',
+    });
   expect(payment.status).toBe(201);
   expect(payment.body.estado).toBe('CONFIRMADO');
   expect(payment.body.pago[0].estado).toBe('CONFIRMADO');
+  const paymentEvent = await db.evento_pago.findFirstOrThrow({
+    where: { pago_id: payment.body.pago[0].id, evento_externo: payId },
+  });
+  expect(paymentEvent.payload_resumen).toMatchObject({
+    simulacion: true,
+    metodo: 'QR_PRUEBA',
+    referencia: 'LUMINA-QR-01',
+  });
   const payRetry = await request(app.getHttpServer())
     .post(`/api/commerce/orders/${checkout.body.id}/payment`)
     .auth(token, { type: 'bearer' })
-    .send({ decision: 'APROBAR', idempotency: payId });
+    .send({
+      decision: 'APROBAR',
+      idempotency: payId,
+      method: 'QR_PRUEBA',
+      reference: 'LUMINA-QR-01',
+    });
+  expect(payRetry.status).toBe(201);
   expect(payRetry.body.estado).toBe('CONFIRMADO');
+  const changedRetry = await request(app.getHttpServer())
+    .post(`/api/commerce/orders/${checkout.body.id}/payment`)
+    .auth(token, { type: 'bearer' })
+    .send({
+      decision: 'APROBAR',
+      idempotency: payId,
+      method: 'QR_PRUEBA',
+      reference: 'LUMINA-QR-OTRO',
+    });
+  expect(changedRetry.status).toBe(409);
   const stock = await db.inventario.findUniqueOrThrow({
     where: { variante_id_ubicacion_id: { variante_id: variantId, ubicacion_id: locationId } },
   });
@@ -252,4 +291,37 @@ test('la aplicación mantiene carrito y pedidos separados del canal web', async 
   });
   expect(stock.fisico).toBe(2);
   expect(stock.reservado).toBe(0);
+});
+
+test('la billetera demo confirma automáticamente un QR válido del pedido', async () => {
+  const add = await request(app.getHttpServer())
+    .post('/api/commerce/cart/items')
+    .auth(token, { type: 'bearer' })
+    .send({ variantId, quantity: 1 });
+  expect(add.status).toBe(201);
+  const checkout = await request(app.getHttpServer())
+    .post('/api/commerce/checkout')
+    .auth(token, { type: 'bearer' })
+    .send({
+      locationId,
+      address: 'Avenida de prueba 456, La Paz',
+      idempotency: randomUUID(),
+    });
+  expect(checkout.status).toBe(201);
+  const scanId = randomUUID();
+  const qr = `LUMINA-PAY-DEMO:${checkout.body.id}:${Number(checkout.body.total).toFixed(2)}:BOB`;
+  const paid = await request(app.getHttpServer())
+    .post('/api/commerce/demo-wallet/scan')
+    .set({ 'X-Client-Channel': 'APP' })
+    .auth(token, { type: 'bearer' })
+    .send({ qr, idempotency: scanId });
+  expect(paid.status).toBe(201);
+  expect(paid.body.estado).toBe('CONFIRMADO');
+  expect(paid.body.pago[0].estado).toBe('CONFIRMADO');
+  const repeated = await request(app.getHttpServer())
+    .post('/api/commerce/demo-wallet/scan')
+    .auth(token, { type: 'bearer' })
+    .send({ qr, idempotency: scanId });
+  expect(repeated.status).toBe(201);
+  expect(repeated.body.estado).toBe('CONFIRMADO');
 });

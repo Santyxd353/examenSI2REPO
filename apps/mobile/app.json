@@ -10,10 +10,7 @@
     "android": {
       "package": "bo.edu.grupo18.vestidorar",
       "versionCode": 3,
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
-      ]
+      "permissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"]
     },
     "ios": {
       "bundleIdentifier": "bo.edu.grupo18.vestidorar",
@@ -23,7 +20,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Lúmina usa la cámara para mostrar una vista aproximada de vestidos y faldas sobre tu imagen. El video no se almacena."
+          "cameraPermission": "Lúmina usa la cámara para mostrar una vista aproximada de prendas y para escanear QR de pago de demostración. El video no se almacena."
         }
       ],
       [

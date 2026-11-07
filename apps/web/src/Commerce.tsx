@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, ShoppingBag } from 'lucide-react';
+import { ArrowRight, QrCode, ShieldCheck, ShoppingBag, X } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { api } from './api';
 import { useOperationIdentity } from './useOperationIdentity';
 
@@ -29,6 +30,14 @@ type Order = {
 type Location = { id: string; nombre: string; tipo: string };
 const money = (value: number) =>
   new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(value);
+const paymentQrPayload = (order: Pick<Order, 'id' | 'total'>) =>
+  `LUMINA-PAY-DEMO:${order.id}:${Number(order.total).toFixed(2)}:BOB`;
+const locationLabel = (location: Location) => {
+  const kind = location.tipo === 'TIENDA' ? 'Sucursal' : 'Almacén';
+  return location.nombre.toLocaleLowerCase('es-BO').startsWith(kind.toLocaleLowerCase('es-BO'))
+    ? location.nombre
+    : `${kind} ${location.nombre}`;
+};
 
 export function Commerce({
   locations,
@@ -48,6 +57,9 @@ export function Commerce({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [paymentOrder, setPaymentOrder] = useState<Order | null>(null);
+  const [stripeEnabled, setStripeEnabled] = useState(false);
+  const [paymentChoice, setPaymentChoice] = useState<'STRIPE' | 'QR'>('QR');
 
   async function reload() {
     const [nextCart, nextOrders] = await Promise.all([
@@ -59,6 +71,40 @@ export function Commerce({
   }
   useEffect(() => {
     void reload().catch((e) => setError(e.message));
+    void api('/commerce/payment-options')
+      .then((options) => setStripeEnabled(Boolean(options.stripeTest)))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('stripe_return') === 'app') {
+      setMessage(
+        'Vuelve a Lúmina en Android y pulsa «Comprobar pago de Stripe». Tu pedido y sesión de prueba están guardados.',
+      );
+      return;
+    }
+    const sessionId = new URLSearchParams(window.location.search).get('stripe_session_id');
+    if (!sessionId) return;
+    let active = true;
+    setBusy(true);
+    void api(`/commerce/stripe-test-checkout?session_id=${encodeURIComponent(sessionId)}`)
+      .then(async (result) => {
+        if (!active) return;
+        await reload();
+        setMessage(
+          result.pagado && result.estado === 'CONFIRMADO'
+            ? 'Stripe confirmó el pago de prueba. Tu pedido está confirmado.'
+            : `El pedido está ${result.estado.replaceAll('_', ' ').toLowerCase()}.`,
+        );
+        void onInventoryChanged().catch(() => {});
+        const url = new URL(window.location.href);
+        url.searchParams.delete('stripe_session_id');
+        window.history.replaceState({}, '', url);
+      })
+      .catch((e) => active && setError((e as Error).message))
+      .finally(() => active && setBusy(false));
+    return () => {
+      active = false;
+    };
   }, []);
   useEffect(() => {
     if (!locationId) return;
@@ -76,7 +122,6 @@ export function Commerce({
       })
       .catch((e) => setError(e.message));
   }, [locationId]);
-
   async function run(operation: () => Promise<void>) {
     setBusy(true);
     setError('');
@@ -84,7 +129,11 @@ export function Commerce({
     try {
       await operation();
       await reload();
-      await onInventoryChanged();
+      // El pedido y el carrito ya están actualizados. El catálogo puede recalcularse en segundo
+      // plano sin dejar al cliente esperando por todas las ubicaciones y variantes.
+      void onInventoryChanged().catch(() => {
+        setError('El pedido se registró, pero no se pudo actualizar el stock mostrado todavía.');
+      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -92,7 +141,68 @@ export function Commerce({
     }
   }
 
+  useEffect(() => {
+    if (!paymentOrder || paymentChoice !== 'QR') return;
+    let active = true;
+    const refreshPayment = async () => {
+      try {
+        const nextOrders = (await api('/commerce/orders')) as Order[];
+        if (!active) return;
+        setOrders(nextOrders);
+        const paid = nextOrders.find((order) => order.id === paymentOrder.id);
+        if (paid && paid.estado !== 'PENDIENTE_PAGO') {
+          setPaymentOrder(null);
+          setMessage(
+            paid.estado === 'CONFIRMADO'
+              ? 'QR escaneado. Pago de demostración confirmado.'
+              : `El pedido cambió a ${paid.estado.replaceAll('_', ' ')}.`,
+          );
+          void onInventoryChanged().catch(() => {});
+        }
+      } catch {
+        /* La conexión puede recuperarse en el siguiente intento. */
+      }
+    };
+    const interval = window.setInterval(() => void refreshPayment(), 2500);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [paymentChoice, paymentOrder]);
+
   const pending = orders.filter((order) => order.estado === 'PENDIENTE_PAGO');
+  const insufficientItem = locationId
+    ? cart?.item_carrito.find((item) => (available[item.variante_id] ?? 0) < item.cantidad)
+    : undefined;
+  const checkoutBlocker = busy
+    ? 'Estamos procesando tu pedido.'
+    : !locationId
+      ? 'Selecciona una sucursal o almacén para continuar.'
+      : address.trim().length < 10
+        ? 'Escribe la dirección de entrega o retiro (mínimo 10 caracteres).'
+        : insufficientItem
+          ? `No se puede realizar la compra por falta de stock: solo hay ${available[insufficientItem.variante_id] ?? 0} unidades disponibles de ${insufficientItem.variante.producto.nombre} en esta ubicación.`
+          : null;
+  async function openStripeTest() {
+    if (!paymentOrder) return;
+    setBusy(true);
+    setError('');
+    try {
+      const checkout = await api(`/commerce/orders/${paymentOrder.id}/stripe-test-checkout`, {
+        method: 'POST',
+      });
+      window.location.assign(checkout.url);
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  }
+
+  function openPayment(order: Order) {
+    setPaymentOrder(order);
+    setPaymentChoice(stripeEnabled || order.pago[0]?.proveedor === 'STRIPE_TEST' ? 'STRIPE' : 'QR');
+  }
+
   return (
     <section className="commerce-page">
       <div className="section-title">
@@ -128,7 +238,7 @@ export function Commerce({
                   <option value="">Selecciona una ubicación</option>
                   {locations.map((location) => (
                     <option key={location.id} value={location.id}>
-                      {location.tipo === 'TIENDA' ? 'Sucursal' : 'Almacén'} {location.nombre}
+                      {locationLabel(location)}
                     </option>
                   ))}
                 </select>
@@ -146,6 +256,11 @@ export function Commerce({
                           ? `${available[item.variante_id] ?? 0} disponibles aquí`
                           : 'Elige una ubicación para consultar stock'}
                       </small>
+                      {locationId && (available[item.variante_id] ?? 0) < item.cantidad && (
+                        <small className="commerce-line-warning" role="alert">
+                          No se puede realizar la compra: faltan unidades para la cantidad elegida.
+                        </small>
+                      )}
                     </div>
                     <input
                       aria-label={`Cantidad de ${item.variante.producto.nombre}`}
@@ -198,15 +313,7 @@ export function Commerce({
               </label>
               <button
                 className="primary"
-                disabled={
-                  busy ||
-                  !locationId ||
-                  address.trim().length < 10 ||
-                  cart.item_carrito.some(
-                    (item) =>
-                      !available[item.variante_id] || available[item.variante_id] < item.cantidad,
-                  )
-                }
+                disabled={Boolean(checkoutBlocker)}
                 onClick={() =>
                   void run(async () => {
                     const payload = { locationId, address };
@@ -224,9 +331,20 @@ export function Commerce({
                   })
                 }
               >
-                Confirmar pedido <ArrowRight size={17} />
+                {busy ? (
+                  'Procesando pedido…'
+                ) : (
+                  <>
+                    Confirmar pedido <ArrowRight size={17} />
+                  </>
+                )}
               </button>
-              <small>Pago de demostración. No se cobra dinero real.</small>
+              {checkoutBlocker && (
+                <small className="commerce-validation" role={insufficientItem ? 'alert' : 'status'}>
+                  {checkoutBlocker}
+                </small>
+              )}
+              <small>Stripe en modo de prueba o QR de demostración. No se cobra dinero real.</small>
             </>
           )}
         </div>
@@ -251,39 +369,8 @@ export function Commerce({
               </ul>
               {order.estado === 'PENDIENTE_PAGO' && (
                 <div className="commerce-actions">
-                  <button
-                    disabled={busy}
-                    onClick={() =>
-                      void run(async () => {
-                        await api(`/commerce/orders/${order.id}/payment`, {
-                          method: 'POST',
-                          body: JSON.stringify({
-                            decision: 'APROBAR',
-                            idempotency: crypto.randomUUID(),
-                          }),
-                        });
-                        setMessage('Pago de prueba aprobado. Tu pedido está confirmado.');
-                      })
-                    }
-                  >
-                    Aprobar pago de prueba
-                  </button>
-                  <button
-                    disabled={busy}
-                    onClick={() =>
-                      void run(async () => {
-                        await api(`/commerce/orders/${order.id}/payment`, {
-                          method: 'POST',
-                          body: JSON.stringify({
-                            decision: 'RECHAZAR',
-                            idempotency: crypto.randomUUID(),
-                          }),
-                        });
-                        setMessage('Pago rechazado; la reserva se liberó.');
-                      })
-                    }
-                  >
-                    Simular rechazo
+                  <button disabled={busy} onClick={() => openPayment(order)}>
+                    {stripeEnabled ? 'Elegir Stripe o QR' : 'Abrir QR de prueba'}
                   </button>
                 </div>
               )}
@@ -380,6 +467,106 @@ export function Commerce({
           )}
         </div>
       </div>
+      {paymentOrder && (
+        <div className="modal-overlay" onClick={() => !busy && setPaymentOrder(null)}>
+          <section
+            className="auth-modal payment-demo"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="payment-demo-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="modal-close"
+              aria-label="Cerrar pasarela"
+              disabled={busy}
+              onClick={() => setPaymentOrder(null)}
+            >
+              <X size={18} />
+            </button>
+            <span className="payment-demo-badge">
+              <ShieldCheck size={15} /> MODO DE PRUEBA · SIN COBRO REAL
+            </span>
+            <h2 id="payment-demo-title">Finaliza tu compra</h2>
+            <p>
+              Pedido <b>{paymentOrder.numero}</b> · total <b>{money(Number(paymentOrder.total))}</b>
+              . Revisa el resumen y selecciona cómo probar el pago.
+            </p>
+            <div className="payment-order-summary">
+              {paymentOrder.detalle_pedido.map((line) => (
+                <span key={line.id}>
+                  <span>
+                    {line.cantidad} × {line.descripcion_snapshot} · {line.talla_snapshot}
+                  </span>
+                </span>
+              ))}
+              <strong>
+                <span>Total</span>
+                <span>{money(Number(paymentOrder.total))}</span>
+              </strong>
+            </div>
+            {stripeEnabled && (
+              <div className="payment-choice" role="group" aria-label="Pasarela de pago">
+                <button
+                  type="button"
+                  className={paymentChoice === 'STRIPE' ? 'active' : ''}
+                  onClick={() => setPaymentChoice('STRIPE')}
+                >
+                  Stripe <small>Checkout de prueba</small>
+                </button>
+                <button
+                  type="button"
+                  className={paymentChoice === 'QR' ? 'active' : ''}
+                  disabled={paymentOrder.pago[0]?.proveedor === 'STRIPE_TEST'}
+                  onClick={() => setPaymentChoice('QR')}
+                >
+                  QR <small>Escaneo de prueba</small>
+                </button>
+              </div>
+            )}
+            {paymentChoice === 'STRIPE' && stripeEnabled ? (
+              <div className="payment-stripe-panel">
+                <ShieldCheck size={28} aria-hidden="true" />
+                <h3>Pago seguro con Stripe</h3>
+                <p>
+                  Continuarás en Stripe Checkout para ingresar una tarjeta de prueba. El importe y
+                  las prendas se enviarán desde este pedido.
+                </p>
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={busy}
+                  onClick={() => void openStripeTest()}
+                >
+                  {busy
+                    ? 'Abriendo Stripe…'
+                    : `Continuar y pagar ${money(Number(paymentOrder.total))}`}
+                  {!busy && <ArrowRight size={17} />}
+                </button>
+                <small>Solo modo de prueba. No uses una tarjeta bancaria real.</small>
+              </div>
+            ) : (
+              <>
+                <div className="payment-qr">
+                  <QRCodeSVG
+                    value={paymentQrPayload(paymentOrder)}
+                    size={190}
+                    level="M"
+                    marginSize={4}
+                    title={`QR de prueba del pedido ${paymentOrder.numero}`}
+                  />
+                  <b>Escanea con Lúmina Pay Demo en otro dispositivo</b>
+                  <small>El pedido y el importe se verifican al escanear.</small>
+                </div>
+                <small className="payment-demo-note">
+                  QR de simulación académica. No realiza un cobro bancario.
+                </small>
+                <span className="payment-awaiting">Esperando escaneo…</span>
+              </>
+            )}
+          </section>
+        </div>
+      )}
     </section>
   );
 }

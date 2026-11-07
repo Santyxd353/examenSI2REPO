@@ -8,14 +8,16 @@ import {
   OnModuleInit,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { TenantRegistry } from './tenancy/platform';
-import { runForTenant } from './tenancy/context';
+import { currentTenant, runForTenant } from './tenancy/context';
 import { randomUUID } from 'crypto';
 import * as timers from 'node:timers';
+import Stripe from 'stripe';
 import { z } from 'zod';
 import { AuthGuard, AuthRequest } from './auth';
 import { Db } from './db';
@@ -43,7 +45,19 @@ const checkout = z
   })
   .strict();
 const paymentDecision = z
-  .object({ decision: z.enum(['APROBAR', 'RECHAZAR']), idempotency: uuid })
+  .object({
+    decision: z.enum(['APROBAR', 'RECHAZAR']),
+    idempotency: uuid,
+    method: z.literal('QR_PRUEBA').optional(),
+    reference: z
+      .string()
+      .trim()
+      .regex(/^[A-Z0-9-]{4,32}$/)
+      .optional(),
+  })
+  .strict();
+const demoWalletScan = z
+  .object({ qr: z.string().trim().min(20).max(200), idempotency: uuid })
   .strict();
 const returnRequest = z
   .object({
@@ -58,7 +72,7 @@ const returnRequest = z
 
 type CommerceChannel = 'WEB' | 'APP';
 
-function requestChannel(req: AuthRequest): CommerceChannel {
+function requestChannel(req: Pick<AuthRequest, 'headers'>): CommerceChannel {
   return String(req.headers['x-client-channel'] ?? '').toUpperCase() === 'APP' ? 'APP' : 'WEB';
 }
 
@@ -77,6 +91,17 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
   private expiryTimer?: ReturnType<typeof timers.setInterval>;
   private expirySweep: Promise<void> | null = null;
   private closing = false;
+  private stripe?: Stripe;
+  private stripeClient() {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key?.startsWith('sk_test_'))
+      throw new BadRequestException('Stripe de prueba no está configurado en el servidor.');
+    return (this.stripe ??= new Stripe(key, { timeout: 5000, maxNetworkRetries: 0 }));
+  }
+  @Get('payment-options')
+  paymentOptions() {
+    return { stripeTest: Boolean(process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_')) };
+  }
   onModuleInit() {
     this.expiryTimer = timers.setInterval(() => {
       if (!this.expirySweep && !this.closing)
@@ -149,7 +174,15 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
   private async closePending(
     orderId: string,
     nextState: 'CANCELADO' | 'CONFIRMADO',
-    event?: { id: string; decision: 'APROBAR' | 'RECHAZAR' },
+    event?: {
+      id: string;
+      decision: 'APROBAR' | 'RECHAZAR';
+      method?: 'QR_PRUEBA' | 'STRIPE_TEST';
+      reference?: string;
+      expectedProvider?: string;
+      providerReference?: string;
+      requestHash?: string;
+    },
     database: PrismaClient = this.db,
   ) {
     const changed = await database.$transaction(async (tx) => {
@@ -160,6 +193,12 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
         include: { detalle_pedido: { include: { reserva_stock: true } }, pago: true },
       });
       if (!order || order.estado !== 'PENDIENTE_PAGO') return null;
+      if (
+        event?.expectedProvider &&
+        (order.pago[0]?.proveedor !== event.expectedProvider ||
+          (event.providerReference && order.pago[0]?.referencia !== event.providerReference))
+      )
+        throw new BadRequestException('El método de pago cambió. Actualiza el pedido.');
       if (
         event &&
         (await tx.evento_pago.findUnique({
@@ -244,7 +283,12 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
             evento_externo: event.id,
             tipo: event.decision,
             firma_verificada: true,
-            payload_resumen: { simulacion: true },
+            payload_resumen: {
+              simulacion: true,
+              metodo: event.method ?? 'NO_ESPECIFICADO',
+              referencia: event.reference ?? null,
+              requestHash: event.requestHash ?? null,
+            },
             recibido_en: now,
             procesado_en: now,
           },
@@ -579,10 +623,21 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
 
   @Post('orders/:id/payment')
   async pay(@Req() req: AuthRequest, @Param('id') id: string, @Body() body: unknown) {
-    uuid.parse(id);
-    const input = paymentDecision.parse(body);
+    return this.payDecision(req, uuid.parse(id), paymentDecision.parse(body));
+  }
+  private async payDecision(
+    req: Pick<AuthRequest, 'user' | 'headers'>,
+    id: string,
+    input: z.infer<typeof paymentDecision>,
+  ) {
     const channel = requestChannel(req);
     const provider = simulatedProvider(channel);
+    const fingerprint = requestHash({
+      orderId: id,
+      decision: input.decision,
+      method: input.method ?? null,
+      reference: input.reference ?? null,
+    });
     await this.releaseExpired();
     const order = await this.db.pedido.findFirst({
       where: { id, usuario_id: req.user.id, canal: channel },
@@ -599,13 +654,21 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
     });
     if (prior && (prior.pago_id !== payment.id || prior.tipo !== input.decision))
       throw new BadRequestException('Este identificador de pago ya fue utilizado.');
+    if (prior) this.assertPaymentReplay(prior.payload_resumen, fingerprint, input);
     if (!prior) {
       if (order.estado !== 'PENDIENTE_PAGO')
         throw new BadRequestException('Este pedido ya no admite pagos.');
       const changed = await this.closePending(
         id,
         input.decision === 'APROBAR' ? 'CONFIRMADO' : 'CANCELADO',
-        { id: input.idempotency, decision: input.decision },
+        {
+          id: input.idempotency,
+          decision: input.decision,
+          method: input.method,
+          reference: input.reference,
+          expectedProvider: provider,
+          requestHash: fingerprint,
+        },
       );
       if (!changed) {
         const replay = await this.db.evento_pago.findUnique({
@@ -615,12 +678,215 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
         });
         if (!replay || replay.pago_id !== payment.id || replay.tipo !== input.decision)
           throw new BadRequestException('El pedido ya fue procesado.');
+        this.assertPaymentReplay(replay.payload_resumen, fingerprint, input);
       }
     }
     return this.db.pedido.findUniqueOrThrow({
       where: { id },
       include: { detalle_pedido: true, pago: true },
     });
+  }
+
+  private assertPaymentReplay(
+    payload: Prisma.JsonValue,
+    fingerprint: string,
+    input: { method?: string; reference?: string },
+  ) {
+    const prior = payload as { requestHash?: string } | null;
+    // Los recibos históricos sin metadata solo admiten el reenvío histórico vacío.
+    if (!prior?.requestHash && !input.method && !input.reference) return;
+    assertRequestHash(prior?.requestHash, fingerprint);
+  }
+
+  @Post('demo-wallet/scan')
+  async payFromDemoWallet(@Req() req: AuthRequest, @Body() body: unknown) {
+    const input = demoWalletScan.parse(body);
+    const [kind, rawId, rawAmount, currency, ...extra] = input.qr.split(':');
+    if (
+      kind !== 'LUMINA-PAY-DEMO' ||
+      currency !== 'BOB' ||
+      extra.length ||
+      !/^\d+(?:\.\d{2})?$/.test(rawAmount ?? '')
+    )
+      throw new BadRequestException('El QR no pertenece a Lúmina Pay Demo.');
+    const id = uuid.parse(rawId);
+    const order = await this.db.pedido.findFirst({
+      where: { id, usuario_id: req.user.id, canal: { in: ['WEB', 'APP'] } },
+      include: { pago: true },
+    });
+    if (!order || Number(order.total).toFixed(2) !== Number(rawAmount).toFixed(2))
+      throw new BadRequestException('El pedido o monto del QR no coincide con tu cuenta.');
+    // La app puede escanear su pedido WEB; el registro mantiene el canal de origen.
+    return this.payDecision(
+      { user: req.user, headers: { ...req.headers, 'x-client-channel': order.canal } },
+      id,
+      {
+        decision: 'APROBAR',
+        idempotency: input.idempotency,
+        method: 'QR_PRUEBA',
+        reference: ('SCAN-' + order.numero).toUpperCase().slice(0, 32),
+      },
+    );
+  }
+
+  @Post('orders/:id/stripe-test-checkout')
+  async stripeTestCheckout(@Req() req: AuthRequest, @Param('id') id: string) {
+    id = uuid.parse(id);
+    const tenant = currentTenant();
+    if (!tenant) throw new BadRequestException('Selecciona una tienda.');
+    const stripe = this.stripeClient(),
+      channel = requestChannel(req);
+    await this.releaseExpired();
+    // Se persiste la intención ANTES de contactar al proveedor. Un fallo de red
+    // reutiliza el mismo vencimiento y la misma clave, incluso tras reiniciar.
+    await this.db.$transaction(async (tx) => {
+      await lockOperation(tx, 'order', id);
+      const order = await tx.pedido.findFirst({
+        where: { id, usuario_id: req.user.id, canal: channel, estado: 'PENDIENTE_PAGO' },
+        include: { pago: true, detalle_pedido: { include: { reserva_stock: true } } },
+      });
+      const payment = order?.pago[0];
+      if (!order || !payment) throw new BadRequestException('El pedido ya no admite pagos.');
+      if (payment.proveedor === 'STRIPE_TEST') return;
+      if (payment.proveedor !== simulatedProvider(channel) || payment.estado !== 'PENDIENTE')
+        throw new BadRequestException('Este pedido usa otro método de pago.');
+      const reservations = order.detalle_pedido
+        .flatMap((line) => line.reserva_stock)
+        .filter((row) => row.estado === 'ACTIVA');
+      if (
+        reservations.length !== order.detalle_pedido.length ||
+        reservations.some((row) => row.vence_en <= new Date())
+      )
+        throw new BadRequestException('La reserva venció. Crea un pedido nuevo.');
+      const expiresAt = Math.floor(Date.now() / 1000) + 31 * 60;
+      await tx.pago.update({
+        where: { id: payment.id },
+        data: { proveedor: 'STRIPE_TEST', referencia: 'INIT:' + expiresAt },
+      });
+      await tx.reserva_stock.updateMany({
+        where: { detalle_pedido: { pedido_id: id }, estado: 'ACTIVA' },
+        data: { vence_en: new Date((expiresAt + 60) * 1000) },
+      });
+    });
+    // Bloqueo del pedido mientras se completa la llamada acotada (5 s): dos
+    // dispositivos no crean sesiones distintas ni confirman con QR en paralelo.
+    return this.db.$transaction(
+      async (tx) => {
+        await lockOperation(tx, 'order', id);
+        const order = await tx.pedido.findFirst({
+          where: { id, usuario_id: req.user.id, canal: channel, estado: 'PENDIENTE_PAGO' },
+          include: { pago: true, detalle_pedido: true },
+        });
+        const payment = order?.pago[0];
+        if (!order || !payment || payment.proveedor !== 'STRIPE_TEST')
+          throw new BadRequestException('El pedido ya no admite este pago.');
+        if (payment.referencia?.startsWith('cs_test_')) {
+          const prior = await stripe.checkout.sessions.retrieve(payment.referencia);
+          this.assertStripeSession(prior, order, payment, tenant.id, channel);
+          if (prior.status !== 'open' || !prior.url)
+            throw new BadRequestException(
+              'Comprueba el pago existente antes de abrir otra sesión.',
+            );
+          return { url: prior.url, sessionId: prior.id };
+        }
+        const match = /^INIT:(\d+)$/.exec(payment.referencia ?? '');
+        if (!match) throw new BadRequestException('La intención de pago no es válida.');
+        const expiresAt = Number(match[1]);
+        if (expiresAt <= Date.now() / 1000)
+          throw new BadRequestException('La sesión de pago venció.');
+        const origin = new URL(process.env.WEB_ORIGIN || 'http://localhost:5173').origin;
+        const store = encodeURIComponent(tenant.slug);
+        const session = await stripe.checkout.sessions.create(
+          {
+            mode: 'payment',
+            locale: 'es',
+            client_reference_id: id,
+            metadata: { tenantId: tenant.id, orderId: id, userId: req.user.id, channel },
+            success_url:
+              origin +
+              '/?tienda=' +
+              store +
+              (channel === 'APP'
+                ? '&stripe_return=app'
+                : '&stripe_session_id={CHECKOUT_SESSION_ID}'),
+            cancel_url: origin + '/?tienda=' + store + '&stripe_cancelled=1',
+            expires_at: expiresAt,
+            line_items: order.detalle_pedido.map((line) => ({
+              quantity: line.cantidad,
+              price_data: {
+                currency: 'bob',
+                unit_amount: Math.round(Number(line.precio_unitario) * 100),
+                product_data: {
+                  name: line.descripcion_snapshot + ' · talla ' + line.talla_snapshot,
+                },
+              },
+            })),
+          },
+          { idempotencyKey: 'retail:' + tenant.id + ':' + payment.id + ':' + expiresAt },
+        );
+        this.assertStripeSession(session, order, payment, tenant.id, channel, false);
+        if (!session.url || session.status !== 'open')
+          throw new BadRequestException('Stripe no devolvió una página de pago válida.');
+        await tx.pago.update({ where: { id: payment.id }, data: { referencia: session.id } });
+        return { url: session.url, sessionId: session.id };
+      },
+      { maxWait: 10000, timeout: 15000 },
+    );
+  }
+
+  private assertStripeSession(
+    session: Stripe.Checkout.Session,
+    order: { id: string; usuario_id: string; total: Prisma.Decimal },
+    payment: { referencia: string | null; monto: Prisma.Decimal; moneda: string },
+    tenantId: string,
+    channel: string,
+    requireReference = true,
+  ) {
+    if (
+      !session.id.startsWith('cs_test_') ||
+      session.livemode ||
+      session.mode !== 'payment' ||
+      session.client_reference_id !== order.id ||
+      session.metadata?.orderId !== order.id ||
+      session.metadata?.userId !== order.usuario_id ||
+      session.metadata?.tenantId !== tenantId ||
+      session.metadata?.channel !== channel ||
+      session.currency !== 'bob' ||
+      payment.moneda !== 'BOB' ||
+      session.amount_total !== Math.round(Number(order.total) * 100) ||
+      session.amount_total !== Math.round(Number(payment.monto) * 100) ||
+      (requireReference && payment.referencia !== session.id)
+    )
+      throw new BadRequestException('El pago no coincide con el pedido y la tienda actuales.');
+  }
+
+  @Get('stripe-test-checkout')
+  async verifyStripeTestCheckout(@Req() req: AuthRequest, @Query('session_id') sessionId: string) {
+    if (!/^cs_test_[A-Za-z0-9_]{1,120}$/.test(sessionId ?? ''))
+      throw new BadRequestException('Sesión de Stripe inválida.');
+    const session = await this.stripeClient().checkout.sessions.retrieve(sessionId),
+      tenant = currentTenant(),
+      channel = requestChannel(req);
+    const id = uuid.parse(session.metadata?.orderId);
+    const order = await this.db.pedido.findFirst({
+      where: { id, usuario_id: req.user.id, canal: channel },
+      include: { pago: true },
+    });
+    if (!tenant || !order || order.pago[0]?.proveedor !== 'STRIPE_TEST')
+      throw new BadRequestException('El pago no pertenece a tu pedido en esta tienda.');
+    this.assertStripeSession(session, order, order.pago[0], tenant.id, channel);
+    if (session.payment_status === 'paid' && session.status === 'complete') {
+      await this.closePending(id, 'CONFIRMADO', {
+        id: session.id,
+        decision: 'APROBAR',
+        method: 'STRIPE_TEST',
+        reference: session.id,
+        expectedProvider: 'STRIPE_TEST',
+        providerReference: session.id,
+      });
+    }
+    const current = await this.db.pedido.findUniqueOrThrow({ where: { id } });
+    return { estado: current.estado, pagado: session.payment_status === 'paid' };
   }
 
   @Post('orders/:id/returns')
