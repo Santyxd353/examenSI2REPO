@@ -30,3 +30,10 @@ test('aplica recibos idempotentes y bloquea descendientes cuando hay conflicto',
   const applied = applySyncReceipt([parent], { operationId: 'parent', status: 'APPLIED' });
   assert.deepEqual(applySyncReceipt(applied, { operationId: 'parent', status: 'APPLIED' }), applied);
 });
+
+test('un rechazo del servidor no aparece como conflicto reintentable', () => {
+  const result = applySyncReceipt([intent('parent'), intent('child', ['parent'])], {
+    operationId: 'parent', status: 'REJECTED', message: 'Sin permiso',
+  });
+  assert.deepEqual(result.map((item) => item.state), ['REJECTED', 'BLOCKED']);
+});

@@ -17,7 +17,7 @@ export function applySyncReceipt(intents: readonly OfflineIntent[], receipt: Syn
     if (intent.operationId !== receipt.operationId) return intent;
     found = true;
     if (receipt.status === 'APPLIED') return { ...intent, state: 'APPLIED' as const };
-    return { ...intent, state: 'CONFLICT' as const };
+    return { ...intent, state: receipt.status === 'CONFLICT' ? 'CONFLICT' as const : 'REJECTED' as const };
   });
   if (!found) throw new Error('El recibo de sincronización no corresponde a una operación local.');
   if (receipt.status === 'APPLIED') return updated;

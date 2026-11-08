@@ -33,6 +33,8 @@ import { useSystemBars } from './systemBars';
 import { CatalogScreen } from './CatalogScreen';
 import { connectRealtime } from './realtime';
 import { bootstrapOfflineVault } from './offline/bootstrap';
+import { getOfflineDeviceId } from './offline/device';
+import { lockOfflineScope } from './offline/vault';
 import { detectPose, isPoseAvailable } from '../modules/pose-landmarker/src';
 import { garmentImageFrame, garmentKind, garmentOutline, projectTorso } from './pose';
 import type { Layout, Torso } from './pose';
@@ -68,6 +70,11 @@ export function App() {
     setLoading(true);
     catalogRequest.current++;
     try {
+      if (user?.tenant) await lockOfflineScope({
+        tenantId: user.tenant.id,
+        actorId: user.id,
+        deviceId: await getOfflineDeviceId(),
+      });
       await logout();
     } catch (reason) {
       setError((reason as Error).message);

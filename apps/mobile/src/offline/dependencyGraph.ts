@@ -11,7 +11,7 @@ export function orderedPending(intents: readonly OfflineIntent[]) {
     if (visiting.has(id)) throw new Error('Las dependencias offline contienen un ciclo.');
     const item = byId.get(id);
     if (!item) throw new Error('Falta una dependencia offline.');
-    if (item.state === 'BLOCKED' || item.state === 'CONFLICT')
+    if (item.state === 'BLOCKED' || item.state === 'CONFLICT' || item.state === 'REJECTED' || item.state === 'SUPERSEDED')
       throw new Error('Una dependencia offline requiere intervención.');
     if (item.state === 'SENDING')
       throw new Error('Una dependencia offline todavía se está sincronizando.');

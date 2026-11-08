@@ -45,13 +45,26 @@ async function responsePayload(response: Response): Promise<ApiProblemPayload> {
 }
 
 async function scopedFetch(url: string, init: RequestInit, requestScope: ScopeKey) {
+  const controller = new AbortController();
+  const abortFromCaller = () => controller.abort();
+  if (init.signal?.aborted) controller.abort();
+  else init.signal?.addEventListener('abort', abortFromCaller, { once: true });
+  let rejectTimeout: (reason: Error) => void = () => {};
+  const timedOut = new Promise<never>((_, reject) => { rejectTimeout = reject; });
+  const timeout = setTimeout(() => {
+    controller.abort();
+    rejectTimeout(Object.assign(new Error('La solicitud tardó demasiado.'), { name: 'AbortError' }));
+  }, (init.method || 'GET').toUpperCase() === 'GET' ? 12000 : 45000);
   try {
-    const response = await fetch(url, init);
+    const response = await Promise.race([fetch(url, { ...init, signal: controller.signal }), timedOut]);
     scope.assertCurrent(requestScope);
     return response;
   } catch (reason) {
     if (!scope.isCurrent(requestScope)) scope.assertCurrent(requestScope);
     throw ApiProblem.network(reason);
+  } finally {
+    clearTimeout(timeout);
+    init.signal?.removeEventListener('abort', abortFromCaller);
   }
 }
 

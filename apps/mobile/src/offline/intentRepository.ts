@@ -8,7 +8,7 @@ export type OfflineIntent = Readonly<{
   payload: string;
   baseVersion: number | null;
   dependsOn: readonly string[];
-  state: 'PENDING' | 'SENDING' | 'APPLIED' | 'CONFLICT' | 'BLOCKED';
+  state: 'PENDING' | 'SENDING' | 'APPLIED' | 'CONFLICT' | 'REJECTED' | 'BLOCKED' | 'SUPERSEDED';
 }>;
 
 export interface OfflineTransaction {

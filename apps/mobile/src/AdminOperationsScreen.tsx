@@ -1,11 +1,23 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { api } from './api';
+import { randomUUID } from 'expo-crypto';
+import { ApiProblem } from './errors/ApiProblem';
+import { getOfflineDeviceId } from './offline/device';
+import { bootstrapOfflineVault } from './offline/bootstrap';
+import { openOfflineDatabase } from './offline/db';
+import { readInventorySnapshot, saveInventorySnapshot } from './offline/inventorySnapshot';
+import { SQLiteIntentRepository } from './offline/sqliteIntentRepository';
+import { syncOfflineQueue } from './offline/syncQueue';
+import type { OfflineScope } from './offline/scope';
+import { readActiveDek } from './offline/vault';
+import { countFitsReserved, hasUnresolvedCount } from './offline/stockCountReview';
+import type { Identity } from './types';
 import type { MobileBusinessModule } from './modules/registry';
 
-type Props = { module: Exclude<MobileBusinessModule, 'home' | 'sync' | 'business'> };
+type Props = { module: Exclude<MobileBusinessModule, 'home' | 'sync' | 'business'>; user: Identity };
 type Location = { id: string; nombre: string; tipo: string; direccion?: string | null; activa: boolean; _count?: { inventario: number; usuario_ubicacion: number } };
-type Inventory = { id: string; variante_id: string; fisico: number; disponible: number; version: number; alertaStock: boolean; variante: { sku: string; talla: string; color: string; producto: { nombre: string } } };
+type Inventory = { id: string; variante_id: string; fisico: number; reservado: number; comprometido: number; disponible: number; version: number; alertaStock: boolean; variante: { sku: string; talla: string; color: string; producto: { nombre: string } } };
 type Order = { id: string; numero: string; estado: string; total: string | number; creado_en: string; ubicacion?: { nombre: string }; usuario_pedido_usuario_idTousuario?: { nombres: string; apellidos: string } };
 
 const names: Record<Props['module'], { eyebrow: string; title: string; copy: string }> = {
@@ -17,14 +29,14 @@ const names: Record<Props['module'], { eyebrow: string; title: string; copy: str
   'reports-analysis': { eyebrow: 'INTELIGENCIA', title: 'Reportes', copy: 'Consulta indicadores reales y realiza preguntas de solo lectura.' },
 };
 
-export function AdminOperationsScreen({ module }: Props) {
+export function AdminOperationsScreen({ module, user }: Props) {
   const { width } = useWindowDimensions();
   const meta = names[module];
   return <ScrollView contentContainerStyle={[styles.page, width >= 720 && styles.pageWide]} keyboardShouldPersistTaps="handled">
     <Text style={styles.eyebrow}>{meta.eyebrow}</Text><Text style={styles.title}>{meta.title}</Text><Text style={styles.copy}>{meta.copy}</Text>
     {module === 'catalog' ? <CatalogModule /> : null}
     {module === 'locations' ? <LocationsModule /> : null}
-    {module === 'inventory' ? <InventoryModule /> : null}
+    {module === 'inventory' ? <InventoryModule user={user} /> : null}
     {module === 'team' ? <TeamModule /> : null}
     {module === 'sales-orders' ? <OrdersModule /> : null}
     {module === 'reports-analysis' ? <ReportsModule /> : null}
@@ -32,10 +44,13 @@ export function AdminOperationsScreen({ module }: Props) {
 }
 
 function useRemote<T>(path: string, enabled = true) {
-  const [data, setData] = useState<T | null>(null); const [busy, setBusy] = useState(true); const [error, setError] = useState('');
-  const load = useCallback(async () => { if (!enabled) { setData(null); setError(''); setBusy(false); return; } setBusy(true); setError(''); try { setData(await api<T>(path)); } catch (reason) { setError((reason as Error).message); } finally { setBusy(false); } }, [path, enabled]);
+  const [loaded, setLoaded] = useState<{ path: string; value: T } | null>(null);
+  const [busy, setBusy] = useState(true); const [error, setError] = useState(''); const [failure, setFailure] = useState<unknown>(null);
+  const setData = useCallback((value: T | null) => setLoaded(value === null ? null : { path, value }), [path]);
+  const restoreData = useCallback((value: T) => setLoaded((current) => current?.path === path ? current : { path, value }), [path]);
+  const load = useCallback(async () => { if (!enabled) { setLoaded(null); setError(''); setFailure(null); setBusy(false); return; } setBusy(true); setError(''); setFailure(null); try { setLoaded({ path, value: await api<T>(path) }); } catch (reason) { setError((reason as Error).message); setFailure(reason); } finally { setBusy(false); } }, [path, enabled]);
   useEffect(() => { void load(); }, [load]);
-  return { data, busy, error, load, setError };
+  return { data: loaded?.path === path ? loaded.value : null, busy, error, failure, load, setError, setData, restoreData };
 }
 
 function Block({ title, children }: { title: string; children: ReactNode }) { return <View style={styles.block}><Text style={styles.blockTitle}>{title}</Text>{children}</View>; }
@@ -60,12 +75,140 @@ function LocationsModule() {
   return <><Block title="Nueva ubicación"><Field value={name} onChangeText={setName} placeholder="Nombre" /><Field value={address} onChangeText={setAddress} placeholder="Dirección (opcional)" /><View style={styles.chips}>{(['TIENDA', 'ALMACEN'] as const).map((item) => <Pressable key={item} style={[styles.chip, type === item && styles.chipActive]} onPress={() => setType(item)}><Text style={[styles.chipText, type === item && styles.chipTextActive]}>{item === 'TIENDA' ? 'Tienda' : 'Almacén'}</Text></Pressable>)}</View><Action label="Crear ubicación" disabled={name.trim().length < 2} onPress={() => void create()} /></Block><Block title="Ubicaciones registradas"><Loading busy={remote.busy} />{remote.error ? <Notice>{remote.error}</Notice> : null}{remote.data?.map((item) => <Row key={item.id} title={item.nombre} detail={`${item.tipo === 'TIENDA' ? 'Tienda' : 'Almacén'} · ${item.activa ? 'Activa' : 'Inactiva'} · ${item._count?.inventario || 0} referencias`} />)}</Block></>;
 }
 
-function InventoryModule() {
-  const locations = useRemote<Location[]>('/locations'); const [locationId, setLocationId] = useState(''); const [counting, setCounting] = useState<Inventory | null>(null); const [observed, setObserved] = useState(''); const [reason, setReason] = useState('Conteo físico móvil');
-  useEffect(() => { if (!locationId && locations.data?.[0]) setLocationId(locations.data[0].id); }, [locationId, locations.data]);
+function InventoryModule({ user }: { user: Identity }) {
+  const locations = useRemote<Location[]>('/locations');
+  const [locationId, setLocationId] = useState('');
+  const [counting, setCounting] = useState<Inventory | null>(null);
+  const [observed, setObserved] = useState('');
+  const [reason, setReason] = useState('Conteo físico móvil');
+  const [notice, setNotice] = useState('');
+  const [offlineCopy, setOfflineCopy] = useState(false);
   const inventory = useRemote<Inventory[]>(locationId ? `/locations/${locationId}/inventory` : '', Boolean(locationId));
-  const count = async () => { if (!counting) return; try { await api(`/locations/${locationId}/inventory/counts`, { method: 'POST', body: JSON.stringify({ varianteId: counting.variante_id, conteoObservado: Number(observed), expectedVersion: counting.version, motivo: reason }) }); setCounting(null); setObserved(''); await inventory.load(); } catch (e) { inventory.setError((e as Error).message); } };
-  return <><Block title="Ubicación"><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>{(locations.data || []).map((item) => <Pressable key={item.id} style={[styles.chip, locationId === item.id && styles.chipActive]} onPress={() => setLocationId(item.id)}><Text style={[styles.chipText, locationId === item.id && styles.chipTextActive]}>{item.nombre}</Text></Pressable>)}</ScrollView></Block>{counting ? <Block title={`Conteo · ${counting.variante.producto.nombre}`}><Field value={observed} onChangeText={setObserved} placeholder="Cantidad física observada" keyboardType="numeric" /><Field value={reason} onChangeText={setReason} placeholder="Motivo" /><Action label="Confirmar conteo" disabled={!/^\d+$/.test(observed) || reason.trim().length < 5} onPress={() => void count()} /></Block> : null}<Block title="Existencias"><Loading busy={inventory.busy && Boolean(locationId)} />{inventory.error ? <Notice>{inventory.error}</Notice> : null}{inventory.data?.map((item) => <Pressable key={item.id} style={styles.rowPress} onPress={() => { setCounting(item); setObserved(String(item.fisico)); }}><Row title={item.variante.producto.nombre} detail={`${item.variante.sku} · ${item.variante.color}/${item.variante.talla} · Disponible: ${item.disponible}${item.alertaStock ? ' · Stock bajo' : ''}`} /></Pressable>)}</Block></>;
+  const scopeForUser = useCallback(async (): Promise<OfflineScope> => {
+    if (!user.tenant) throw new Error('La sesión no tiene una tienda para el modo offline.');
+    return { tenantId: user.tenant.id, actorId: user.id, deviceId: await getOfflineDeviceId() };
+  }, [user.id, user.tenant?.id]);
+  const readyScope = useCallback(async () => {
+    const scope = await scopeForUser();
+    return await readActiveDek(scope) ? scope : bootstrapOfflineVault(user);
+  }, [scopeForUser, user]);
+
+  useEffect(() => {
+    let active = true;
+    void scopeForUser().then((scope) => readInventorySnapshot<Location>(scope, '__locations__'))
+      .then((cached) => { if (active && cached) { locations.restoreData(cached); setOfflineCopy(true); } })
+      .catch((error) => { if (active) setNotice(`No se pudo abrir la copia de ubicaciones: ${(error as Error).message}`); });
+    return () => { active = false; };
+  }, [scopeForUser, locations.restoreData]);
+  useEffect(() => {
+    if (!locationId && locations.data?.[0]) setLocationId(locations.data[0].id);
+  }, [locationId, locations.data]);
+  useEffect(() => {
+    if (!locationId) return;
+    let active = true;
+    void scopeForUser().then((scope) => readInventorySnapshot<Inventory>(scope, locationId))
+      .then((cached) => { if (active && cached) { inventory.restoreData(cached); setOfflineCopy(true); } })
+      .catch((error) => { if (active) setNotice(`No se pudo abrir la copia de inventario: ${(error as Error).message}`); });
+    return () => { active = false; };
+  }, [locationId, scopeForUser, inventory.restoreData]);
+  useEffect(() => {
+    if (inventory.data && !inventory.busy && !inventory.failure) setOfflineCopy(false);
+  }, [inventory.data, inventory.busy, inventory.failure]);
+  useEffect(() => {
+    if (locations.data && !locations.failure)
+      void readyScope().then((scope) => saveInventorySnapshot(scope, '__locations__', locations.data!))
+        .then(() => setNotice((current) => current.startsWith('No se pudo abrir la copia') ? '' : current))
+        .catch((error) => setNotice(`No se pudo guardar la copia offline: ${(error as Error).message}`));
+  }, [locations.data, locations.failure, readyScope]);
+  useEffect(() => {
+    if (!ApiProblem.isNetwork(locations.failure)) return;
+    void scopeForUser()
+      .then((scope) => readInventorySnapshot<Location>(scope, '__locations__'))
+      .then((cached) => { if (cached) { locations.setData(cached); locations.setError(''); setOfflineCopy(true); } })
+      .catch((error) => locations.setError((error as Error).message));
+  }, [locations.failure, scopeForUser]);
+  useEffect(() => {
+    if (!locationId || !inventory.data || inventory.failure) return;
+    void readyScope().then((scope) => saveInventorySnapshot(scope, locationId, inventory.data!))
+      .then(() => setNotice((current) => current.startsWith('No se pudo abrir la copia') ? '' : current))
+      .catch((error) => setNotice(`No se pudo guardar la copia offline: ${(error as Error).message}`));
+  }, [locationId, inventory.data, inventory.failure, readyScope]);
+  useEffect(() => {
+    if (!locationId || !ApiProblem.isNetwork(inventory.failure)) return;
+    void scopeForUser()
+      .then((scope) => readInventorySnapshot<Inventory>(scope, locationId))
+      .then((cached) => { if (cached) { inventory.setData(cached); inventory.setError(''); setOfflineCopy(true); } })
+      .catch((error) => inventory.setError((error as Error).message));
+  }, [locationId, inventory.failure, scopeForUser]);
+
+  const count = async () => {
+    if (!counting || !locationId) return;
+    if (!user.permissions.includes('inventario:gestionar')) {
+      inventory.setError('Tu cuenta solo puede consultar inventario.');
+      return;
+    }
+    const quantity = Number(observed);
+    if (!countFitsReserved(quantity, counting.reservado, counting.comprometido)) {
+      inventory.setError('El conteo no puede ser menor que el stock reservado y comprometido.');
+      return;
+    }
+    inventory.setError('');
+    setNotice('');
+    try {
+      const scope = await readyScope();
+      const repository = new SQLiteIntentRepository(await openOfflineDatabase());
+      const existing = await repository.listIntents(scope);
+      if (hasUnresolvedCount(existing, locationId, counting.variante_id))
+        throw new Error('Ya existe un conteo pendiente para esta prenda y ubicación. Revísalo en Sincronización.');
+      const operationId = randomUUID();
+      const payload = JSON.stringify({ locationId, variantId: counting.variante_id, observedPhysical: quantity, reason: reason.trim() });
+      await repository.enqueue(
+        { operationId, scope, kind: 'STOCK_COUNT', payload, baseVersion: counting.version, dependsOn: [], state: 'PENDING' },
+        { scope, entityId: `inventory:${locationId}:${counting.variante_id}`, version: counting.version, payload },
+      );
+      setCounting(null); setObserved('');
+      try {
+        await syncOfflineQueue(repository, scope);
+        const result = (await repository.listIntents(scope)).find((item) => item.operationId === operationId);
+        if (result?.state === 'APPLIED') {
+          setOfflineCopy(false);
+          setNotice('Conteo registrado en el servidor.');
+          await inventory.load();
+        } else if (result?.state === 'CONFLICT') {
+          setNotice('El saldo cambió en el servidor. Revisa el conteo en Sincronización.');
+        } else if (result?.state === 'REJECTED') {
+          setNotice('El servidor rechazó el conteo. Revísalo en Sincronización.');
+        } else {
+          setNotice('Conteo guardado en el dispositivo. Sincronízalo cuando tengas conexión.');
+        }
+      } catch (syncError) {
+        setNotice(ApiProblem.isNetwork(syncError)
+          ? 'Sin conexión: el conteo quedó guardado en el dispositivo para sincronizarlo después.'
+          : `El conteo quedó guardado, pero no se pudo sincronizar: ${(syncError as Error).message}`);
+      }
+    } catch (error) { inventory.setError((error as Error).message); }
+  };
+
+  return <>
+    <Block title="Ubicación">
+      {locations.error ? <Notice>{locations.error}</Notice> : null}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+        {(locations.data || []).map((item) => <Pressable key={item.id} style={[styles.chip, locationId === item.id && styles.chipActive]} onPress={() => { setLocationId(item.id); setCounting(null); }}><Text style={[styles.chipText, locationId === item.id && styles.chipTextActive]}>{item.nombre}</Text></Pressable>)}
+      </ScrollView>
+    </Block>
+    {offlineCopy ? <Notice>Mostrando una copia local. Los saldos pueden cambiar en el servidor.</Notice> : null}
+    {notice ? <Notice>{notice}</Notice> : null}
+    {counting ? <Block title={`Conteo · ${counting.variante.producto.nombre}`}>
+      <Field value={observed} onChangeText={setObserved} placeholder="Cantidad física observada" keyboardType="numeric" />
+      <Field value={reason} onChangeText={setReason} placeholder="Motivo" />
+      <Action label="Confirmar conteo" disabled={!user.permissions.includes('inventario:gestionar') || !/^\d+$/.test(observed) || reason.trim().length < 5} onPress={() => void count()} />
+    </Block> : null}
+    <Block title="Existencias">
+      <Loading busy={inventory.busy && Boolean(locationId)} />
+      {inventory.error ? <Notice>{inventory.error}</Notice> : null}
+      {inventory.data?.map((item) => <Pressable key={item.id} style={styles.rowPress} onPress={() => { setCounting(item); setObserved(String(item.fisico)); }}><Row title={item.variante.producto.nombre} detail={`${item.variante.sku} · ${item.variante.color}/${item.variante.talla} · Disponible: ${item.disponible}${item.alertaStock ? ' · Stock bajo' : ''}`} /></Pressable>)}
+    </Block>
+  </>;
 }
 
 function TeamModule() {

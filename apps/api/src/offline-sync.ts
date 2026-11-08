@@ -69,14 +69,14 @@ export class OfflineSyncService {
   constructor(@Inject(Db) private readonly db: Db) {}
 
   private async ensureTables() {
-    await this.db.$executeRawUnsafe(`CREATE TABLE IF NOT EXISTS offline_sync_receipt (
+    await this.db.$executeRaw`CREATE TABLE IF NOT EXISTS offline_sync_receipt (
       operation_id uuid PRIMARY KEY, user_id uuid NOT NULL, device_id uuid NOT NULL,
       status varchar(12) NOT NULL, server_version integer, message varchar(500), created_at timestamptz NOT NULL DEFAULT now()
-    );
-    CREATE TABLE IF NOT EXISTS offline_entity_version (
+    )`;
+    await this.db.$executeRaw`CREATE TABLE IF NOT EXISTS offline_entity_version (
       entity_type varchar(40) NOT NULL, entity_id uuid NOT NULL, version integer NOT NULL,
       PRIMARY KEY (entity_type, entity_id)
-    )`);
+    )`;
   }
 
   private async stored(userId: string, deviceId: string, operationId: string): Promise<Receipt | null> {
@@ -96,11 +96,19 @@ export class OfflineSyncService {
       ON CONFLICT (operation_id) DO NOTHING`;
   }
 
-  private async catalog(user: Identity, item: OfflineOperation) {
+  private async catalog(user: Identity, item: OfflineOperation, deviceId: string) {
     requirePermission(user, 'catalogo:gestionar');
     const data = catalogPayload.parse(JSON.parse(item.payload));
     const archived = data.archived || data.product.archived;
     return this.db.$transaction(async (tx) => {
+      const applied = async (version: number) => {
+        const inserted = await tx.$executeRaw`
+          INSERT INTO offline_sync_receipt (operation_id,user_id,device_id,status,server_version,message)
+          VALUES (${item.operationId}::uuid,${user.id}::uuid,${deviceId}::uuid,'APPLIED',${version},NULL)
+          ON CONFLICT (operation_id) DO NOTHING`;
+        if (inserted !== 1) throw new ConflictException('El identificador de la operación ya existe.');
+        return version;
+      };
       if (item.kind === 'CATALOG_CREATE') {
         if (item.baseVersion !== null) throw new BadRequestException('Una alta offline no puede declarar versión base.');
         const category = await tx.categoria.findUnique({ where: { id: data.product.categoriaId } });
@@ -143,7 +151,7 @@ export class OfflineSyncService {
         await tx.$executeRaw`
           INSERT INTO offline_entity_version (entity_type,entity_id,version)
           VALUES ('PRODUCT',${data.product.id}::uuid,1)`;
-        return 1;
+        return applied(1);
       }
 
       const versionRows = await tx.$queryRaw<{ version: number }[]>`
@@ -168,11 +176,11 @@ export class OfflineSyncService {
       const next = actual + 1;
       await tx.$executeRaw`
         UPDATE offline_entity_version SET version=${next} WHERE entity_type='PRODUCT' AND entity_id=${existing.id}::uuid`;
-      return next;
+      return applied(next);
     });
   }
 
-  private async stockCount(user: Identity, item: OfflineOperation) {
+  private async stockCount(user: Identity, item: OfflineOperation, deviceId: string) {
     requirePermission(user, 'inventario:gestionar');
     const data = stockPayload.parse(JSON.parse(item.payload));
     if (item.baseVersion === null) throw new BadRequestException('El conteo offline requiere la versión de inventario.');
@@ -205,6 +213,11 @@ export class OfflineSyncService {
           creado_en: new Date(),
         },
       });
+      const inserted = await tx.$executeRaw`
+        INSERT INTO offline_sync_receipt (operation_id,user_id,device_id,status,server_version,message)
+        VALUES (${item.operationId}::uuid,${user.id}::uuid,${deviceId}::uuid,'APPLIED',${updated.version},NULL)
+        ON CONFLICT (operation_id) DO NOTHING`;
+      if (inserted !== 1) throw new ConflictException('El identificador de la operación ya existe.');
       return updated.version;
     });
   }
@@ -220,11 +233,18 @@ export class OfflineSyncService {
         continue;
       }
       try {
-        const serverVersion = item.kind === 'STOCK_COUNT' ? await this.stockCount(user, item) : await this.catalog(user, item);
+        const serverVersion = item.kind === 'STOCK_COUNT'
+          ? await this.stockCount(user, item, input.deviceId)
+          : await this.catalog(user, item, input.deviceId);
         const receipt: Receipt = { operationId: item.operationId, status: 'APPLIED', serverVersion };
         await this.save(user.id, input.deviceId, receipt);
-        receipts.push(receipt);
+        receipts.push((await this.stored(user.id, input.deviceId, item.operationId)) ?? receipt);
       } catch (reason) {
+        const completed = await this.stored(user.id, input.deviceId, item.operationId);
+        if (completed) {
+          receipts.push(completed);
+          continue;
+        }
         if (!(reason instanceof HttpException)) throw reason;
         const receipt: Receipt = {
           operationId: item.operationId,
@@ -232,7 +252,7 @@ export class OfflineSyncService {
           message: reason.message,
         };
         await this.save(user.id, input.deviceId, receipt);
-        receipts.push(receipt);
+        receipts.push((await this.stored(user.id, input.deviceId, item.operationId)) ?? receipt);
       }
     }
     return { receipts };

@@ -51,7 +51,7 @@ export function AdminNavigator({ user, home }: Props) {
       ) : active === 'sync' ? (
         <SyncScreen user={user} />
       ) : (
-        <AdminOperationsScreen module={active} />
+        <AdminOperationsScreen module={active} user={user} />
       )}
     </SafeAreaView>
   );

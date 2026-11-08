@@ -1,24 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { randomUUID } from 'expo-crypto';
+import { api } from './api';
 import type { Identity } from './types';
 import { getOfflineDeviceId } from './offline/device';
 import { openOfflineDatabase } from './offline/db';
 import { SQLiteIntentRepository } from './offline/sqliteIntentRepository';
 import { syncOfflineQueue } from './offline/syncQueue';
 import type { OfflineIntent } from './offline/intentRepository';
+import { countFitsReserved, parseStockCount, type StockCountPayload } from './offline/stockCountReview';
 
-const stateLabels: Record<string, string> = { PENDING: 'Pendientes', SENDING: 'Enviando', CONFLICT: 'Conflictos', BLOCKED: 'Bloqueadas', SYNCED: 'Completadas' };
+const stateLabels: Record<string, string> = { PENDING: 'Pendientes', SENDING: 'Enviando', APPLIED: 'Aplicadas', CONFLICT: 'Conflictos', REJECTED: 'Rechazadas', BLOCKED: 'Bloqueadas', SUPERSEDED: 'Reemplazadas' };
+type ServerStock = { variante_id: string; fisico: number; reservado: number; comprometido: number; version: number; variante: { producto: { nombre: string } } };
+type StockReview = { intent: OfflineIntent; count: StockCountPayload; server: ServerStock };
 
 export function SyncScreen({ user }: { user: Identity }) {
   const { width } = useWindowDimensions();
   const [items, setItems] = useState<OfflineIntent[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [review, setReview] = useState<StockReview | null>(null);
   const scope = useCallback(async () => user.tenant ? ({ tenantId: user.tenant.id, actorId: user.id, deviceId: await getOfflineDeviceId() }) : null, [user]);
   const load = useCallback(async () => {
     const current = await scope();
     if (!current) return;
-    setItems(await new SQLiteIntentRepository(await openOfflineDatabase()).listIntents(current));
+    try { setItems(await new SQLiteIntentRepository(await openOfflineDatabase()).listIntents(current)); }
+    catch (reason) { setError((reason as Error).message); }
   }, [scope]);
   useEffect(() => { void load(); }, [load]);
   const send = async () => {
@@ -30,6 +37,46 @@ export function SyncScreen({ user }: { user: Identity }) {
       await load();
     } catch (reason) { setError((reason as Error).message); }
     finally { setBusy(false); }
+  };
+  const inspect = async (intent: OfflineIntent) => {
+    if (intent.kind !== 'STOCK_COUNT' || intent.state !== 'CONFLICT') return;
+    setBusy(true); setError(''); setReview(null);
+    try {
+      const count = parseStockCount(intent.payload);
+      if (!count)
+        throw new Error('El conteo guardado no tiene un formato válido.');
+      const stock = await api<ServerStock[]>(`/locations/${count.locationId}/inventory`);
+      const server = stock.find((item) => item.variante_id === count.variantId);
+      if (!server) throw new Error('La prenda ya no aparece en el inventario de la ubicación.');
+      setReview({ intent, count, server });
+    } catch (reason) { setError((reason as Error).message); }
+    finally { setBusy(false); }
+  };
+  const retryCount = async () => {
+    if (!review) return;
+    if (!user.permissions.includes('inventario:gestionar')) {
+      setError('Tu cuenta solo puede consultar inventario.');
+      return;
+    }
+    const { intent, count, server } = review;
+    if (!countFitsReserved(count.observedPhysical, server.reservado, server.comprometido)) {
+      setError('El conteo es menor que las unidades reservadas y comprometidas. Haz otro conteo físico.');
+      return;
+    }
+    setBusy(true); setError('');
+    try {
+      const current = await scope();
+      if (!current) throw new Error('Falta la tienda de la sesión.');
+      const repository = new SQLiteIntentRepository(await openOfflineDatabase());
+      await repository.rebaseStockCount(current, intent.operationId, randomUUID(), server.version);
+      setReview(null);
+      await load();
+      await syncOfflineQueue(repository, current);
+      await load();
+    } catch (reason) {
+      setError((reason as Error).message);
+      await load();
+    } finally { setBusy(false); }
   };
   const counts = useMemo(() => items.reduce<Record<string, number>>((all, item) => ({ ...all, [item.state]: (all[item.state] || 0) + 1 }), {}), [items]);
   const pending = (counts.PENDING || 0) + (counts.SENDING || 0) + (counts.BLOCKED || 0);
@@ -53,11 +100,23 @@ export function SyncScreen({ user }: { user: Identity }) {
     </View>
     {error ? <Text style={styles.error}>{error}</Text> : null}
     {conflicts > 0 ? <View style={styles.conflictBanner}><Text style={styles.conflictTitle}>Hay {conflicts} {conflicts === 1 ? 'conflicto que requiere' : 'conflictos que requieren'} revisión</Text><Text style={styles.conflictCopy}>Estas operaciones no se enviarán hasta que se resuelva el conflicto en el sistema.</Text></View> : null}
-    {items.filter((item) => item.state === 'CONFLICT' || item.state === 'BLOCKED').map((item) => <View key={item.operationId} style={styles.issue}><View><Text style={styles.issueTitle}>{item.state === 'CONFLICT' ? 'Conflicto detectado' : 'Operación bloqueada'}</Text><Text style={styles.issueCopy}>{item.kind}</Text></View><Text style={styles.issueId}>{item.operationId.slice(0, 8)}</Text></View>)}
+    {items.filter((item) => ['CONFLICT', 'REJECTED', 'BLOCKED'].includes(item.state)).map((item) => <Pressable key={item.operationId} accessibilityRole="button" accessibilityLabel={`Revisar ${item.kind}`} disabled={busy || item.kind !== 'STOCK_COUNT' || item.state !== 'CONFLICT'} onPress={() => void inspect(item)} style={styles.issue}><View><Text style={styles.issueTitle}>{item.state === 'CONFLICT' ? 'Conflicto detectado' : item.state === 'REJECTED' ? 'Operación rechazada' : 'Operación bloqueada'}</Text><Text style={styles.issueCopy}>{item.kind === 'STOCK_COUNT' ? 'Conteo físico' : item.kind}{item.kind === 'STOCK_COUNT' && item.state === 'CONFLICT' ? ' · Toca para revisar' : ''}</Text></View><Text style={styles.issueId}>{item.operationId.slice(0, 8)}</Text></Pressable>)}
+    {review ? <View style={styles.review}>
+      <Text style={styles.reviewTitle}>Revisar conteo de {review.server.variante.producto.nombre}</Text>
+      <Text style={styles.reviewCopy}>Conteo guardado: {review.count.observedPhysical} u. · Versión anterior: {review.intent.baseVersion}</Text>
+      <Text style={styles.reviewCopy}>Servidor: {review.server.fisico} u. · Versión: {review.server.version} · Reservadas/comprometidas: {review.server.reservado + review.server.comprometido} u.</Text>
+      <Text style={styles.reviewCopy}>El intento anterior se conservará. Reintenta solo si esta cantidad sigue siendo la observada físicamente.</Text>
+      <Pressable accessibilityRole="button" disabled={busy || !user.permissions.includes('inventario:gestionar') || !countFitsReserved(review.count.observedPhysical, review.server.reservado, review.server.comprometido)} onPress={() => void retryCount()} style={[styles.button, busy && styles.buttonBusy]}><Text style={styles.buttonText}>Reintentar este conteo</Text></Pressable>
+      <Pressable accessibilityRole="button" onPress={() => setReview(null)}><Text style={styles.reviewCancel}>Conservar para revisar después</Text></Pressable>
+    </View> : null}
   </ScrollView>;
 }
 
 const styles = StyleSheet.create({
+  review: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#d9e1d8', borderRadius: 14, padding: 15, gap: 8 },
+  reviewTitle: { color: '#173e2a', fontSize: 14, fontWeight: '900' },
+  reviewCopy: { color: '#58665c', fontSize: 11, lineHeight: 16 },
+  reviewCancel: { color: '#58665c', fontSize: 11, fontWeight: '700', paddingVertical: 10 },
   page: { padding: 20, paddingBottom: 46, gap: 14, flexGrow: 1, backgroundColor: '#fbfaf6' }, pageWide: { width: 720, alignSelf: 'center' },
   heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, eyebrow: { color: '#748278', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 }, title: { color: '#173e2a', fontSize: 29, fontWeight: '900', marginTop: 3 }, intro: { color: '#607066', fontSize: 12, lineHeight: 18, maxWidth: 390 },
   readyBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 13, paddingHorizontal: 9, paddingVertical: 6, backgroundColor: '#e6f0e7' }, readyDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4e9167' }, readyText: { color: '#2f7047', fontSize: 8, fontWeight: '900', letterSpacing: 1 },
