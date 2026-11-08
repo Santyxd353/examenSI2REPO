@@ -11,11 +11,12 @@ import {
   View,
 } from 'react-native';
 import { api } from './api';
-import type { MobileBusinessModule } from './modules/registry';
+import { canOpenSales, canOpenOrders, type MobileBusinessModule } from './modules/registry';
 import type { Identity } from './types';
 import { OfflineCatalogModule, OfflineInventoryModule } from './modules/OfflineAdminModules';
 import { ReportsWorkspace } from './modules/reports/ReportsWorkspace';
 import { AnalysisWorkspace } from './modules/analysis/AnalysisWorkspace';
+import { PointOfSaleScreen } from './modules/pointOfSale/PointOfSaleScreen';
 
 type Props = {
   module: Exclude<MobileBusinessModule, 'home' | 'sync' | 'business'>;
@@ -67,7 +68,7 @@ const names: Record<Props['module'], { eyebrow: string; title: string; copy: str
   'sales-orders': {
     eyebrow: 'OPERACIÓN COMERCIAL',
     title: 'Ventas y pedidos',
-    copy: 'Revisa los pedidos recientes confirmados y su estado operativo.',
+    copy: 'Registra ventas de mostrador y gestiona pedidos según tus permisos.',
   },
   team: {
     eyebrow: 'PERSONAL',
@@ -101,7 +102,7 @@ export function AdminOperationsScreen({ module, user }: Props) {
       {module === 'locations' ? <LocationsModule /> : null}
       {module === 'inventory' ? <OfflineInventoryModule user={user} /> : null}
       {module === 'team' ? <TeamModule /> : null}
-      {module === 'sales-orders' ? <OrdersModule /> : null}
+      {module === 'sales-orders' ? <SalesOrdersWorkspace user={user} /> : null}
       {module === 'reports-analysis' ? <ReportsWorkspace user={user} /> : null}
       {module === 'analysis' ? <AnalysisWorkspace user={user} /> : null}
     </ScrollView>
@@ -374,6 +375,46 @@ function TeamModule() {
         ))}
       </Block>
     </>
+  );
+}
+
+function SalesOrdersWorkspace({ user }: { user: Identity }) {
+  const sales = canOpenSales(user),
+    orders = canOpenOrders(user);
+  const [requested, setRequested] = useState<'sales' | 'orders'>(sales ? 'sales' : 'orders');
+  const active = requested === 'sales' && sales ? 'sales' : orders ? 'orders' : 'sales';
+  return (
+    <View style={{ gap: 15 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+        {sales ? (
+          <Pressable
+            accessibilityRole="tab"
+            accessibilityLabel="Venta de mostrador"
+            accessibilityState={{ selected: active === 'sales' }}
+            onPress={() => setRequested('sales')}
+            style={[styles.action, { minHeight: 44 }]}
+          >
+            <Text style={styles.actionText}>Vender</Text>
+          </Pressable>
+        ) : null}
+        {orders ? (
+          <Pressable
+            accessibilityRole="tab"
+            accessibilityLabel="Gestionar pedidos"
+            accessibilityState={{ selected: active === 'orders' }}
+            onPress={() => setRequested('orders')}
+            style={[styles.action, { minHeight: 44 }]}
+          >
+            <Text style={styles.actionText}>Pedidos</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {active === 'sales' && sales ? (
+        <PointOfSaleScreen user={user} />
+      ) : orders ? (
+        <OrdersModule />
+      ) : null}
+    </View>
   );
 }
 

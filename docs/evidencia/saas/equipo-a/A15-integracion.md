@@ -44,10 +44,10 @@ Resultados observados hasta este avance:
 | Comprobación | Resultado |
 | --- | --- |
 | Contratos y motor compartido | 25 pruebas aprobadas |
-| Unitarios móviles, incluido SQLite real y WebCrypto en Node | 69 pruebas aprobadas |
+| Unitarios móviles, incluido SQLite real y WebCrypto en Node | 74 pruebas aprobadas |
 | TypeScript móvil | Aprobado |
 | Compatibilidad de dependencias Expo | Aprobada |
-| Exportación Android/Hermes | Aprobada: 1192 módulos, bundle de aproximadamente 3,8 MB |
+| Exportación Android/Hermes | Aprobada: 1195 módulos, bundle de aproximadamente 3,8 MB |
 | Compilación API/web | Aprobada |
 | Suite completa API tras integrar pagos | 49 suites y 242 pruebas aprobadas, 462 segundos |
 | Pagos y regresión de comercio | 3 suites y 18 pruebas aprobadas; QR y Stripe con proveedor simulado |
@@ -56,6 +56,7 @@ Resultados observados hasta este avance:
 | Recorrido Chromium de reportes | Aprobado: corte, propuesta de voz con proveedor simulado, revisión, diseño guardado, reinicio offline, filtros, CSV y PDF |
 | Administración web | Aprobada: módulos, ancho móvil, venta persistida y confirmación visual |
 | Compra QR en Chromium | Aprobada: escritorio/390 px, confirmación desde APP, reapertura, un pago y una salida de stock |
+| Mostrador con flujo Android contra API real | Aprobado en la suite de aceptación: respuesta perdida, reapertura, un pedido TIENDA y aparición única en reportes junto con WEB/APP |
 | Uso de APK en dispositivo | Pendiente; no ejecutado por este agente |
 
 Los unitarios criptográficos usan AES-GCM de WebCrypto y SQLite de Node para comprobar la persistencia. La implementación Android usa Expo Crypto/SecureStore/SQLite y todavía requiere la comprobación nativa correspondiente.
@@ -85,7 +86,6 @@ node scripts/check-saas-integrated.cjs
 ## Pendientes antes de G6
 
 - Cerrar A06/B14: regeneración de avatar sin fotos purgadas y evidencia de inferencia válida desde fotos reales autorizadas.
-- Completar B13 en Android: el módulo «Ventas y pedidos» actual permite consultar y avanzar pedidos; todavía falta el formulario de venta de mostrador que invoque `/sales`. La venta de mostrador web y su registro ya están verificados.
 - Aceptación en dispositivo: cierre y reapertura, pérdida de red, claves, cámara, audio, conflictos y dashboards offline. La compilación Hermes no sustituye estas pruebas.
 - Revisión final de la rama y trazabilidad RF/CU. Las métricas analíticas siguen siendo de demostración sintética; su calidad y limitaciones se conservan en A13.
 - Resolver antes de publicar las alertas reales de dependencias: la auditoría de producción detectó seis entradas de API (cuatro altas y dos moderadas, sin críticas) y cuatro moderadas en dependencias de herramientas Expo. Se revisarán las versiones compatibles; no se aplicó `audit fix --force` ni se cambió de versión mayor por una sugerencia automática.

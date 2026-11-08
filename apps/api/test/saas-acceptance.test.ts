@@ -8,6 +8,12 @@ import { defaultMobileReport } from '../../mobile/src/modules/reports/reportDefa
 import type { OfflineIntent } from '../../mobile/src/offline/intentRepository';
 import { businessSubscriptionView } from '../../mobile/src/modules/businessSubscription';
 import { parseAnalysisJobs } from '../../mobile/src/modules/analysis/analysisResults';
+import {
+  PointOfSaleWorkflow,
+  type SalePayload,
+  type StoredSale,
+} from '../../mobile/src/modules/pointOfSale/workflow';
+import { ApiProblem } from '../../mobile/src/errors/ApiProblem';
 
 let a: Awaited<ReturnType<typeof commerceFixture>>, b: Awaited<ReturnType<typeof commerceFixture>>;
 const digest = async (text: string) => createHash('sha256').update(text).digest('hex');
@@ -107,16 +113,39 @@ test('WEB, APP y mostrador aparecen una sola vez en el dashboard móvil descarga
       (await a.http('post', `/commerce/orders/${order.body.id}/payment`, input, channel)).body.id,
     ).toBe(paid.body.id);
   }
-  const input = {
+  const input: SalePayload = {
     locationId: item.locationId,
     paymentMethod: 'QR',
-    idempotency: randomUUID(),
     items: [{ variantId: item.variantId, quantity: 1 }],
   };
-  const sale = await a.http('post', '/sales', input);
-  expect(sale.status).toBe(201);
-  ids.push(sale.body.id);
-  expect((await a.http('post', '/sales', input)).body.id).toBe(sale.body.id);
+  let savedSale: StoredSale | null = null,
+    lostReply = true;
+  const posIO = {
+    guard: () => {},
+    uuid: randomUUID,
+    read: async () => savedSale,
+    save: async (value: StoredSale) => {
+      savedSale = JSON.parse(JSON.stringify(value));
+    },
+    clear: async () => {
+      savedSale = null;
+    },
+    send: async (body: SalePayload & { idempotency: string }) => {
+      const response = await a.http('post', '/sales', body, 'APP');
+      expect(response.status).toBe(201);
+      if (lostReply) {
+        lostReply = false;
+        throw ApiProblem.network();
+      }
+      return response.body;
+    },
+  };
+  await expect(new PointOfSaleWorkflow(posIO).submit(input)).rejects.toMatchObject({ status: 0 });
+  const sale = await new PointOfSaleWorkflow(posIO).submit(input);
+  ids.push(sale.id);
+  expect(
+    (await a.http('post', '/sales', { ...input, idempotency: sale.idempotencia }, 'APP')).body.id,
+  ).toBe(sale.id);
   const orders = await a.http('get', '/admin/orders');
   expect(orders.body.filter((row: { id: string }) => ids.includes(row.id))).toHaveLength(3);
   const data = await downloaded(a),

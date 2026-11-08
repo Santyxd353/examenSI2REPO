@@ -16,6 +16,7 @@ export type ModuleDefinition = Readonly<{
   id: MobileBusinessModule;
   label: string;
   permission: string;
+  alternatives?: readonly string[];
   description: string;
 }>;
 
@@ -37,6 +38,7 @@ export const mobileBusinessModules: readonly ModuleDefinition[] = [
     id: 'sales-orders',
     label: 'Ventas y pedidos',
     permission: 'ventas:registrar',
+    alternatives: ['pedidos:gestionar'],
     description: 'Mostrador y pedidos',
   },
   {
@@ -80,9 +82,16 @@ export const mobileBusinessModules: readonly ModuleDefinition[] = [
 export function modulesForIdentity(identity: Identity): ModuleDefinition[] {
   const grants = new Set(identity.permissions);
   return mobileBusinessModules.filter(
-    (module) => !module.permission || grants.has(module.permission),
+    (module) =>
+      !module.permission ||
+      grants.has(module.permission) ||
+      module.alternatives?.some((permission) => grants.has(permission)),
   );
 }
+export const canOpenSales = (identity: Pick<Identity, 'permissions'>) =>
+  identity.permissions.includes('ventas:registrar');
+export const canOpenOrders = (identity: Pick<Identity, 'permissions'>) =>
+  identity.permissions.includes('pedidos:gestionar');
 
 export function canUseBusinessWorkspace(identity: Identity) {
   return modulesForIdentity(identity).some((module) => module.id !== 'home');

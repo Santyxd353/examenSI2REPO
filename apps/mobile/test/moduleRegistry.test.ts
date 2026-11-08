@@ -1,5 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { canOpenSales, canOpenOrders } from '../src/modules/registry';
+
+test('ventas y pedidos admite permisos independientes sin mostrar acciones no autorizadas', () => {
+  const orderUser = { permissions: ['pedidos:gestionar'] } as any;
+  const seller = { permissions: ['ventas:registrar'] } as any;
+  assert.equal(canOpenOrders(orderUser), true);
+  assert.equal(canOpenSales(orderUser), false);
+  assert.equal(canOpenSales(seller), true);
+  assert.equal(canOpenOrders(seller), false);
+  assert.ok(modulesForIdentity(orderUser).some((row) => row.id === 'sales-orders'));
+});
 import {
   modulesForIdentity,
   canUseBusinessWorkspace,
