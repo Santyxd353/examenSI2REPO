@@ -41,7 +41,7 @@ Compose valida con `docker compose -f infra/vm/compose.yml config --quiet` usand
 ## Pendientes de esta fase
 
 - Construir y arrancar la imagen Linux desde cero. El daemon Docker local no estaba disponible; no se declara esa prueba aprobada.
-- Ensayar respaldo/restauración de control, al menos dos tiendas, archivos privados y material de recuperación de claves; adaptar las conexiones al destino.
+- Validar la recuperación en el destino definitivo, con sus roles, versión PostgreSQL y volúmenes. El [ensayo local de control, dos tiendas, archivos y claves](A16-recuperacion-local.md) ya aprobó; no sustituye el respaldo real ni la restauración de la nueva VM.
 - Verificar identidad, versionCode y certificado del APK final; completar aceptación en dispositivo.
 - Configurar y probar proveedores TEST/IA con las cuentas autorizadas, verificar HTTPS y salud sobre la nueva VM cuando se habilite esa fase.
 - Cerrar A06/B14, revisión final y trazabilidad documental antes de promover el candidato.
