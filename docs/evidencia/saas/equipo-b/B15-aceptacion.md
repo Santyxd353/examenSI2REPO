@@ -24,7 +24,7 @@ del API y no se presentan como una ejecución física inexistente.
 | --- | --- | --- |
 | Instalación y navegación | Aprobado | Se abrieron Inicio, Inventario, Ventas y pedidos, Reportes y Mi negocio sin cierres ni excepciones fatales. |
 | Reinicio de proceso y ausencia de API | Aprobado | Tras quitar el túnel USB y reiniciar la app, el dashboard cifrado y el catálogo de 12 prendas continuaron disponibles. |
-| Reinicio físico | Aprobado con desbloqueo requerido | El paquete y sus datos persistieron al reiniciar el TECNO; Android exige desbloquear el dispositivo para abrir almacenamiento protegido. |
+| Reinicio físico y recuperación de sesión | Aprobado | Tras el reinicio y el desbloqueo del TECNO KL4, Lúmina QA arrancó en frío en 2,5 s. Inicio mostró «SESIÓN ACTIVA» y el dashboard de ventas. La API local respondió por el puerto 3018 y el túnel USB estaba activo. |
 | Cámara y AR | Aprobado | Permiso concedido; abrió la vista AR nativa, procesó cámara local y mostró el aviso de iluminación sin fallos. |
 | Dictado de reportes | Aprobado | El módulo nativo usó micrófono durante 5 s y devolvió el estado controlado «No se reconoció una frase» al no hablar. |
 | Exportación CSV/PDF | Aprobado | Ambos archivos se generaron y Android abrió el selector de compartir con su nombre y extensión correctos. |
