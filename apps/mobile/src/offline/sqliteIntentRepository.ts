@@ -118,6 +118,34 @@ export class SQLiteIntentRepository {
     });
   }
 
+  /** Conserva la edición en conflicto y crea un nuevo intento contra la versión revisada. */
+  async rebaseCatalog(scope: OfflineIntent['scope'], oldId: string, nextId: string, baseVersion: number) {
+    if (!Number.isInteger(baseVersion) || baseVersion < 1) throw new Error('Versión de catálogo inválida.');
+    const local = await this.listIntents(scope);
+    const old = local.find((item) => item.operationId === oldId);
+    if (!old || !['CATALOG_UPDATE', 'CATALOG_ARCHIVE'].includes(old.kind) || old.state !== 'CONFLICT')
+      throw new Error('El cambio de catálogo ya no está disponible para revisión.');
+    const dek = await readActiveDek(scope);
+    if (!dek) throw new Error('El almacén offline está bloqueado para esta sesión.');
+    const next = { ...old, operationId: nextId, baseVersion, dependsOn: [], state: 'PENDING' as const };
+    const sealed = JSON.stringify(await sealJson(next.payload, dek, payloadAad(next)));
+    await this.database.withExclusiveTransactionAsync(async (transaction) => {
+      const changed = await transaction.runAsync(
+        `UPDATE offline_intent SET state='SUPERSEDED'
+         WHERE operation_id=? AND tenant_id=? AND actor_id=? AND device_id=? AND state='CONFLICT'`,
+        oldId, scope.tenantId, scope.actorId, scope.deviceId,
+      );
+      if (changed.changes !== 1) throw new Error('El conflicto cambió durante la revisión.');
+      await transaction.runAsync(
+        `INSERT INTO offline_intent
+          (operation_id,tenant_id,actor_id,device_id,kind,payload,base_version,depends_on,state,created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        nextId, scope.tenantId, scope.actorId, scope.deviceId, next.kind,
+        sealed, baseVersion, '[]', next.state, new Date().toISOString(),
+      );
+    });
+  }
+
   async replaceStates(scope: OfflineIntent['scope'], intents: readonly OfflineIntent[]) {
     await this.database.withExclusiveTransactionAsync(async (transaction) => {
       for (const intent of intents) {
@@ -127,6 +155,40 @@ export class SQLiteIntentRepository {
              AND state NOT IN ('APPLIED','REJECTED','SUPERSEDED')`,
           intent.state,
           intent.operationId,
+          scope.tenantId,
+          scope.actorId,
+          scope.deviceId,
+        );
+      }
+    });
+  }
+
+  async applyParentVersion(
+    scope: OfflineIntent['scope'],
+    parentOperationId: string,
+    serverVersion: number,
+  ) {
+    if (!Number.isInteger(serverVersion) || serverVersion < 1) return;
+    const intents = await this.listIntents(scope);
+    const children = intents.filter((intent) =>
+      intent.state === 'PENDING' && intent.baseVersion === null && intent.dependsOn.includes(parentOperationId));
+    await this.database.withExclusiveTransactionAsync(async (transaction) => {
+      await transaction.runAsync(
+        `UPDATE offline_intent SET base_version=?
+         WHERE operation_id=? AND tenant_id=? AND actor_id=? AND device_id=? AND state='APPLIED'`,
+        serverVersion,
+        parentOperationId,
+        scope.tenantId,
+        scope.actorId,
+        scope.deviceId,
+      );
+      for (const child of children) {
+        await transaction.runAsync(
+          `UPDATE offline_intent SET base_version=?
+           WHERE operation_id=? AND tenant_id=? AND actor_id=? AND device_id=?
+             AND state='PENDING' AND base_version IS NULL`,
+          serverVersion,
+          child.operationId,
           scope.tenantId,
           scope.actorId,
           scope.deviceId,

@@ -15,3 +15,9 @@ export function stockCountIntent(base: StockSnapshot, observedPhysical: number) 
   if (!Number.isInteger(observedPhysical) || observedPhysical < 0) throw new Error('El conteo físico debe ser entero y no negativo.');
   return { kind: 'STOCK_COUNT' as const, baseVersion: base.version, observedPhysical };
 }
+
+export function stockDeltaIntent(base: StockSnapshot, delta: number) {
+  projectDelta(base, delta);
+  if (delta === 0) throw new Error('El ajuste debe modificar el stock.');
+  return { kind: 'STOCK_DELTA' as const, baseVersion: base.version, delta };
+}

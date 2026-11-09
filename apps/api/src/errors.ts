@@ -27,7 +27,11 @@ export class ApiErrors implements ExceptionFilter {
       });
     if (error instanceof HttpException)
       return res.status(error.getStatus()).json({ message: error.message });
-    console.error('Error de operación:', error instanceof Error ? error.name : 'desconocido');
+    console.error(
+      'Error de operación:',
+      error instanceof Error ? error.name : 'desconocido',
+      error instanceof Prisma.PrismaClientKnownRequestError ? error.code : '',
+    );
     return res.status(500).json({ message: 'No se pudo completar la operación.' });
   }
 }

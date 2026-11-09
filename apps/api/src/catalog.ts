@@ -112,6 +112,69 @@ export class CatalogController {
     @Inject(Db) private db: Db,
     @Inject(RealtimeGateway) private realtime: RealtimeGateway,
   ) {}
+
+  @Get('admin')
+  @UseGuards(AuthGuard)
+  async adminList(@Req() request: AuthRequest) {
+    requirePermission(request.user, 'catalogo:gestionar');
+    await this.db.$executeRaw`CREATE TABLE IF NOT EXISTS offline_entity_version (
+      entity_type varchar(40) NOT NULL, entity_id uuid NOT NULL, version integer NOT NULL,
+      PRIMARY KEY (entity_type, entity_id)
+    )`;
+    await this.db.$executeRaw`
+      INSERT INTO offline_entity_version (entity_type,entity_id,version)
+      SELECT 'PRODUCT',id,1 FROM producto
+      ON CONFLICT (entity_type,entity_id) DO NOTHING`;
+    const products = await this.db.producto.findMany({
+      orderBy: { creado_en: 'desc' },
+      include: {
+        variante: { orderBy: { sku: 'asc' } },
+        recurso_catalogo: {
+          where: { uso: 'GALERIA' },
+          orderBy: { orden: 'asc' },
+          select: { id: true, clave_objeto: true, tipo_mime: true, texto_alternativo: true },
+        },
+      },
+    });
+    const versions = await this.db.$queryRaw<{ entity_id: string; version: number }[]>`
+      SELECT entity_id,version FROM offline_entity_version WHERE entity_type='PRODUCT'`;
+    const versionById = new Map(versions.map((entry) => [entry.entity_id, entry.version]));
+    return {
+      categories: await this.db.categoria.findMany({ where: { activa: true }, orderBy: { nombre: 'asc' } }),
+      products: await Promise.all(products.map(async (entry) => ({
+        id: entry.id,
+        nombre: entry.nombre,
+        categoriaId: entry.categoria_id,
+        descripcion: entry.descripcion,
+        material: entry.material,
+        ...(entry.marca ? { marca: entry.marca } : {}),
+        version: versionById.get(entry.id) ?? 1,
+        archived: entry.estado === 'RETIRADO',
+        state: entry.estado,
+        variants: await Promise.all(entry.variante.filter((variant) => variant.activa).map(async (variant) => {
+          const price = await this.db.precio_canal.findFirst({
+            where: { variante_id: variant.id, canal: 'APP', hasta: null },
+            orderBy: { desde: 'desc' },
+          });
+          return {
+            id: variant.id,
+            talla: variant.talla,
+            color: variant.color,
+            priceCents: Math.round(Number(price?.importe ?? 0) * 100),
+          };
+        })),
+        attachments: entry.recurso_catalogo.map((resource) => ({
+          resourceId: resource.id,
+          mimeType: resource.tipo_mime,
+          usage: 'GALLERY' as const,
+          state: 'STAGED' as const,
+          uri: publicAssetPath(resource.clave_objeto),
+          alternativeText: resource.texto_alternativo,
+        })),
+      }))),
+    };
+  }
+
   @Get()
   async list(
     @Query('search') search = '',

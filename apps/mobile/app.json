@@ -35,7 +35,13 @@
       ],
       "expo-sqlite",
       "expo-sharing",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Lúmina usa las imágenes que elijas para la galería de tus prendas."
+        }
+      ]
     ],
     "extra": {
       "eas": {

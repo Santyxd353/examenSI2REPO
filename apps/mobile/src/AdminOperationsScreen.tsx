@@ -14,6 +14,8 @@ import { readActiveDek } from './offline/vault';
 import { countFitsReserved, hasUnresolvedCount } from './offline/stockCountReview';
 import type { Identity } from './types';
 import type { MobileBusinessModule } from './modules/registry';
+import { CatalogAdminScreen } from './modules/catalog/CatalogAdminScreen';
+import { projectDelta } from './modules/inventory/stockProjection';
 
 type Props = { module: Exclude<MobileBusinessModule, 'home' | 'sync' | 'business'>; user: Identity };
 type Location = { id: string; nombre: string; tipo: string; direccion?: string | null; activa: boolean; _count?: { inventario: number; usuario_ubicacion: number } };
@@ -34,7 +36,7 @@ export function AdminOperationsScreen({ module, user }: Props) {
   const meta = names[module];
   return <ScrollView contentContainerStyle={[styles.page, width >= 720 && styles.pageWide]} keyboardShouldPersistTaps="handled">
     <Text style={styles.eyebrow}>{meta.eyebrow}</Text><Text style={styles.title}>{meta.title}</Text><Text style={styles.copy}>{meta.copy}</Text>
-    {module === 'catalog' ? <CatalogModule /> : null}
+    {module === 'catalog' ? <CatalogAdminScreen user={user} /> : null}
     {module === 'locations' ? <LocationsModule /> : null}
     {module === 'inventory' ? <InventoryModule user={user} /> : null}
     {module === 'team' ? <TeamModule /> : null}
@@ -59,16 +61,6 @@ function Field({ value, onChangeText, placeholder, secureTextEntry, keyboardType
 function Action({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) { return <Pressable accessibilityRole="button" disabled={disabled} style={[styles.action, disabled && styles.disabled]} onPress={onPress}><Text style={styles.actionText}>{label}</Text></Pressable>; }
 function Loading({ busy }: { busy: boolean }) { return busy ? <View style={styles.loading}><ActivityIndicator color="#173e2a" /></View> : null; }
 
-function CatalogModule() {
-  const remote = useRemote<{ products: { id: string; nombre: string; marca?: string | null; variantes: unknown[] }[]; categories: { id: string; nombre: string }[] }>('/catalog?channel=APP');
-  const [name, setName] = useState(''); const [description, setDescription] = useState(''); const [material, setMaterial] = useState(''); const [category, setCategory] = useState(''); const [message, setMessage] = useState('');
-  useEffect(() => { if (!category && remote.data?.categories[0]) setCategory(remote.data.categories[0].id); }, [category, remote.data]);
-  const create = async () => { try { await api('/catalog', { method: 'POST', body: JSON.stringify({ nombre: name.trim(), descripcion: description.trim(), material: material.trim(), categoria_id: category }) }); setName(''); setDescription(''); setMaterial(''); setMessage('Borrador creado. Publícalo desde la administración web cuando tenga variantes y recursos.'); } catch (reason) { remote.setError((reason as Error).message); } };
-  return <><Block title="Nuevo borrador"><Field value={name} onChangeText={setName} placeholder="Nombre de la prenda" /><Field value={material} onChangeText={setMaterial} placeholder="Material" /><Field value={description} onChangeText={setDescription} placeholder="Descripción (mínimo 10 caracteres)" />
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>{(remote.data?.categories || []).map((item) => <Pressable key={item.id} style={[styles.chip, category === item.id && styles.chipActive]} onPress={() => setCategory(item.id)}><Text style={[styles.chipText, category === item.id && styles.chipTextActive]}>{item.nombre}</Text></Pressable>)}</ScrollView>
-    <Action label="Crear borrador" disabled={!name.trim() || description.trim().length < 10 || material.trim().length < 2 || !category} onPress={() => void create()} />{message ? <Notice>{message}</Notice> : null}</Block><Block title={`Prendas publicadas · ${remote.data?.products.length || 0}`}><Loading busy={remote.busy} />{remote.error ? <Notice>{remote.error}</Notice> : null}{remote.data?.products.map((item) => <Row key={item.id} title={item.nombre} detail={`${item.marca || 'Sin marca'} · ${item.variantes.length} variantes`} />)}</Block></>;
-}
-
 function LocationsModule() {
   const remote = useRemote<Location[]>('/locations'); const [name, setName] = useState(''); const [address, setAddress] = useState(''); const [type, setType] = useState<'TIENDA' | 'ALMACEN'>('TIENDA');
   const create = async () => { try { await api('/locations', { method: 'POST', body: JSON.stringify({ nombre: name.trim(), tipo: type, ...(address.trim() ? { direccion: address.trim() } : {}) }) }); setName(''); setAddress(''); await remote.load(); } catch (reason) { remote.setError((reason as Error).message); } };
@@ -80,6 +72,7 @@ function InventoryModule({ user }: { user: Identity }) {
   const [locationId, setLocationId] = useState('');
   const [counting, setCounting] = useState<Inventory | null>(null);
   const [observed, setObserved] = useState('');
+  const [inventoryMode, setInventoryMode] = useState<'COUNT' | 'DELTA'>('COUNT');
   const [reason, setReason] = useState('Conteo físico móvil');
   const [notice, setNotice] = useState('');
   const [offlineCopy, setOfflineCopy] = useState(false);
@@ -141,16 +134,25 @@ function InventoryModule({ user }: { user: Identity }) {
       .catch((error) => inventory.setError((error as Error).message));
   }, [locationId, inventory.failure, scopeForUser]);
 
-  const count = async () => {
+  const saveInventoryOperation = async () => {
     if (!counting || !locationId) return;
     if (!user.permissions.includes('inventario:gestionar')) {
       inventory.setError('Tu cuenta solo puede consultar inventario.');
       return;
     }
     const quantity = Number(observed);
-    if (!countFitsReserved(quantity, counting.reservado, counting.comprometido)) {
+    if (inventoryMode === 'COUNT' && !countFitsReserved(quantity, counting.reservado, counting.comprometido)) {
       inventory.setError('El conteo no puede ser menor que el stock reservado y comprometido.');
       return;
+    }
+    if (inventoryMode === 'DELTA') {
+      try {
+        projectDelta({ physical: counting.fisico, reserved: counting.reservado, committed: counting.comprometido, version: counting.version }, quantity);
+        if (quantity === 0) throw new Error('El ajuste debe ser distinto de cero.');
+      } catch (error) {
+        inventory.setError((error as Error).message);
+        return;
+      }
     }
     inventory.setError('');
     setNotice('');
@@ -158,12 +160,15 @@ function InventoryModule({ user }: { user: Identity }) {
       const scope = await readyScope();
       const repository = new SQLiteIntentRepository(await openOfflineDatabase());
       const existing = await repository.listIntents(scope);
-      if (hasUnresolvedCount(existing, locationId, counting.variante_id))
+      if (inventoryMode === 'COUNT' && hasUnresolvedCount(existing, locationId, counting.variante_id))
         throw new Error('Ya existe un conteo pendiente para esta prenda y ubicación. Revísalo en Sincronización.');
       const operationId = randomUUID();
-      const payload = JSON.stringify({ locationId, variantId: counting.variante_id, observedPhysical: quantity, reason: reason.trim() });
+      const kind = inventoryMode === 'COUNT' ? 'STOCK_COUNT' : 'STOCK_DELTA';
+      const payload = JSON.stringify(inventoryMode === 'COUNT'
+        ? { locationId, variantId: counting.variante_id, observedPhysical: quantity, reason: reason.trim() }
+        : { locationId, variantId: counting.variante_id, delta: quantity, reason: reason.trim() });
       await repository.enqueue(
-        { operationId, scope, kind: 'STOCK_COUNT', payload, baseVersion: counting.version, dependsOn: [], state: 'PENDING' },
+        { operationId, scope, kind, payload, baseVersion: counting.version, dependsOn: [], state: 'PENDING' },
         { scope, entityId: `inventory:${locationId}:${counting.variante_id}`, version: counting.version, payload },
       );
       setCounting(null); setObserved('');
@@ -172,19 +177,19 @@ function InventoryModule({ user }: { user: Identity }) {
         const result = (await repository.listIntents(scope)).find((item) => item.operationId === operationId);
         if (result?.state === 'APPLIED') {
           setOfflineCopy(false);
-          setNotice('Conteo registrado en el servidor.');
+          setNotice(inventoryMode === 'COUNT' ? 'Conteo registrado en el servidor.' : 'Ajuste registrado en el servidor.');
           await inventory.load();
         } else if (result?.state === 'CONFLICT') {
-          setNotice('El saldo cambió en el servidor. Revisa el conteo en Sincronización.');
+          setNotice('El saldo cambió en el servidor. Revisa la operación en Sincronización.');
         } else if (result?.state === 'REJECTED') {
           setNotice('El servidor rechazó el conteo. Revísalo en Sincronización.');
         } else {
-          setNotice('Conteo guardado en el dispositivo. Sincronízalo cuando tengas conexión.');
+          setNotice(`${inventoryMode === 'COUNT' ? 'Conteo' : 'Ajuste'} guardado en el dispositivo. Sincronízalo cuando tengas conexión.`);
         }
       } catch (syncError) {
         setNotice(ApiProblem.isNetwork(syncError)
-          ? 'Sin conexión: el conteo quedó guardado en el dispositivo para sincronizarlo después.'
-          : `El conteo quedó guardado, pero no se pudo sincronizar: ${(syncError as Error).message}`);
+          ? `Sin conexión: el ${inventoryMode === 'COUNT' ? 'conteo' : 'ajuste'} quedó guardado en el dispositivo para sincronizarlo después.`
+          : `La operación quedó guardada, pero no se pudo sincronizar: ${(syncError as Error).message}`);
       }
     } catch (error) { inventory.setError((error as Error).message); }
   };
@@ -198,15 +203,18 @@ function InventoryModule({ user }: { user: Identity }) {
     </Block>
     {offlineCopy ? <Notice>Mostrando una copia local. Los saldos pueden cambiar en el servidor.</Notice> : null}
     {notice ? <Notice>{notice}</Notice> : null}
-    {counting ? <Block title={`Conteo · ${counting.variante.producto.nombre}`}>
-      <Field value={observed} onChangeText={setObserved} placeholder="Cantidad física observada" keyboardType="numeric" />
+    {counting ? <Block title={`Actualizar · ${counting.variante.producto.nombre}`}>
+      <View style={styles.chips}>{(['COUNT', 'DELTA'] as const).map((mode) => <Pressable key={mode} style={[styles.chip, inventoryMode === mode && styles.chipActive]} onPress={() => { setInventoryMode(mode); setObserved(mode === 'COUNT' ? String(counting.fisico) : ''); }}><Text style={[styles.chipText, inventoryMode === mode && styles.chipTextActive]}>{mode === 'COUNT' ? 'Conteo físico' : 'Ajuste + / −'}</Text></Pressable>)}</View>
+      <Notice>Físico {counting.fisico} · Reservado {counting.reservado} · Comprometido {counting.comprometido} · Disponible {counting.disponible} · Versión {counting.version}</Notice>
+      <Field value={observed} onChangeText={setObserved} placeholder={inventoryMode === 'COUNT' ? 'Cantidad física observada' : 'Delta, por ejemplo 3 o -2'} keyboardType="numeric" />
       <Field value={reason} onChangeText={setReason} placeholder="Motivo" />
-      <Action label="Confirmar conteo" disabled={!user.permissions.includes('inventario:gestionar') || !/^\d+$/.test(observed) || reason.trim().length < 5} onPress={() => void count()} />
+      <Action label={inventoryMode === 'COUNT' ? 'Confirmar conteo' : 'Guardar ajuste'} disabled={!user.permissions.includes('inventario:gestionar') || !(inventoryMode === 'COUNT' ? /^\d+$/.test(observed) : /^-?\d+$/.test(observed) && Number(observed) !== 0) || reason.trim().length < 5} onPress={() => void saveInventoryOperation()} />
+      <Notice>Las transferencias entre ubicaciones requieren conexión para ser atómicas; no se simulan con dos ajustes offline.</Notice>
     </Block> : null}
     <Block title="Existencias">
       <Loading busy={inventory.busy && Boolean(locationId)} />
       {inventory.error ? <Notice>{inventory.error}</Notice> : null}
-      {inventory.data?.map((item) => <Pressable key={item.id} style={styles.rowPress} onPress={() => { setCounting(item); setObserved(String(item.fisico)); }}><Row title={item.variante.producto.nombre} detail={`${item.variante.sku} · ${item.variante.color}/${item.variante.talla} · Disponible: ${item.disponible}${item.alertaStock ? ' · Stock bajo' : ''}`} /></Pressable>)}
+      {inventory.data?.map((item) => <Pressable key={item.id} style={styles.rowPress} onPress={() => { setCounting(item); setInventoryMode('COUNT'); setObserved(String(item.fisico)); }}><Row title={item.variante.producto.nombre} detail={`${item.variante.sku} · ${item.variante.color}/${item.variante.talla} · Físico ${item.fisico} · Reservado ${item.reservado} · Comprometido ${item.comprometido} · Disponible ${item.disponible} · v${item.version}${item.alertaStock ? ' · Stock bajo' : ''}`} /></Pressable>)}
     </Block>
   </>;
 }

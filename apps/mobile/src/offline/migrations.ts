@@ -32,6 +32,19 @@ export async function migrateOfflineDatabase(db: SQLiteDatabase) {
       location_id TEXT NOT NULL, payload TEXT NOT NULL, updated_at TEXT NOT NULL,
       PRIMARY KEY(tenant_id, actor_id, device_id, location_id)
     );
-    PRAGMA user_version = 4;
+    CREATE TABLE IF NOT EXISTS offline_catalog_snapshot (
+      tenant_id TEXT NOT NULL, actor_id TEXT NOT NULL, device_id TEXT NOT NULL,
+      payload TEXT NOT NULL, updated_at TEXT NOT NULL,
+      PRIMARY KEY(tenant_id, actor_id, device_id)
+    );
+    CREATE TABLE IF NOT EXISTS offline_catalog_attachment (
+      resource_id TEXT PRIMARY KEY NOT NULL,
+      tenant_id TEXT NOT NULL, actor_id TEXT NOT NULL, device_id TEXT NOT NULL,
+      product_id TEXT NOT NULL, sha256 TEXT NOT NULL, mime_type TEXT NOT NULL,
+      local_uri TEXT NOT NULL, state TEXT NOT NULL, message TEXT, created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_offline_catalog_attachment_scope_product
+      ON offline_catalog_attachment(tenant_id, actor_id, device_id, product_id, state);
+    PRAGMA user_version = 6;
   `);
 }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { blockDependents, orderedPending } from '../src/offline/dependencyGraph';
+import { blockDependents, orderedPending, readyPending } from '../src/offline/dependencyGraph';
 import { applySyncReceipt } from '../src/offline/syncReceipt';
 
 const scope = { tenantId: 'tenant', actorId: 'actor', deviceId: 'device' } as const;
@@ -11,6 +11,16 @@ test('ordena padre antes de hija y bloquea hija ante conflicto', () => {
   const child = intent('child', ['parent']);
   assert.deepEqual(orderedPending([child, parent]).map((item) => item.operationId), ['parent', 'child']);
   assert.equal(blockDependents([parent, child], 'parent')[1]?.state, 'BLOCKED');
+});
+
+test('envía una edición dependiente solo después de aplicar su alta', () => {
+  const parent = intent('parent');
+  const child = { ...intent('child', ['parent']), kind: 'CATALOG_UPDATE' };
+  assert.deepEqual(readyPending([child, parent]).map((item) => item.operationId), ['parent']);
+  assert.deepEqual(
+    readyPending([child, { ...parent, state: 'APPLIED' as const }]).map((item) => item.operationId),
+    ['child'],
+  );
 });
 
 test('rechaza ciclos de dependencias', () => {

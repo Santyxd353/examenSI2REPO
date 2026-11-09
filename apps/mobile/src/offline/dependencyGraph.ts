@@ -26,6 +26,12 @@ export function orderedPending(intents: readonly OfflineIntent[]) {
   return result;
 }
 
+export function readyPending(intents: readonly OfflineIntent[]) {
+  const byId = new Map(intents.map((intent) => [intent.operationId, intent]));
+  return orderedPending(intents).filter((intent) =>
+    intent.dependsOn.every((id) => byId.get(id)?.state === 'APPLIED'));
+}
+
 export function blockDependents(intents: readonly OfflineIntent[], failedId: string) {
   const blocked = new Set<string>([failedId]);
   let changed = true;
