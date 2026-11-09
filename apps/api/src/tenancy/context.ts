@@ -13,6 +13,7 @@ export type TenantContext = {
     planName: string;
     status: string;
     provider: string;
+    cancelAtEnd?: boolean;
     periodEnd: string | null;
     limits: Record<string, number>;
     features: string[];

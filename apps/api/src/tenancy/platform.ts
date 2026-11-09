@@ -19,6 +19,7 @@ import { currentTenant, TenantContext } from './context';
 import { AuthGuard, AuthRequest, requirePermission } from '../auth';
 import { Db } from '../db';
 import { z } from 'zod';
+import { PlanBilling } from './stripe-plans';
 
 export const DEFAULT_TENANT_ID = '00000000-0000-4000-8000-000000000018';
 export const validTenantSlug = (slug: string) =>
@@ -36,6 +37,7 @@ type TenantRow = {
   provider: string;
   trial_ends_at: Date | null;
   current_period_end: Date | null;
+  cancel_at_end: boolean;
   limits: Record<string, number>;
   features: string[];
 };
@@ -48,6 +50,7 @@ export class TenantRegistry implements OnModuleDestroy {
   });
   private readonly businessUrl = process.env.TENANT_DATABASE_URL || process.env.DATABASE_URL!;
   private ready?: Promise<void>;
+  readonly billing = new PlanBilling(this.pool);
 
   databaseUrlFor(databaseName: string) {
     if (!/^[a-zA-Z0-9_]{1,63}$/.test(databaseName))
@@ -136,7 +139,7 @@ export class TenantRegistry implements OnModuleDestroy {
     await this.initialize();
     const result = await this.pool.query<TenantRow>(
       `SELECT t.*,s.plan_code,s.status,s.provider,s.trial_ends_at,s.current_period_end,
-      p.name AS plan_name,p.limits,p.features FROM platform.tenant t
+      s.cancel_at_end,p.name AS plan_name,p.limits,p.features FROM platform.tenant t
       JOIN platform.subscription s ON s.tenant_id=t.id JOIN platform.plan p ON p.code=s.plan_code WHERE t.slug=$1`,
       [slug],
     );
@@ -165,6 +168,7 @@ export class TenantRegistry implements OnModuleDestroy {
         planName: row.plan_name,
         status: expired ? 'EXPIRED' : row.status,
         provider: row.provider,
+        cancelAtEnd: row.cancel_at_end,
         periodEnd: periodEnd?.toISOString() || null,
         limits: row.slug === 'lumina' && row.plan_code === 'piloto' ? {} : row.limits,
         features: row.features,
@@ -210,16 +214,19 @@ export class TenantRegistry implements OnModuleDestroy {
     const connection = await this.pool.connect();
     try {
       await connection.query('BEGIN');
+      const locked = await connection.query('SELECT provider,status,pending_checkout FROM platform.subscription WHERE tenant_id=$1 FOR UPDATE', [tenantId]);
       const existing = await connection.query(
         `SELECT 1 FROM platform.billing_event WHERE provider='QR_SIMULATED' AND external_id=$1`,
         [operationId],
       );
       if (!existing.rowCount) {
+        if (locked.rows[0]?.pending_checkout || (locked.rows[0]?.provider === 'STRIPE' && locked.rows[0]?.status !== 'CANCELED'))
+          throw new BadRequestException('Finaliza el ciclo Stripe y descarta cualquier Checkout pendiente antes de usar QR.');
         const selected = await connection.query(`SELECT code FROM platform.plan WHERE code=$1 AND published`, [planCode]);
         if (!selected.rowCount) throw new BadRequestException('El plan seleccionado no está disponible.');
         await connection.query(
           `UPDATE platform.subscription SET plan_code=$1,status='ACTIVE',provider='QR_SIMULATED',
-             trial_ends_at=NULL,current_period_end=now()+interval '30 days',version=version+1,updated_at=now()
+             trial_ends_at=NULL,stripe_subscription_id=NULL,cancel_at_end=false,current_period_end=now()+interval '30 days',version=version+1,updated_at=now()
            WHERE tenant_id=$2`,
           [planCode, tenantId],
         );
@@ -281,12 +288,14 @@ export class TenantController {
     requirePermission(request.user, 'usuarios:gestionar');
     const tenant = currentTenant();
     const usage = await this.usage();
+    const pendingCheckout = tenant ? await this.registry.billing.refresh(tenant.id) : false;
+    const subscription = tenant ? (await this.registry.resolve(tenant.slug)).subscription : undefined;
     return {
-      subscription: tenant?.subscription,
+      subscription, pendingCheckout,
       usage,
       trial: {
-        active: tenant?.subscription?.status === 'TRIALING',
-        endsAt: tenant?.subscription?.status === 'TRIALING' ? tenant.subscription.periodEnd : null,
+        active: subscription?.status === 'TRIALING',
+        endsAt: subscription?.status === 'TRIALING' ? subscription.periodEnd : null,
       },
     };
   }
@@ -298,19 +307,53 @@ export class TenantController {
     return this.registry.plans();
   }
 
-  @Post('subscription/test-confirm')
-  @UseGuards(AuthGuard)
-  async confirmTestPlan(@Req() request: AuthRequest, @Body() body: unknown) {
-    requirePermission(request.user, 'usuarios:gestionar');
+  private async selection(body: unknown) {
     const input = z.object({ planCode: z.enum(['esencial', 'pro', 'negocio']), operationId: z.string().uuid() }).strict().parse(body);
     const plan = (await this.registry.plans()).find((item) => item.code === input.planCode)!;
     const usage = await this.usage();
     const exceeded = (Object.keys(usage) as (keyof typeof usage)[]).filter((key) => usage[key] > (plan.limits[key] ?? Number.MAX_SAFE_INTEGER));
     if (exceeded.length)
       throw new BadRequestException(`El plan no admite el consumo actual de: ${exceeded.join(', ')}.`);
+    return { plan, operationId: input.operationId };
+  }
+
+  @Get('subscription/return')
+  checkoutReturn() {
+    return 'Vuelve a Lúmina y abre Mi negocio para consultar el estado del pago.';
+  }
+
+  @Post('subscription/checkout')
+  @UseGuards(AuthGuard)
+  async checkout(@Req() request: AuthRequest, @Body() body: unknown) {
+    requirePermission(request.user, 'usuarios:gestionar');
+    const { plan, operationId } = await this.selection(body);
+    return this.registry.billing.start(currentTenant()!.id, plan, operationId);
+  }
+
+  @Post('subscription/discard')
+  @UseGuards(AuthGuard)
+  async discard(@Req() request: AuthRequest) {
+    requirePermission(request.user, 'usuarios:gestionar');
+    await this.registry.billing.discard(currentTenant()!.id);
+    return { discarded: true };
+  }
+
+  @Post('subscription/cancel')
+  @UseGuards(AuthGuard)
+  async cancel(@Req() request: AuthRequest) {
+    requirePermission(request.user, 'usuarios:gestionar');
+    await this.registry.billing.cancel(currentTenant()!.id);
+    return { scheduled: true };
+  }
+
+  @Post('subscription/test-confirm')
+  @UseGuards(AuthGuard)
+  async confirmTestPlan(@Req() request: AuthRequest, @Body() body: unknown) {
+    requirePermission(request.user, 'usuarios:gestionar');
+    const { plan, operationId } = await this.selection(body);
     const tenant = currentTenant();
     if (!tenant) throw new BadRequestException('La tienda no está disponible.');
-    await this.registry.activateTestPlan(tenant.id, input.planCode, input.operationId);
+    await this.registry.activateTestPlan(tenant.id, plan.code, operationId);
     return { confirmed: true, provider: 'QR_SIMULATED', subscription: (await this.registry.resolve(tenant.slug, true)).subscription };
   }
 }

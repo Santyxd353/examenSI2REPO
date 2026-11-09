@@ -23,6 +23,10 @@ certificado Android Debug y un API local mediante USB.
 El APK no se sube al repositorio porque es un binario reproducible de 59 MB.
 El código, las instrucciones y el hash sí quedan versionados.
 
+Actualización B09/B12 instalada sobre este candidato en el TECNO: `dist/android/lumina-qa-b12-arm64.apk`,
+59 059 777 bytes, SHA-256 `532E8FA72CA426BC900A81D9B526F5B26BFEFD7DB12F67E07EEB44C38DA47675`.
+Conserva el paquete, firma QA y URL de laboratorio de la tabla.
+
 ## Verificación reproducible para este candidato
 
 ```powershell

@@ -43,3 +43,6 @@ CREATE TABLE IF NOT EXISTS platform.billing_event (
   received_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE(provider, external_id)
 );
+
+ALTER TABLE platform.subscription ADD COLUMN IF NOT EXISTS cancel_at_end boolean NOT NULL DEFAULT false;
+ALTER TABLE platform.subscription ADD COLUMN IF NOT EXISTS pending_checkout varchar(200);

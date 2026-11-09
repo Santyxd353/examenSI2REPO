@@ -518,18 +518,19 @@ export class CatalogController {
   async arResources(@Req() _request: AuthRequest, @Query('offlineLimit') rawOfflineLimit?: string) {
     const offlineLimit = z.coerce.number().int().min(0).max(10).catch(0).parse(rawOfflineLimit);
     const resources = await this.db.recurso_catalogo.findMany({
-      where: { uso: 'AR' },
+      where: { uso: 'AR', ...(offlineLimit ? { estado: 'PUBLICADO', producto: { estado: 'PUBLICADO' }, variante: { activa: true } } : {}) },
       include: {
         producto: { select: { nombre: true } },
         variante: { select: { talla: true, color: true } },
       },
-      orderBy: { id: 'desc' },
-      ...(offlineLimit ? { take: offlineLimit } : {}),
+      orderBy: offlineLimit ? [{ producto_id: 'asc' }, { variante: { talla: 'desc' } }, { id: 'asc' }] : { id: 'desc' },
+      ...(offlineLimit ? { distinct: ['producto_id' as const], take: offlineLimit } : {}),
     });
     return Promise.all(resources.map(async (resource) => ({
       id: resource.id,
       productoId: resource.producto_id,
       varianteId: resource.variante_id,
+      variantId: resource.variante_id,
       producto: resource.producto.nombre,
       talla: resource.variante?.talla,
       color: resource.variante?.color,

@@ -1,6 +1,6 @@
 # B09 — Vestidor AR offline
 
-Estado: `VERIFICADO_LOCAL_CON_PRUEBA_FISICA_PENDIENTE` (09/11/2026).
+Estado: descarga y apertura offline comprobadas en TECNO KL4, Android 14 (09/11/2026).
 
 ## Alcance integrado
 
@@ -32,6 +32,9 @@ Estado: `VERIFICADO_LOCAL_CON_PRUEBA_FISICA_PENDIENTE` (09/11/2026).
 
 ## Aceptación física final
 
-B15 debe registrar: descarga real, cierre de la app, modo avión, arranque en frío, permiso de
-cámara, seguimiento de hombros/cadera y cambio entre dos prendas locales. Hasta completar ese
-recorrido no se afirma que la cámara offline fue aceptada en el dispositivo final.
+El teléfono mostró «10 prendas AR listas para usar sin conexión». Se quitó el túnel USB del API,
+se activó el modo avión, se deshabilitó el wifi y se cerró el proceso. Después del arranque en
+frío, el catálogo indicó que estaba sin conexión. El vestidor abrió el vestido mini rib Nike
+con el indicador «Prenda guardada en este dispositivo» y Android confirmó la cámara activa.
+Se restauraron conectividad y túnel. Esta prueba cubre la carga local y la cámara. No se midió
+la precisión del seguimiento sobre una persona.

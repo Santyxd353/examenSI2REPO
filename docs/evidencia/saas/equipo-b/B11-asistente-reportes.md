@@ -12,3 +12,7 @@ Estado: `VERIFICADO_LOCAL_CON_PROVEEDOR_OPCIONAL` (09/11/2026).
 
 Verificación: pruebas `offlineReportAssistant.test.ts`, módulo nativo `report-speech` enlazado en
 la APK ARM64 y typecheck correcto. La prueba de voz real se registra en B15.
+
+En el TECNO KL4, el campo de pregunta mostró «Cuantos pedido uno este mes». La
+respuesta en modo local indicó 8 pedidos confirmados por Bs 6070.00, coincidiendo
+con el tablero del mismo período. La lectura de pantalla verifica texto y respuesta.

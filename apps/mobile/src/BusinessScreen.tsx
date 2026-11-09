@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { api } from './api';
 import { randomUUID } from 'expo-crypto';
 
 type Subscription = {
-  subscription?: { planName: string; status: string; periodEnd: string | null; limits: Record<string, number> };
+  subscription?: { planName: string; status: string; periodEnd: string | null; cancelAtEnd?: boolean; limits: Record<string, number> };
+  pendingCheckout: boolean;
   usage: { locations: number; products: number; staff: number };
   trial: { active: boolean; endsAt: string | null };
 };
@@ -36,6 +37,30 @@ export function BusinessScreen() {
     finally { setLoading(false); }
   }, []);
   useEffect(() => void load(), [load]);
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') void load();
+    });
+    return () => subscription.remove();
+  }, [load]);
+
+  const billingAction = async (action: 'checkout' | 'cancel' | 'discard') => {
+    setConfirming(true); setError(''); setMessage('');
+    try {
+      const response = await api<{ url?: string }>(`/tenant/subscription/${action}`, {
+        method: 'POST',
+        body: action === 'checkout' ? JSON.stringify({ planCode: selectedPlan, operationId: randomUUID() }) : undefined,
+      });
+      if (action === 'checkout') {
+        if (!response.url?.startsWith('https://checkout.stripe.com/')) throw new Error('Checkout TEST no está disponible.');
+        await Linking.openURL(response.url);
+      } else {
+        setMessage(action === 'cancel' ? 'Renovación cancelada.' : 'Checkout descartado.');
+      }
+      await load();
+    } catch (reason) { setError((reason as Error).message); }
+    finally { setConfirming(false); }
+  };
 
   if (loading && !data) return <View style={styles.center}><ActivityIndicator color="#173e2a" /></View>;
   const endingAt = data?.trial.endsAt || data?.subscription?.periodEnd;
@@ -73,8 +98,12 @@ export function BusinessScreen() {
               <View style={styles.status}><Text style={styles.statusText}>{data.trial.active ? 'PRUEBA' : data.subscription.status.toUpperCase()}</Text></View>
             </View>
             <View style={styles.planDivider} />
-            <Text style={styles.planDetail}>{data.trial.active ? 'Tu período de prueba está activo.' : 'Tu suscripción se encuentra activa.'}</Text>
-            {endingAt ? <Text style={styles.planDate}>Próxima fecha: {new Date(endingAt).toLocaleDateString('es-BO', { day: 'numeric', month: 'long', year: 'numeric' })}</Text> : null}
+            <Text style={styles.planDetail}>{data.subscription.cancelAtEnd ? 'Renovación cancelada' : data.subscription.planName}</Text>
+            {endingAt ? <Text style={styles.planDate}>Fin del período: {new Date(endingAt).toLocaleDateString('es-BO', { day: 'numeric', month: 'long', year: 'numeric' })}</Text> : null}
+            {endingAt && data.subscription.status === 'ACTIVE' && !data.subscription.cancelAtEnd &&
+              <Pressable accessibilityRole="button" disabled={confirming || data.pendingCheckout} onPress={() => Alert.alert('¿Cancelar la renovación?', 'Conservarás acceso hasta el final del período.', [
+                { text: 'Volver', style: 'cancel' }, { text: 'Cancelar renovación', onPress: () => void billingAction('cancel') },
+              ])}><Text style={styles.planDetail}>Cancelar renovación</Text></Pressable>}
           </View>
           <View style={styles.sectionHeading}><Text style={styles.section}>Uso del plan</Text><Text style={styles.sectionHint}>ACTUALIZADO AHORA</Text></View>
           <View style={styles.usageGrid}>
@@ -92,10 +121,13 @@ export function BusinessScreen() {
         </>
       ) : <View style={styles.empty}><Text style={styles.emptyTitle}>Aún no hay un plan asignado</Text><Text style={styles.emptyCopy}>Actualiza la información o revisa la configuración de la tienda.</Text></View>}
       <View style={styles.sectionHeading}><Text style={styles.section}>Planes disponibles</Text><Text style={styles.sectionHint}>ENTORNO TEST</Text></View>
-      <Text style={styles.testNotice}>Simulación académica: confirmar cambia el plan de prueba durante 30 días y no solicita tarjeta ni cobra dinero.</Text>
+      <Text style={styles.testNotice}>QR activa 30 días de prueba. Stripe TEST abre un ciclo mensual de prueba al confirmar el pago. El cambio inicia un ciclo completo sin prorrateo.</Text>
+      {data?.pendingCheckout && <View><Text style={styles.testNotice}>Checkout pendiente de pago. Tu plan actual sigue vigente según su fecha.</Text>
+        <Pressable accessibilityRole="button" disabled={confirming} onPress={() => void billingAction('discard')} style={styles.button}><Text style={styles.buttonText}>Descartar Checkout pendiente</Text></Pressable></View>}
       <View style={styles.usageGrid}>{plans.map((plan) => <Pressable key={plan.code} accessibilityRole="radio" accessibilityState={{ checked: selectedPlan === plan.code }} onPress={() => setSelectedPlan(plan.code)} style={[styles.planOption, selectedPlan === plan.code && styles.planOptionActive]}><View><Text style={[styles.planOptionName, selectedPlan === plan.code && styles.planOptionNameActive]}>{plan.name}</Text><Text style={[styles.planOptionLimits, selectedPlan === plan.code && styles.planOptionLimitsActive]}>{plan.limits.locations} ubicaciones · {plan.limits.staff} personas · {plan.limits.products} productos</Text></View><Text style={[styles.planOptionPrice, selectedPlan === plan.code && styles.planOptionNameActive]}>Bs {plan.monthlyAmount}/mes</Text></Pressable>)}</View>
       {message ? <Text style={styles.success}>{message}</Text> : null}
-      <Pressable accessibilityRole="button" disabled={!selectedPlan || confirming} onPress={() => void confirmTestPlan()} style={[styles.button, (!selectedPlan || confirming) && styles.disabled]}><Text style={styles.buttonText}>{confirming ? 'Confirmando…' : 'Confirmar plan TEST'}</Text></Pressable>
+      <Pressable accessibilityRole="button" disabled={!selectedPlan || confirming} onPress={() => void billingAction('checkout')} style={[styles.button, (!selectedPlan || confirming) && styles.disabled]}><Text style={styles.buttonText}>Abrir Stripe Checkout TEST</Text></Pressable>
+      <Pressable accessibilityRole="button" disabled={!selectedPlan || confirming || data?.pendingCheckout} onPress={() => void confirmTestPlan()} style={[styles.button, (!selectedPlan || confirming || data?.pendingCheckout) && styles.disabled]}><Text style={styles.buttonText}>Confirmar con QR de prueba</Text></Pressable>
       <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.button}><Text style={styles.buttonText}>Actualizar información</Text></Pressable>
     </ScrollView>
   );

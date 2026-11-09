@@ -708,6 +708,7 @@ function ArCamera({
               : 'Para detectar el cuerpo instala la development build de Android.'}
         </Text>
         {!!trackingError && <Text style={styles.cameraHint}>{trackingError}</Text>}
+        {!!arImageUri && <Text style={styles.cameraPrivacy}>Prenda guardada en este dispositivo</Text>}
         {imageFailed && (
           <Text style={styles.cameraHint}>
             No se pudo cargar la imagen AR. Revisa la conexión con el servidor.

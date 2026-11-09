@@ -25,16 +25,16 @@ del API y no se presentan como una ejecución física inexistente.
 | Instalación y navegación | Aprobado | Se abrieron Inicio, Inventario, Ventas y pedidos, Reportes y Mi negocio sin cierres ni excepciones fatales. |
 | Reinicio de proceso y ausencia de API | Aprobado | Tras quitar el túnel USB y reiniciar la app, el dashboard cifrado y el catálogo de 12 prendas continuaron disponibles. |
 | Reinicio físico y recuperación de sesión | Aprobado | Tras el reinicio y el desbloqueo del TECNO KL4, Lúmina QA arrancó en frío en 2,5 s. Inicio mostró «SESIÓN ACTIVA» y el dashboard de ventas. La API local respondió por el puerto 3018 y el túnel USB estaba activo. |
-| Cámara y AR | Aprobado | Permiso concedido; abrió la vista AR nativa, procesó cámara local y mostró el aviso de iluminación sin fallos. |
-| Dictado de reportes | Aprobado | El módulo nativo usó micrófono durante 5 s y devolvió el estado controlado «No se reconoció una frase» al no hablar. |
+| Cámara y AR | Aprobado para carga offline | Se guardaron diez prendas. Tras reiniciar la app con modo avión, wifi apagado y túnel USB retirado, se abrió un vestido desde almacenamiento local y Android indicó cámara activa. |
+| Dictado de reportes | Aprobado | El usuario hizo la consulta de pedidos del mes en el TECNO y confirmó el resultado. La pantalla mostró la transcripción aproximada «Cuantos pedido uno este mes» y una respuesta local de 8 pedidos por Bs 6070.00, igual al tablero. |
 | Exportación CSV/PDF | Aprobado | Ambos archivos se generaron y Android abrió el selector de compartir con su nombre y extensión correctos. |
 | Sincronización, recibo y conflictos | Aprobado automatizado | Cubierto por las pruebas de cola, dependencias, recibos idempotentes y concurrencia de inventario. |
 | Aislamiento entre negocios | Aprobado automatizado | Cubierto por las pruebas de ámbito de sesión y tenant del API. |
 | Compra, devolución y administración | Aprobado automatizado/UI | API de comercio y pedidos: 16 pruebas aprobadas; la lista física mostró pedidos y transiciones disponibles. |
 
 No se guardaron capturas de cámara, credenciales ni datos personales. La
-prueba de falta de red se hizo retirando el túnel del API, sin alterar las
-radios personales del teléfono.
+prueba inicial de falta de red se hizo retirando el túnel del API. En la repetición B09
+se usó además el modo avión y se restauró la conectividad al terminar.
 
 ## Automatización complementaria
 
