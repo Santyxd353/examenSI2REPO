@@ -268,6 +268,52 @@ test('el agente exige configuración privada de servidor antes de llamar a un pr
   }
 });
 
+test('dashboard local conserva filtros, cifras del servidor y deniega acceso al cliente', async () => {
+  const key = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  try {
+    const payload = { from:'2026-01-01',to:'2026-02-28',location:locationId,question:'Ventas por sucursal' };
+    const response = await request(app.getHttpServer()).post('/api/analytics/assistant/query')
+      .auth(adminToken,{type:'bearer'}).send(payload);
+    expect(response.status).toBe(201);
+    expect(response.body.provider).toBe('local');
+    expect(response.body.dashboard[0].id).toBe('locations');
+    const trend = response.body.dashboard.find((chart: {id:string}) => chart.id === 'sales');
+    expect(trend.points).toHaveLength(59);
+    expect(trend.points.reduce((total:number,p:{value:number}) => total+p.value,0)).toBe(response.body.report.kpis.ventas);
+    expect(response.body.report.filters.location).toBe(locationId);
+    const denied = await request(app.getHttpServer()).post('/api/analytics/assistant/query')
+      .auth(clientToken,{type:'bearer'}).send(payload);
+    expect(denied.status).toBe(403);
+  } finally { if(key === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY=key; }
+});
+
+test('el asistente lee output_text dentro de mensajes REST y mantiene el alcance del dashboard', async () => {
+  const key=process.env.OPENAI_API_KEY, model=process.env.OPENAI_REPORTS_MODEL;
+  const original=global.fetch;
+  process.env.OPENAI_API_KEY='test-key';
+  process.env.OPENAI_REPORTS_MODEL='test-model';
+  const fetchMock=jest.fn()
+    .mockResolvedValueOnce({ok:true,json:async()=>({output:[{type:'function_call',name:'consultar_resumen_comercial',call_id:'qa',arguments:'{"from":"2000-01-01","to":"2030-01-01"}'}]})})
+    .mockResolvedValueOnce({ok:true,json:async()=>({output:[{type:'message',content:[{type:'output_text',text:'Resumen de ventas verificado.'}]}]})});
+  global.fetch=fetchMock as unknown as typeof fetch;
+  try {
+    const response=await request(app.getHttpServer()).post('/api/analytics/assistant/query')
+      .auth(adminToken,{type:'bearer'}).send({from:'2026-01-01',to:'2026-02-28',location:locationId,question:'Ventas'});
+    expect(response.status).toBe(201);
+    expect(response.body.provider).toBe('openai');
+    expect(response.body.answer).toBe('Resumen de ventas verificado.');
+    const sent=JSON.parse(fetchMock.mock.calls[1][1].body);
+    const result=JSON.parse(sent.input.find((item:{type:string})=>item.type==='function_call_output').output);
+    expect(result.period.location).toBe(locationId);
+    expect(result.period.from).toBe('2026-01-01');
+  } finally {
+    global.fetch=original;
+    if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;
+    if(model===undefined)delete process.env.OPENAI_REPORTS_MODEL;else process.env.OPENAI_REPORTS_MODEL=model;
+  }
+});
+
 test('detecta una venta semanal extrema usando semanas anteriores como referencia', async () => {
   const variant = await db.variante.findUniqueOrThrow({ where: { id: variantId }, include: { producto: true } });
   const createdAt = new Date(Date.UTC(2026, 1, 9, 12));

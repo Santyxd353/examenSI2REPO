@@ -9,6 +9,8 @@ export type OfflineDashboardReport = Readonly<{
   generatedBy: string;
   products: readonly { variante_id: string; producto: string; sku: string; unidades: number; ventas: number }[];
   locations: readonly { ubicacion_id: string; ubicacion: string | null; pedidos: number; ventas: number }[];
+  timeline?: readonly { fecha: string; ventas: number }[];
+  inventory?: readonly { ubicacion: string; disponible: number }[];
 }>;
 
 type SnapshotRow = { payload: string; generated_at: string };

@@ -17,6 +17,7 @@ import { AuthGuard, AuthRequest, Identity, requirePermission } from './auth';
 import { Db } from './db';
 import { AnalyticsJobs } from './analytics-jobs';
 import { can, requireLocationScope } from './locations';
+import { reportDashboard } from './report-dashboard';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const filterSchema = z
@@ -39,7 +40,8 @@ type SaleRow = {
   cantidad: number;
 };
 type OpenAIResponse = {
-  output?: { type?: string; call_id?: string; name?: string; arguments?: string }[];
+  output?: { type?: string; call_id?: string; name?: string; arguments?: string;
+    content?: { type?: string; text?: string }[] }[];
   output_text?: string;
 };
 
@@ -85,7 +87,7 @@ export class CommercialAnalytics {
     const inventoryScope = scope
       ? Prisma.sql`AND i.ubicacion_id = ANY(${scope}::uuid[])`
       : Prisma.empty;
-    const [metricsRows, byProductRows, byLocationRows, bySellerRows, inventoryRows] =
+    const [metricsRows, byProductRows, byLocationRows, bySellerRows, inventoryRows, timelineRows] =
       await Promise.all([
         this.db.$queryRaw<
           { pedidos: number; ventas: unknown; unidades: number; ticket_promedio: unknown }[]
@@ -156,6 +158,12 @@ export class CommercialAnalytics {
             AND d.variante_id=i.variante_id AND d.canal='WEB'
           WHERE u.activa ${inventoryScope}
           GROUP BY u.id,u.nombre ORDER BY u.nombre`,
+        this.db.$queryRaw<{ fecha: string; ventas: unknown }[]>`SELECT
+          to_char(o.creado_en AT TIME ZONE 'UTC','YYYY-MM-DD') AS fecha, SUM(o.total) AS ventas
+          FROM pedido o WHERE o.creado_en>=${from} AND o.creado_en<${end}
+          AND o.estado NOT IN ('CANCELADO','PENDIENTE_PAGO')
+          AND EXISTS(SELECT 1 FROM pago pg WHERE pg.pedido_id=o.id AND pg.estado='CONFIRMADO')
+          ${orderScope} GROUP BY fecha ORDER BY fecha`,
       ]);
     const metrics = metricsRows[0];
     const products = byProductRows.map((row) => ({ ...row, ventas: number(row.ventas) }));
@@ -177,6 +185,10 @@ export class CommercialAnalytics {
       locations,
       sellers,
       inventory: inventoryRows,
+      timeline: Array.from({ length: Math.round((end.getTime() - from.getTime()) / 86400000) }, (_, index) => {
+        const fecha = addDays(from, index).toISOString().slice(0, 10);
+        return { fecha, ventas: number(timelineRows.find(row => row.fecha === fecha)?.ventas) };
+      }),
       summary,
       generatedBy: 'Analítica comercial explicable v1.0',
       cutOff: new Date(),
@@ -511,7 +523,21 @@ export class CommercialAnalytics {
    * El modelo nunca recibe acceso a SQL ni a Prisma. Solo puede pedir este resumen,
    * que vuelve a aplicar permisos y alcance de ubicación del usuario autenticado.
    */
-  async agentQuery(user: Identity, raw: unknown) {
+  async assistantQuery(user: Identity, raw: unknown) {
+    const input = agentQuerySchema.parse(raw);
+    const report = await this.report(user, input);
+    const dashboard = reportDashboard(report, input.question);
+    try {
+      return { ...await this.agentQuery(user, input, report), dashboard, report };
+    } catch (error) {
+      if (!(error instanceof ServiceUnavailableException)) throw error;
+      const local = await this.query(user, input);
+      return { provider: 'local', answer: local.answer, dashboard, report,
+        providerStatus: process.env.OPENAI_API_KEY && process.env.OPENAI_REPORTS_MODEL ? 'unavailable' : 'unconfigured' };
+    }
+  }
+
+  async agentQuery(user: Identity, raw: unknown, trustedReport?: Awaited<ReturnType<CommercialAnalytics['report']>>) {
     requirePermission(user, 'reportes:consultar');
     const input = agentQuerySchema.parse(raw);
     const apiKey = process.env.OPENAI_API_KEY;
@@ -547,7 +573,7 @@ export class CommercialAnalytics {
     ].join(' ');
     const request = async (body: unknown) => {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 25000);
+      const timeout = setTimeout(() => controller.abort(), Math.max(1, deadline - Date.now()));
       try {
         const response = await fetch('https://api.openai.com/v1/responses', {
           method: 'POST',
@@ -570,6 +596,7 @@ export class CommercialAnalytics {
       }
     };
 
+    const deadline = Date.now() + 15000;
     let conversation: unknown[] = [{ role: 'user', content: input.question }];
     for (let round = 0; round < 3; round++) {
       const response = await request({
@@ -577,7 +604,7 @@ export class CommercialAnalytics {
         instructions,
         input: conversation,
         tools: [tool],
-        tool_choice: 'auto',
+        tool_choice: round === 0 ? 'required' : 'auto',
         parallel_tool_calls: false,
         max_output_tokens: 450,
       });
@@ -585,24 +612,18 @@ export class CommercialAnalytics {
         (item) => item.type === 'function_call' && item.name === tool.name && item.call_id,
       );
       if (!calls.length) {
-        const answer = response.output_text?.trim();
+        const answer = (response.output_text || (response.output || [])
+          .filter(item => item.type === 'message')
+          .flatMap(item => item.content || [])
+          .filter(part => part.type === 'output_text')
+          .map(part => part.text || '').join('\n')).trim();
         if (!answer)
           throw new ServiceUnavailableException('El agente no devolvió una respuesta válida. Inténtalo de nuevo.');
         return { provider: 'openai', answer };
       }
       const outputs = await Promise.all(
         calls.map(async (call) => {
-          let args: unknown;
-          try {
-            args = JSON.parse(call.arguments || '{}');
-          } catch {
-            args = {};
-          }
-          const requested = filterSchema.safeParse(args);
-          const filters = requested.success
-            ? requested.data
-            : { from: input.from, to: input.to, location: input.location };
-          const report = await this.report(user, filters);
+          const report = trustedReport || await this.report(user, input);
           return {
             type: 'function_call_output',
             call_id: call.call_id,
@@ -660,6 +681,11 @@ export class AnalyticsController {
   @Post('agent/query')
   agentQuery(@Req() req: AuthRequest, @Body() body: unknown) {
     return this.analytics.agentQuery(req.user, body);
+  }
+
+  @Post('assistant/query')
+  assistantQuery(@Req() req: AuthRequest, @Body() body: unknown) {
+    return this.analytics.assistantQuery(req.user, body);
   }
 
   @Post('ml/demo/train')

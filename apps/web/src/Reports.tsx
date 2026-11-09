@@ -1,6 +1,8 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { BarChart3, Bot, RefreshCw, Send, Sparkles, TriangleAlert } from 'lucide-react';
 import { api } from './api';
+import { QueryDashboard } from './QueryDashboard';
+import type { ReportChart } from '../../api/src/report-dashboard';
 
 type Location = { id: string; nombre: string; tipo: 'TIENDA' | 'ALMACEN'; activa: boolean };
 type Report = {
@@ -74,8 +76,15 @@ export function Reports() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [question, setQuestion] = useState('¿Qué producto vendió más?');
   const [answer, setAnswer] = useState('');
+  const [queryResult, setQueryResult] = useState<{ dashboard: ReportChart[]; provider: string; report: { filters: { from: string; to: string } } } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const queryRevision = useRef(0);
+  useEffect(() => {
+    queryRevision.current++;
+    setAnswer(''); setQueryResult(null);
+    return () => { queryRevision.current++; };
+  }, [from, to, location]);
 
   const filters = () => ({ from, to, ...(location ? { location } : {}) });
 
@@ -120,12 +129,17 @@ export function Reports() {
     event.preventDefault();
     setBusy(true);
     setError('');
+    setAnswer('');
+    setQueryResult(null);
+    const revision = ++queryRevision.current;
     try {
-      const result = await api('/analytics/query', {
+      const result = await api('/analytics/assistant/query', {
         method: 'POST',
         body: JSON.stringify({ ...filters(), question }),
       });
+      if (revision !== queryRevision.current) return;
       setAnswer(result.answer);
+      setQueryResult(result);
     } catch (reason) {
       setError((reason as Error).message);
     } finally {
@@ -359,6 +373,7 @@ export function Reports() {
             </button>
           </div>
           {answer && <p className="analytics-answer">{answer}</p>}
+          {queryResult && <><p>{queryResult.provider === 'openai' ? 'Asistente IA · OpenAI' : 'Modo local · analítica del sistema'} · {queryResult.report.filters.from} — {queryResult.report.filters.to}</p><QueryDashboard key={answer} charts={queryResult.dashboard} /></>}
         </form>
       </section>
     </section>

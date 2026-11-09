@@ -2577,3 +2577,12 @@ footer > span:last-child {
     grid-column: 1 / -1;
   }
 }
+ .query-dashboard { width:100%; min-width:0; padding:20px; background:#fff; border:1px solid #ded8d9; border-radius:16px; margin-top:16px; }
+ .query-dashboard svg { display:block; width:100%; max-height:300px; margin:16px 0; }
+ .query-chart-tabs { display:flex; flex-wrap:wrap; gap:8px; }
+ .query-chart-tabs button { white-space:normal; padding:10px 14px; border:1px solid #d8ccd0; border-radius:10px; background:#faf7f8; color:#503040; }
+ .query-chart-tabs button[aria-pressed=true] { background:#703951; color:white; }
+ .query-chart-values { max-height:240px; overflow:auto; margin-top:12px; }
+ .query-chart-values > div { display:flex; justify-content:space-between; gap:16px; border-bottom:1px solid #eee; padding:8px 0; }
+ .query-chart-values strong { flex-shrink:0; }
+ @media(max-width:600px) { .query-dashboard {padding:12px} .query-chart-values > div {flex-direction:column;gap:4px} }

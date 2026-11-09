@@ -107,7 +107,7 @@ export async function createApp() {
       if (pathStore && requested && pathStore !== requested)
         throw new HttpException('La imagen no pertenece a la tienda seleccionada.', 400);
       const tenant = await registry.resolve(pathStore || requested || 'lumina');
-      const readOnlyQuery = req.method === 'POST' && /^\/api\/analytics\/query\/?$/i.test(req.path);
+      const readOnlyQuery = req.method === 'POST' && /^\/api\/analytics\/(?:query|assistant\/query|agent\/query)\/?$/i.test(req.path);
       if (
         tenant.readOnly &&
         !readOnlyQuery &&
