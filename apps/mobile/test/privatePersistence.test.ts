@@ -95,6 +95,117 @@ function fixture() {
     },
   };
 }
+
+test('revisar un conteo conserva el conflicto y crea una intención cifrada con UUID y hash nuevos', async () => {
+  const f = fixture();
+  try {
+    await migrateOfflineDatabase(f.adapter);
+    const repo = new SQLiteIntentRepository(f.adapter, f.cipher, digest);
+    const operationId = randomUUID(),
+      entityId = randomUUID(),
+      nextId = randomUUID();
+    const payload = {
+      locationId: randomUUID(),
+      variantId: randomUUID(),
+      observedPhysical: 8,
+      reason: 'Conteo revisado',
+    };
+    await repo.enqueue(
+      {
+        operationId,
+        scope,
+        kind: 'STOCK_COUNT',
+        entityId,
+        createdAt: '2026-11-08T12:00:00Z',
+        baseVersion: 1,
+        dependsOn: [],
+        state: 'PENDING',
+        payload: JSON.stringify(payload),
+      },
+      { scope, entityId, version: 1, payload: JSON.stringify({ physical: 8 }) },
+    );
+    const old = (await repo.listIntents(scope))[0]!;
+    await repo.replaceStates(scope, [{ ...old, state: 'CONFLICT' }]);
+    await repo.rebaseStockCount(scope, operationId, nextId, 3);
+    const reopened = new SQLiteIntentRepository(f.adapter, f.cipher, digest);
+    const rows = await reopened.listIntents(scope),
+      prior = rows.find((row) => row.operationId === operationId)!,
+      next = rows.find((row) => row.operationId === nextId)!;
+    assert.equal(prior.state, 'DISCARDED');
+    assert.equal(prior.baseVersion, 1);
+    assert.equal(next.state, 'PENDING');
+    assert.equal(next.baseVersion, 3);
+    const wire = await prepareWireIntent(next, digest),
+      before = await prepareWireIntent(prior, digest);
+    assert.equal(wire.entityId, entityId);
+    assert.deepEqual(wire.payload, payload);
+    assert.notEqual(wire.payloadHash, before.payloadHash);
+    await reopened.replaceStates(scope, [{ ...prior, state: 'CONFLICT' }]);
+    assert.equal(
+      (await reopened.listIntents(scope)).find((row) => row.operationId === operationId)?.state,
+      'DISCARDED',
+    );
+    assert.ok(
+      !(
+        f.db.prepare('SELECT payload FROM offline_intent WHERE operation_id=?').get(nextId) as any
+      ).payload.includes('Conteo revisado'),
+    );
+    await assert.rejects(reopened.rebaseStockCount(scope, operationId, randomUUID(), 3));
+    assert.equal((await reopened.listIntents(scope)).length, 2);
+  } finally {
+    f.db.close();
+  }
+});
+
+test('revisar un conteo rechaza ámbitos ajenos, dependientes y UUID repetidos sin perder el conflicto', async () => {
+  const f = fixture();
+  try {
+    await migrateOfflineDatabase(f.adapter);
+    const repo = new SQLiteIntentRepository(f.adapter, f.cipher, digest);
+    const operationId = randomUUID(),
+      entityId = randomUUID(),
+      payload = {
+        locationId: randomUUID(),
+        variantId: randomUUID(),
+        observedPhysical: 8,
+        reason: 'Conteo protegido',
+      };
+    const create = async (id: string, dependsOn: string[] = []) =>
+      repo.enqueue(
+        {
+          operationId: id,
+          scope,
+          kind: 'STOCK_COUNT',
+          entityId,
+          createdAt: '2026-11-08T12:00:00Z',
+          baseVersion: 1,
+          dependsOn,
+          state: 'PENDING',
+          payload: JSON.stringify(payload),
+        },
+        { scope, entityId, version: 1, payload: JSON.stringify({ physical: 8 }) },
+      );
+    await create(operationId);
+    await repo.replaceStates(
+      scope,
+      (await repo.listIntents(scope)).map((row) => ({ ...row, state: 'CONFLICT' })),
+    );
+    await assert.rejects(
+      repo.rebaseStockCount({ ...scope, actorId: randomUUID() }, operationId, randomUUID(), 2),
+    );
+    await assert.rejects(repo.rebaseStockCount(scope, operationId, operationId, 2));
+    await assert.rejects(repo.rebaseStockCount(scope, operationId, randomUUID(), -1));
+    await create(randomUUID(), [operationId]);
+    await assert.rejects(repo.rebaseStockCount(scope, operationId, randomUUID(), 2), /dependiente/);
+    assert.equal(
+      (await repo.listIntents(scope)).find((row) => row.operationId === operationId)?.state,
+      'CONFLICT',
+    );
+    assert.equal((await repo.listIntents(scope)).length, 2);
+  } finally {
+    f.db.close();
+  }
+});
 test('el cifrado autentica cuenta y registro, conserva claves anteriores y bloquea respuestas tardías', async () => {
   const f = fixture();
   const encoded = await f.cipher.seal(scope, 'report', 'one', { ventas: 14900 });

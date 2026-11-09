@@ -16,8 +16,26 @@ import { openOfflineDatabase } from './offline/db';
 import { createIntentRepository } from './offline/nativeStorage';
 import { syncOfflineQueue } from './offline/syncQueue';
 import type { OfflineIntent } from './offline/intentRepository';
-import { captureSessionScope, isCurrentSessionScope } from './api';
+import { api, captureSessionScope, isCurrentSessionScope } from './api';
 import { bootstrapOfflineVault } from './offline/bootstrap';
+import { randomUUID } from 'expo-crypto';
+import { requireOfflinePermission } from './offline/adminWorkspace';
+import {
+  parseStockCount,
+  countFitsReserved,
+  type StockCountPayload,
+} from './offline/stockCountReview';
+
+type ServerStock = {
+  id: string;
+  variante_id: string;
+  fisico: number;
+  reservado: number;
+  comprometido: number;
+  version: number;
+  variante: { producto: { nombre: string } };
+};
+type StockReview = { intent: OfflineIntent; count: StockCountPayload; server: ServerStock };
 
 const stateLabels: Record<string, string> = {
   PENDING: 'Pendientes',
@@ -33,6 +51,7 @@ export function SyncScreen({ user }: { user: Identity }) {
   const [items, setItems] = useState<OfflineIntent[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [review, setReview] = useState<StockReview | null>(null);
   const revision = useRef(0);
   const scope = useCallback(
     async () =>
@@ -55,6 +74,7 @@ export function SyncScreen({ user }: { user: Identity }) {
     }
   }, [scope]);
   useEffect(() => {
+    setReview(null);
     void load();
     return () => {
       revision.current++;
@@ -72,6 +92,62 @@ export function SyncScreen({ user }: { user: Identity }) {
       await load();
     } catch (reason) {
       if (isCurrentSessionScope(session)) setError((reason as Error).message);
+    } finally {
+      if (isCurrentSessionScope(session)) setBusy(false);
+    }
+  };
+  const inspectCount = async (intent: OfflineIntent) => {
+    if (busy || intent.kind !== 'STOCK_COUNT' || intent.state !== 'CONFLICT') return;
+    const session = captureSessionScope();
+    setBusy(true);
+    setError('');
+    setReview(null);
+    try {
+      await bootstrapOfflineVault(user);
+      await requireOfflinePermission('inventario:gestionar');
+      const count = parseStockCount(intent.payload);
+      if (!count) throw new Error('El conteo guardado no tiene un formato válido.');
+      const rows = await api<ServerStock[]>(`/locations/${count.locationId}/inventory`);
+      const server = rows.find((row) => row.variante_id === count.variantId);
+      if (!server || server.id !== intent.entityId)
+        throw new Error('El inventario original ya no está disponible. Descarga un corte nuevo.');
+      if (isCurrentSessionScope(session)) setReview({ intent, count, server });
+    } catch (reason) {
+      if (isCurrentSessionScope(session)) setError((reason as Error).message);
+    } finally {
+      if (isCurrentSessionScope(session)) setBusy(false);
+    }
+  };
+  const retryCount = async () => {
+    if (!review || busy) return;
+    const session = captureSessionScope();
+    setBusy(true);
+    setError('');
+    try {
+      if (
+        !countFitsReserved(
+          review.count.observedPhysical,
+          review.server.reservado,
+          review.server.comprometido,
+        )
+      )
+        throw new Error(
+          'El conteo es menor que las unidades reservadas y comprometidas. Realiza otro conteo físico.',
+        );
+      const work = await requireOfflinePermission('inventario:gestionar');
+      await work.repository.rebaseStockCount(
+        work.scope,
+        review.intent.operationId,
+        randomUUID(),
+        review.server.version,
+      );
+      if (isCurrentSessionScope(session)) setReview(null);
+      await load();
+      await syncOfflineQueue(work.repository, work.scope);
+      await load();
+    } catch (reason) {
+      if (isCurrentSessionScope(session)) setError((reason as Error).message);
+      await load();
     } finally {
       if (isCurrentSessionScope(session)) setBusy(false);
     }
@@ -204,6 +280,18 @@ export function SyncScreen({ user }: { user: Identity }) {
               </Text>
               <Text style={styles.issueCopy}>{item.kind}</Text>
               {item.message ? <Text style={styles.issueCopy}>{item.message}</Text> : null}
+              {item.kind === 'STOCK_COUNT' &&
+              item.state === 'CONFLICT' &&
+              user.permissions.includes('inventario:gestionar') ? (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={busy}
+                  onPress={() => void inspectCount(item)}
+                  style={{ paddingVertical: 10 }}
+                >
+                  <Text style={styles.issueTitle}>Comparar conteo con el servidor</Text>
+                </Pressable>
+              ) : null}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Descartar conservando historial"
@@ -216,6 +304,50 @@ export function SyncScreen({ user }: { user: Identity }) {
             <Text style={styles.issueId}>{item.operationId.slice(0, 8)}</Text>
           </View>
         ))}
+      {review ? (
+        <View style={styles.conflictBanner}>
+          <Text style={styles.conflictTitle}>
+            Revisar conteo de {review.server.variante.producto.nombre}
+          </Text>
+          <Text style={styles.conflictCopy}>
+            Conteo guardado: {review.count.observedPhysical} u. · Versión anterior:{' '}
+            {review.intent.baseVersion}
+          </Text>
+          <Text style={styles.conflictCopy}>
+            Servidor: {review.server.fisico} u. · Versión {review.server.version} · Reservadas y
+            comprometidas: {review.server.reservado + review.server.comprometido} u.
+          </Text>
+          <Text style={styles.conflictCopy}>
+            Confirma solo si la cantidad guardada sigue siendo la observada físicamente. Se conserva
+            el intento anterior y se crea otro; un cambio posterior del stock puede producir otro
+            conflicto.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            disabled={
+              busy ||
+              !user.permissions.includes('inventario:gestionar') ||
+              !countFitsReserved(
+                review.count.observedPhysical,
+                review.server.reservado,
+                review.server.comprometido,
+              )
+            }
+            onPress={() => void retryCount()}
+            style={[styles.button, busy && styles.buttonBusy]}
+          >
+            <Text style={styles.buttonText}>Confirmar cantidad y crear nuevo intento</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy}
+            onPress={() => setReview(null)}
+            style={{ paddingVertical: 10 }}
+          >
+            <Text style={styles.conflictCopy}>Conservar para revisar después</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }

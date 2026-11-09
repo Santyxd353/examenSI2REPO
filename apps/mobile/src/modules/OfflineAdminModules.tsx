@@ -29,6 +29,7 @@ import {
 } from '../offline/adminWorkspace';
 import { projectAdminEntities } from '../offline/adminProjection';
 import { syncOfflineQueue } from '../offline/syncQueue';
+import { hasUnresolvedCount } from '../offline/stockCountReview';
 
 type Row<K extends SnapshotEntity['kind']> = Extract<SnapshotEntity, { kind: K }>;
 const pending = (item: OfflineIntent) => ['PENDING', 'SENDING', 'BLOCKED'].includes(item.state);
@@ -472,6 +473,10 @@ export function OfflineInventoryModule({ user }: { user: Identity }) {
       if (!Number.isSafeInteger(value)) throw new Error('La cantidad no es válida.');
       if (mode === 'STOCK_COUNT' && !selected)
         throw new Error('Descarga un saldo confirmado antes de registrar un conteo.');
+      if (mode === 'STOCK_COUNT' && hasUnresolvedCount(work.queue, location, variantId))
+        throw new Error(
+          'Ya existe un conteo pendiente para esta variante y ubicación. Revísalo en Sincronización.',
+        );
       const physical = mode === 'STOCK_DELTA' ? (selected?.physical ?? 0) + value : value;
       if (physical - (selected?.reserved ?? 0) - (selected?.committed ?? 0) < 0)
         throw new Error('El ajuste dejaría saldo disponible negativo.');

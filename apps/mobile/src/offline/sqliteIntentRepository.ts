@@ -6,6 +6,7 @@ import { prepareWireIntent } from './protocol';
 import type { RecordCipher } from './recordCipher';
 import type { ValidatedResult } from './protocol';
 import { blockDependents } from './dependencyGraph';
+import { canonicalIntentJson, OfflineIntentSchema } from '@lumina/contracts';
 
 type IntentRow = {
   operation_id: string;
@@ -250,6 +251,72 @@ export class SQLiteIntentRepository {
     );
   }
 
+  /** Revisión explícita: no cambia la intención rechazada ni reutiliza su comprobante. */
+  async rebaseStockCount(scope: OfflineScope, oldId: string, nextId: string, baseVersion: number) {
+    const check = this.cipher.guard(scope);
+    if (!Number.isSafeInteger(baseVersion) || baseVersion < 1)
+      throw new Error('Versión de inventario inválida.');
+    const rows = await this.listIntents(scope);
+    check();
+    const old = rows.find((row) => row.operationId === oldId);
+    if (!old || old.kind !== 'STOCK_COUNT' || old.state !== 'CONFLICT')
+      throw new Error('El conteo ya no está disponible para revisión.');
+    if (
+      rows.some(
+        (row) => row.dependsOn.includes(oldId) && !['APPLIED', 'DISCARDED'].includes(row.state),
+      )
+    )
+      throw new Error('El conteo tiene operaciones dependientes. Revísalas antes de reintentarlo.');
+    if (rows.some((row) => row.operationId === nextId))
+      throw new Error('El UUID del nuevo intento ya existe.');
+    const original = await prepareWireIntent(old, this.digest);
+    check();
+    const { payloadHash: _oldHash, ...prior } = original;
+    const unsigned = {
+      ...prior,
+      operationId: nextId,
+      baseVersion,
+      createdAt: new Date().toISOString(),
+    };
+    const wire = OfflineIntentSchema.parse({
+      ...unsigned,
+      payloadHash: await this.digest(canonicalIntentJson(unsigned)),
+    });
+    check();
+    const payload = await this.cipher.seal(scope, 'intent', nextId, wire);
+    check();
+    await this.database.withExclusiveTransactionAsync(async (tx) => {
+      check();
+      const changed = await tx.runAsync(
+        `UPDATE offline_intent SET state='DISCARDED'
+         WHERE operation_id=? AND tenant_id=? AND actor_id=? AND device_id=? AND state='CONFLICT'`,
+        oldId,
+        scope.tenantId,
+        scope.actorId,
+        scope.deviceId,
+      );
+      check();
+      if (changed.changes !== 1) throw new Error('El conflicto cambió durante la revisión.');
+      await tx.runAsync(
+        `INSERT INTO offline_intent
+         (operation_id,tenant_id,actor_id,device_id,kind,payload,base_version,depends_on,state,created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        wire.operationId,
+        scope.tenantId,
+        scope.actorId,
+        scope.deviceId,
+        wire.kind,
+        payload,
+        wire.baseVersion,
+        JSON.stringify(wire.dependsOn),
+        'PENDING',
+        wire.createdAt,
+      );
+      check();
+    });
+    check();
+  }
+
   async reconcile(
     scope: OfflineScope,
     intents: readonly OfflineIntent[],
@@ -287,7 +354,8 @@ export class SQLiteIntentRepository {
         check();
         await tx.runAsync(
           `UPDATE offline_intent SET state=?
-        WHERE operation_id=? AND tenant_id=? AND actor_id=? AND device_id=?`,
+        WHERE operation_id=? AND tenant_id=? AND actor_id=? AND device_id=?
+          AND state NOT IN ('APPLIED','DISCARDED')`,
           item.state,
           item.operationId,
           scope.tenantId,

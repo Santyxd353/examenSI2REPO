@@ -1104,20 +1104,6 @@ function StoreApp() {
                       >
                         <ShoppingBag size={16} /> Agregar al carrito
                       </button>
-                      {v?.ubicaciones?.length ? (
-                        <div className="location-stock" aria-label="Disponibilidad por ubicación">
-                          {v.ubicaciones.map((location) => (
-                            <span key={location.id}>
-                              <b>{locationLabel(location)}</b>
-                              {location.disponible} u.
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <small className="location-empty">
-                          Sin existencias en sucursales o almacenes.
-                        </small>
-                      )}
                     </article>
                   );
                 })}

@@ -52,3 +52,40 @@ export function fromBase64(value: string): Uint8Array {
   }
   return bytes;
 }
+
+export const decodeBase64 = fromBase64;
+
+/** Conserva el sobre persistido v1: nonce de 12 bytes y tag GCM de 16 bytes. */
+export function splitAesCombined(combined: string) {
+  const bytes = fromBase64(combined);
+  if (bytes.length < 28) throw new Error('El sobre AES está incompleto.');
+  return {
+    nonce: toBase64(bytes.subarray(0, 12)),
+    ciphertext: toBase64(bytes.subarray(12, -16)),
+    tag: toBase64(bytes.subarray(-16)),
+  };
+}
+
+/** Unir bytes decodificados; concatenar textos base64 perdería segmentos con padding. */
+export function combineBase64(parts: readonly (string | undefined)[]): string {
+  let size = 0;
+  const decoded = parts.map((part, index) => {
+    if (typeof part !== 'string') throw new Error('Falta el segmento AES ' + (index + 1));
+    let bytes: Uint8Array;
+    try {
+      bytes = fromBase64(part);
+    } catch {
+      throw new Error('Segmento base64 inválido.');
+    }
+    size += bytes.length;
+    if (size > maximumBytes) throw new Error('El recurso supera los 50 MiB.');
+    return bytes;
+  });
+  const combined = new Uint8Array(size);
+  let offset = 0;
+  for (const bytes of decoded) {
+    combined.set(bytes, offset);
+    offset += bytes.length;
+  }
+  return toBase64(combined);
+}

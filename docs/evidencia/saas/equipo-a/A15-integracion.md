@@ -44,10 +44,10 @@ Resultados observados hasta este avance:
 | Comprobación | Resultado |
 | --- | --- |
 | Contratos y motor compartido | 25 pruebas aprobadas |
-| Unitarios móviles, incluido SQLite real y WebCrypto en Node | 75 pruebas aprobadas |
+| Unitarios móviles, incluido SQLite real y WebCrypto en Node | 83 pruebas aprobadas |
 | TypeScript móvil | Aprobado |
 | Compatibilidad de dependencias Expo | Aprobada |
-| Exportación Android/Hermes | Aprobada: 1195 módulos, bundle de aproximadamente 3,8 MB |
+| Exportación Android/Hermes | Aprobada: 1196 módulos, bundle de aproximadamente 3,8 MB |
 | Compilación API/web | Aprobada |
 | Suite completa API tras integrar pagos y compatibilidad de recibos anteriores | 49 suites y 243 pruebas aprobadas, sin omitidas; repetición por archivo, 978 segundos de procesos |
 | Pagos y regresión de comercio | 3 suites y 18 pruebas aprobadas; QR y Stripe con proveedor simulado |
@@ -60,6 +60,8 @@ Resultados observados hasta este avance:
 | Uso de APK en dispositivo | Pendiente; no ejecutado por este agente |
 
 Los unitarios criptográficos usan AES-GCM de WebCrypto y SQLite de Node para comprobar la persistencia. La implementación Android usa Expo Crypto/SecureStore/SQLite y todavía requiere la comprobación nativa correspondiente.
+
+Se integraron también `ed94551` y `1557824` de la rama del equipo B: catálogo público sin desglose por ubicación y revisión explícita de conteos. Las mejoras se adaptaron al protocolo y al almacén cifrado vigentes; la API conserva el código que aprobó las 49 suites anteriores. Véase [integración de revisión de conteos](A15-revision-conteos.md) para el comportamiento, las decisiones de compatibilidad y el hash de la última exportación.
 
 ### Descargas nativas para el vestidor AR
 
