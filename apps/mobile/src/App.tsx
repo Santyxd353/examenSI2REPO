@@ -35,6 +35,11 @@ import { connectRealtime } from './realtime';
 import { bootstrapOfflineVault } from './offline/bootstrap';
 import { getOfflineDeviceId } from './offline/device';
 import { lockOfflineScope } from './offline/vault';
+import { readActiveDek } from './offline/vault';
+import type { OfflineScope } from './offline/scope';
+import { ApiProblem } from './errors/ApiProblem';
+import { readCustomerCatalogSnapshot, saveCustomerCatalogSnapshot } from './modules/catalog/customerCatalogSnapshot';
+import { offlineArUri, prepareOfflineWardrobe } from './modules/fitting/downloadManager';
 import { detectPose, isPoseAvailable } from '../modules/pose-landmarker/src';
 import { garmentImageFrame, garmentKind, garmentOutline, projectTorso } from './pose';
 import type { Layout, Torso } from './pose';
@@ -62,9 +67,17 @@ export function App() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState('');
   const catalogRequest = useRef(0);
-  const [selection, setSelection] = useState<{ product: Product; variant: Variant } | null>(null);
+  const [selection, setSelection] = useState<{ product: Product; variant: Variant; arImageUri?: string | null } | null>(null);
   const [error, setError] = useState('');
   const [catalogLoading, setCatalogLoading] = useState(false);
+  const [offlineArBusy, setOfflineArBusy] = useState(false);
+  const [offlineArStatus, setOfflineArStatus] = useState('');
+
+  async function offlineScopeFor(identity: Identity): Promise<OfflineScope> {
+    if (!identity.tenant) throw new Error('La sesión no contiene una tienda para el modo offline.');
+    const scope = { tenantId: identity.tenant.id, actorId: identity.id, deviceId: await getOfflineDeviceId() };
+    return await readActiveDek(scope) ? scope : bootstrapOfflineVault(identity);
+  }
 
   async function closeAccount() {
     setLoading(true);
@@ -103,7 +116,7 @@ export function App() {
     setLoading(false);
   }
 
-  async function loadCatalog(locationId = location?.id || '') {
+  async function loadCatalog(locationId = location?.id || '', identity = user) {
     const requestId = ++catalogRequest.current;
     const params = new URLSearchParams();
     params.set('channel', 'APP');
@@ -115,10 +128,22 @@ export function App() {
     if (category) params.set('category', category);
     setCatalogLoading(true);
     try {
-      const data = await api(`/catalog${params.size ? `?${params}` : ''}`);
+      const data = await api<Catalog>(`/catalog${params.size ? `?${params}` : ''}`);
       if (requestId !== catalogRequest.current) return;
       setCatalog(data);
       if (!locationId) setLocation(data.locations[0] || null);
+      if (identity) {
+        const scope = await offlineScopeFor(identity);
+        await saveCustomerCatalogSnapshot(scope, data);
+      }
+    } catch (reason) {
+      if (!identity || !ApiProblem.isNetwork(reason)) throw reason;
+      const cached = await readCustomerCatalogSnapshot(await offlineScopeFor(identity));
+      if (!cached) throw reason;
+      if (requestId !== catalogRequest.current) return;
+      setCatalog(cached);
+      if (!locationId) setLocation(cached.locations[0] || null);
+      setError('Sin conexión: mostrando el último catálogo guardado en este dispositivo.');
     } finally {
       if (requestId === catalogRequest.current) setCatalogLoading(false);
     }
@@ -128,8 +153,8 @@ export function App() {
     restoreSession()
       .then(async (identity) => {
         setUser(identity);
-        if (identity) void bootstrapOfflineVault(identity).catch((reason) => setError(reason.message));
-        if (identity && !isAdministrator(identity)) await loadCatalog('');
+        if (identity) await bootstrapOfflineVault(identity).catch((reason) => setError(reason.message));
+        if (identity && !isAdministrator(identity)) await loadCatalog('', identity);
       })
       .catch((reason) => setError(reason.message))
       .finally(() => setLoading(false));
@@ -166,9 +191,9 @@ export function App() {
           try {
             const identity = await login(correo, clave);
             setUser(identity);
-            void bootstrapOfflineVault(identity).catch((reason) => setError(reason.message));
+            await bootstrapOfflineVault(identity);
             setAdminClientMode(false);
-            if (!isAdministrator(identity)) await loadCatalog('');
+            if (!isAdministrator(identity)) await loadCatalog('', identity);
           } catch (reason) {
             setError((reason as Error).message);
           }
@@ -178,9 +203,9 @@ export function App() {
           try {
             const identity = await registerClient(nombres, apellidos, correo, clave);
             setUser(identity);
-            void bootstrapOfflineVault(identity).catch((reason) => setError(reason.message));
+            await bootstrapOfflineVault(identity);
             setAdminClientMode(false);
-            await loadCatalog('');
+            await loadCatalog('', identity);
           } catch (reason) {
             setError((reason as Error).message);
           }
@@ -211,6 +236,7 @@ export function App() {
       <ArCamera
         product={selection.product}
         variant={selection.variant}
+        arImageUri={selection.arImageUri}
         onBack={() => setPage('catalog')}
       />
     );
@@ -240,9 +266,26 @@ export function App() {
         setCategory('');
         setSearch('');
       }}
-      onTryAr={(product, variant) => {
-        setSelection({ product, variant });
+      onTryAr={async (product, variant) => {
+        const arImageUri = await offlineArUri(await offlineScopeFor(user), variant.id).catch(() => null);
+        setSelection({ product, variant, arImageUri });
         setPage('ar');
+      }}
+      offlineArBusy={offlineArBusy}
+      offlineArStatus={offlineArStatus}
+      onPrepareOfflineAr={async () => {
+        setOfflineArBusy(true);
+        setOfflineArStatus('Preparando prendas para usar sin conexión…');
+        try {
+          const result = await prepareOfflineWardrobe(await offlineScopeFor(user));
+          setOfflineArStatus(result.failures.length
+            ? `${result.completed.length} prendas listas; ${result.failures.length} requieren reintento.`
+            : `${result.completed.length} prendas AR listas para usar sin conexión.`);
+        } catch (reason) {
+          setOfflineArStatus((reason as Error).message);
+        } finally {
+          setOfflineArBusy(false);
+        }
       }}
       onCatalogRefresh={() => loadCatalog(location?.id || '')}
       onIdentityChange={setUser}
@@ -486,10 +529,12 @@ function LoginScreen({
 function ArCamera({
   product,
   variant,
+  arImageUri,
   onBack,
 }: {
   product: Product;
   variant: Variant;
+  arImageUri?: string | null;
   onBack: () => void;
 }) {
   const [permission, requestPermission] = useCameraPermissions();
@@ -505,9 +550,9 @@ function ArCamera({
   const [retry, setRetry] = useState(0);
   const [imageFailed, setImageFailed] = useState(false);
   const nativeAvailable = isPoseAvailable();
-  const arImageUrl = variant.arImagePath
+  const arImageUrl = arImageUri || (variant.arImagePath
     ? `${API_URL.replace(/\/api$/, '')}${variant.arImagePath}`
-    : null;
+    : null);
   const categoryKind = garmentKind(product.tipoPrenda || '');
   const kind = categoryKind === 'unsupported' ? garmentKind(product.nombre) : categoryKind;
 

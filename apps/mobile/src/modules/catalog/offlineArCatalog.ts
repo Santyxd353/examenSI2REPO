@@ -24,9 +24,10 @@ export function planOfflineArDownloads(
   const apiOrigin = new URL(apiUrl).origin;
   const selected: ArDownload[] = [];
   const variants = new Set<string>();
+  const remaining = Math.max(0, MAX_OFFLINE_AR_GARMENTS - cachedResourceIds.size);
 
   for (const resource of resources) {
-    if (selected.length === MAX_OFFLINE_AR_GARMENTS) break;
+    if (selected.length === remaining) break;
     if (resource.estado !== 'PUBLICADO' || cachedResourceIds.has(resource.id)) continue;
     if (!/^[a-f0-9]{64}$/i.test(resource.checksum))
       throw new Error('El recurso AR no incluye una suma SHA-256 válida.');

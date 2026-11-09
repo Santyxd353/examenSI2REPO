@@ -33,7 +33,9 @@ export function SyncScreen({ user }: { user: Identity }) {
     try {
       const current = await scope();
       if (!current) throw new Error('Falta la tienda de la sesión.');
-      await syncOfflineQueue(new SQLiteIntentRepository(await openOfflineDatabase()), current);
+      const repository = new SQLiteIntentRepository(await openOfflineDatabase());
+      await repository.releaseRetryableBlocked(current);
+      await syncOfflineQueue(repository, current);
       await load();
     } catch (reason) { setError((reason as Error).message); }
     finally { setBusy(false); }

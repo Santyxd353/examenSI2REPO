@@ -3,10 +3,14 @@ import {
   Body,
   ConflictException,
   Controller,
+  Get,
   HttpException,
   Inject,
   Injectable,
+  NotFoundException,
+  Param,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
@@ -86,7 +90,18 @@ const offlineResource = z.object({
 }).strict();
 type OfflineOperation = z.infer<typeof operation>;
 type Receipt = { operationId: string; status: 'APPLIED' | 'CONFLICT' | 'REJECTED'; serverVersion?: number; message?: string };
-type StoredReceipt = { status: Receipt['status']; server_version: number | null; message: string | null };
+type StoredReceipt = {
+  user_id: string;
+  device_id: string;
+  status: Receipt['status'];
+  server_version: number | null;
+  message: string | null;
+  request_hash: string | null;
+};
+
+const operationHash = (item: OfflineOperation) => createHash('sha256')
+  .update(`${item.kind}\n${item.baseVersion ?? 'null'}\n${item.payload}`)
+  .digest('hex');
 
 function galleryFile(file: Express.Multer.File) {
   if (file.mimetype === 'image/png' && file.buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])))
@@ -105,40 +120,46 @@ export class OfflineSyncService {
   private async ensureTables() {
     await this.db.$executeRaw`CREATE TABLE IF NOT EXISTS offline_sync_receipt (
       operation_id uuid PRIMARY KEY, user_id uuid NOT NULL, device_id uuid NOT NULL,
-      status varchar(12) NOT NULL, server_version integer, message varchar(500), created_at timestamptz NOT NULL DEFAULT now()
+      status varchar(12) NOT NULL, server_version integer, message varchar(500), request_hash char(64),
+      created_at timestamptz NOT NULL DEFAULT now()
     )`;
+    await this.db.$executeRaw`ALTER TABLE offline_sync_receipt ADD COLUMN IF NOT EXISTS request_hash char(64)`;
     await this.db.$executeRaw`CREATE TABLE IF NOT EXISTS offline_entity_version (
       entity_type varchar(40) NOT NULL, entity_id uuid NOT NULL, version integer NOT NULL,
       PRIMARY KEY (entity_type, entity_id)
     )`;
   }
 
-  private async stored(userId: string, deviceId: string, operationId: string): Promise<Receipt | null> {
+  async stored(userId: string, deviceId: string, operationId: string, requestHash?: string): Promise<Receipt | null> {
     const rows = await this.db.$queryRaw<StoredReceipt[]>`
-      SELECT status,server_version,message FROM offline_sync_receipt
-      WHERE operation_id=${operationId}::uuid AND user_id=${userId}::uuid AND device_id=${deviceId}::uuid`;
+      SELECT user_id::text,device_id::text,status,server_version,message,request_hash FROM offline_sync_receipt
+      WHERE operation_id=${operationId}::uuid`;
     const receipt = rows[0];
+    if (receipt && (receipt.user_id !== userId || receipt.device_id !== deviceId))
+      throw new ConflictException('El identificador de operación ya pertenece a otra identidad o dispositivo.');
+    if (receipt?.request_hash && requestHash && receipt.request_hash.trim() !== requestHash)
+      throw new ConflictException('El identificador de operación ya fue usado con un contenido distinto.');
     return receipt
       ? { operationId, status: receipt.status, ...(receipt.server_version === null ? {} : { serverVersion: receipt.server_version }), ...(receipt.message ? { message: receipt.message } : {}) }
       : null;
   }
 
-  private async save(userId: string, deviceId: string, receipt: Receipt) {
+  private async save(userId: string, deviceId: string, receipt: Receipt, requestHash: string) {
     await this.db.$executeRaw`
-      INSERT INTO offline_sync_receipt (operation_id,user_id,device_id,status,server_version,message)
-      VALUES (${receipt.operationId}::uuid,${userId}::uuid,${deviceId}::uuid,${receipt.status},${receipt.serverVersion ?? null},${receipt.message ?? null})
+      INSERT INTO offline_sync_receipt (operation_id,user_id,device_id,status,server_version,message,request_hash)
+      VALUES (${receipt.operationId}::uuid,${userId}::uuid,${deviceId}::uuid,${receipt.status},${receipt.serverVersion ?? null},${receipt.message ?? null},${requestHash})
       ON CONFLICT (operation_id) DO NOTHING`;
   }
 
-  private async catalog(user: Identity, item: OfflineOperation, deviceId: string) {
+  private async catalog(user: Identity, item: OfflineOperation, deviceId: string, requestHash: string) {
     requirePermission(user, 'catalogo:gestionar');
     const data = catalogPayload.parse(JSON.parse(item.payload));
     const archived = data.archived || data.product.archived;
     return this.db.$transaction(async (tx) => {
       const applied = async (version: number) => {
         const inserted = await tx.$executeRaw`
-          INSERT INTO offline_sync_receipt (operation_id,user_id,device_id,status,server_version,message)
-          VALUES (${item.operationId}::uuid,${user.id}::uuid,${deviceId}::uuid,'APPLIED',${version},NULL)
+          INSERT INTO offline_sync_receipt (operation_id,user_id,device_id,status,server_version,message,request_hash)
+          VALUES (${item.operationId}::uuid,${user.id}::uuid,${deviceId}::uuid,'APPLIED',${version},NULL,${requestHash})
           ON CONFLICT (operation_id) DO NOTHING`;
         if (inserted !== 1) throw new ConflictException('El identificador de la operación ya existe.');
         return version;
@@ -282,7 +303,7 @@ export class OfflineSyncService {
     });
   }
 
-  private async stockCount(user: Identity, item: OfflineOperation, deviceId: string) {
+  private async stockCount(user: Identity, item: OfflineOperation, deviceId: string, requestHash: string) {
     requirePermission(user, 'inventario:gestionar');
     const data = stockPayload.parse(JSON.parse(item.payload));
     if (item.baseVersion === null) throw new BadRequestException('El conteo offline requiere la versión de inventario.');
@@ -316,15 +337,15 @@ export class OfflineSyncService {
         },
       });
       const inserted = await tx.$executeRaw`
-        INSERT INTO offline_sync_receipt (operation_id,user_id,device_id,status,server_version,message)
-        VALUES (${item.operationId}::uuid,${user.id}::uuid,${deviceId}::uuid,'APPLIED',${updated.version},NULL)
+        INSERT INTO offline_sync_receipt (operation_id,user_id,device_id,status,server_version,message,request_hash)
+        VALUES (${item.operationId}::uuid,${user.id}::uuid,${deviceId}::uuid,'APPLIED',${updated.version},NULL,${requestHash})
         ON CONFLICT (operation_id) DO NOTHING`;
       if (inserted !== 1) throw new ConflictException('El identificador de la operación ya existe.');
       return updated.version;
     });
   }
 
-  private async stockDelta(user: Identity, item: OfflineOperation, deviceId: string) {
+  private async stockDelta(user: Identity, item: OfflineOperation, deviceId: string, requestHash: string) {
     requirePermission(user, 'inventario:gestionar');
     const data = stockDeltaPayload.parse(JSON.parse(item.payload));
     await requireLocationScope(this.db, user, data.locationId);
@@ -355,8 +376,8 @@ export class OfflineSyncService {
         },
       });
       const inserted = await tx.$executeRaw`
-        INSERT INTO offline_sync_receipt (operation_id,user_id,device_id,status,server_version,message)
-        VALUES (${item.operationId}::uuid,${user.id}::uuid,${deviceId}::uuid,'APPLIED',${updated[0].version},NULL)
+        INSERT INTO offline_sync_receipt (operation_id,user_id,device_id,status,server_version,message,request_hash)
+        VALUES (${item.operationId}::uuid,${user.id}::uuid,${deviceId}::uuid,'APPLIED',${updated[0].version},NULL,${requestHash})
         ON CONFLICT (operation_id) DO NOTHING`;
       if (inserted !== 1) throw new ConflictException('El identificador de la operación ya existe.');
       return updated[0].version;
@@ -368,22 +389,23 @@ export class OfflineSyncService {
     await this.ensureTables();
     const receipts: Receipt[] = [];
     for (const item of input.operations) {
-      const previous = await this.stored(user.id, input.deviceId, item.operationId);
+      const requestHash = operationHash(item);
+      const previous = await this.stored(user.id, input.deviceId, item.operationId, requestHash);
       if (previous) {
         receipts.push(previous);
         continue;
       }
       try {
         const serverVersion = item.kind === 'STOCK_COUNT'
-          ? await this.stockCount(user, item, input.deviceId)
+          ? await this.stockCount(user, item, input.deviceId, requestHash)
           : item.kind === 'STOCK_DELTA'
-            ? await this.stockDelta(user, item, input.deviceId)
-            : await this.catalog(user, item, input.deviceId);
+            ? await this.stockDelta(user, item, input.deviceId, requestHash)
+            : await this.catalog(user, item, input.deviceId, requestHash);
         const receipt: Receipt = { operationId: item.operationId, status: 'APPLIED', serverVersion };
-        await this.save(user.id, input.deviceId, receipt);
-        receipts.push((await this.stored(user.id, input.deviceId, item.operationId)) ?? receipt);
+        await this.save(user.id, input.deviceId, receipt, requestHash);
+        receipts.push((await this.stored(user.id, input.deviceId, item.operationId, requestHash)) ?? receipt);
       } catch (reason) {
-        const completed = await this.stored(user.id, input.deviceId, item.operationId);
+        const completed = await this.stored(user.id, input.deviceId, item.operationId, requestHash);
         if (completed) {
           receipts.push(completed);
           continue;
@@ -394,8 +416,8 @@ export class OfflineSyncService {
           status: reason instanceof ConflictException ? 'CONFLICT' : 'REJECTED',
           message: reason.message,
         };
-        await this.save(user.id, input.deviceId, receipt);
-        receipts.push((await this.stored(user.id, input.deviceId, item.operationId)) ?? receipt);
+        await this.save(user.id, input.deviceId, receipt, requestHash);
+        receipts.push((await this.stored(user.id, input.deviceId, item.operationId, requestHash)) ?? receipt);
       }
     }
     return { receipts };
@@ -411,6 +433,19 @@ export class OfflineSyncController {
   ) {}
   @Post('sync') sync(@Req() request: AuthRequest, @Body() body: unknown) {
     return this.service.sync(request.user, body);
+  }
+
+  @Get('receipts/:operationId')
+  async receipt(
+    @Req() request: AuthRequest,
+    @Param('operationId') operationId: string,
+    @Query('deviceId') deviceId: string,
+  ) {
+    const ids = z.object({ operationId: z.string().uuid(), deviceId: z.string().uuid() })
+      .parse({ operationId, deviceId });
+    const receipt = await this.service.stored(request.user.id, ids.deviceId, ids.operationId);
+    if (!receipt) throw new NotFoundException('El servidor todavía no tiene un recibo para esta operación.');
+    return receipt;
   }
 
   @Post('resources')

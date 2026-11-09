@@ -65,3 +65,25 @@ export async function saveCachedArResource(
     new Date().toISOString(),
   );
 }
+
+export async function listCachedArResources(database: SQLiteDatabase, scope: OfflineScope) {
+  return database.getAllAsync<CachedArResource & { local_uri: string; resource_id: string; variant_id: string }>(
+    `SELECT resource_id,variant_id,checksum,local_uri
+     FROM offline_ar_resource
+     WHERE tenant_id=? AND actor_id=? AND device_id=?
+     ORDER BY downloaded_at DESC`,
+    scope.tenantId, scope.actorId, scope.deviceId,
+  ).then((rows) => rows.map((row) => ({
+    resourceId: row.resource_id,
+    variantId: row.variant_id,
+    checksum: row.checksum,
+    localUri: row.local_uri,
+  })));
+}
+
+export async function cachedArUriForVariant(database: SQLiteDatabase, scope: OfflineScope, variantId: string) {
+  const resource = (await listCachedArResources(database, scope)).find((item) => item.variantId === variantId);
+  if (!resource) return null;
+  const file = new File(resource.localUri);
+  return file.exists ? resource.localUri : null;
+}

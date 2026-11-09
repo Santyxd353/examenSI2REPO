@@ -515,8 +515,7 @@ export class CatalogController {
 
   @Get('ar-resources')
   @UseGuards(AuthGuard)
-  async arResources(@Req() r: AuthRequest, @Query('offlineLimit') rawOfflineLimit?: string) {
-    requirePermission(r.user, 'catalogo:gestionar');
+  async arResources(@Req() _request: AuthRequest, @Query('offlineLimit') rawOfflineLimit?: string) {
     const offlineLimit = z.coerce.number().int().min(0).max(10).catch(0).parse(rawOfflineLimit);
     const resources = await this.db.recurso_catalogo.findMany({
       where: { uso: 'AR' },

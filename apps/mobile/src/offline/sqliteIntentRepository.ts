@@ -88,6 +88,59 @@ export class SQLiteIntentRepository {
     }));
   }
 
+  /** Un cierre puede dejar operaciones SENDING. Reenviar el mismo UUID es seguro e idempotente. */
+  async recoverSending(scope: OfflineIntent['scope']) {
+    await this.database.runAsync(
+      `UPDATE offline_intent SET state='PENDING'
+       WHERE tenant_id=? AND actor_id=? AND device_id=? AND state='SENDING'`,
+      scope.tenantId, scope.actorId, scope.deviceId,
+    );
+  }
+
+  async releaseRetryableBlocked(scope: OfflineIntent['scope']) {
+    const intents = await this.listIntents(scope);
+    const byId = new Map(intents.map((intent) => [intent.operationId, intent]));
+    const retryable = intents.filter((intent) => intent.state === 'BLOCKED' &&
+      intent.dependsOn.every((dependency) => byId.get(dependency)?.state === 'APPLIED'));
+    await this.database.withExclusiveTransactionAsync(async (transaction) => {
+      for (const intent of retryable)
+        await transaction.runAsync(
+          `UPDATE offline_intent SET state='PENDING'
+           WHERE operation_id=? AND tenant_id=? AND actor_id=? AND device_id=? AND state='BLOCKED'`,
+          intent.operationId, scope.tenantId, scope.actorId, scope.deviceId,
+        );
+    });
+  }
+
+  async markSending(scope: OfflineIntent['scope'], operationIds: readonly string[]) {
+    if (!operationIds.length) return;
+    await this.database.withExclusiveTransactionAsync(async (transaction) => {
+      for (const operationId of operationIds) {
+        const changed = await transaction.runAsync(
+          `UPDATE offline_intent SET state='SENDING'
+           WHERE operation_id=? AND tenant_id=? AND actor_id=? AND device_id=? AND state='PENDING'`,
+          operationId, scope.tenantId, scope.actorId, scope.deviceId,
+        );
+        if (changed.changes !== 1) throw new Error('La cola cambió antes de iniciar la sincronización.');
+      }
+    });
+  }
+
+  async settleTransportFailure(
+    scope: OfflineIntent['scope'],
+    operationIds: readonly string[],
+    state: 'PENDING' | 'BLOCKED',
+  ) {
+    await this.database.withExclusiveTransactionAsync(async (transaction) => {
+      for (const operationId of operationIds)
+        await transaction.runAsync(
+          `UPDATE offline_intent SET state=?
+           WHERE operation_id=? AND tenant_id=? AND actor_id=? AND device_id=? AND state='SENDING'`,
+          state, operationId, scope.tenantId, scope.actorId, scope.deviceId,
+        );
+    });
+  }
+
   /** Conserva el conflicto original y crea un nuevo intento con la versión revisada. */
   async rebaseStockCount(scope: OfflineIntent['scope'], oldId: string, nextId: string, baseVersion: number) {
     if (!Number.isInteger(baseVersion) || baseVersion < 0) throw new Error('Versión de inventario inválida.');

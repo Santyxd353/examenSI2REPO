@@ -14,7 +14,7 @@ const resource = (id: string, variantId = id) => ({
 test('prepara como máximo diez prendas AR publicadas, sin repetir variante ni caché', () => {
   const resources = Array.from({ length: 12 }, (_, index) => resource(String(index + 1)));
   const plan = planOfflineArDownloads('https://api.example.test/api', resources, new Set(['1']));
-  assert.equal(plan.length, MAX_OFFLINE_AR_GARMENTS);
+  assert.equal(plan.length, MAX_OFFLINE_AR_GARMENTS - 1);
   assert.equal(plan[0]?.resourceId, '2');
   assert.equal(plan[0]?.sourceUrl, 'https://api.example.test/stores/lumina/assets/catalog-ar/2.png');
   assert.equal(
@@ -22,6 +22,7 @@ test('prepara como máximo diez prendas AR publicadas, sin repetir variante ni c
     1,
   );
   assert.equal(planOfflineArDownloads('https://api.example.test/api', [resource('new', 'v'), resource('old', 'v')], new Set()).length, 1);
+  assert.equal(planOfflineArDownloads('https://api.example.test/api', resources, new Set(resources.slice(0, 10).map((item) => item.id))).length, 0);
 });
 
 test('no permite descargar recursos fuera del origen y la ruta pública de la tienda', () => {

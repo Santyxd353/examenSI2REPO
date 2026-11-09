@@ -48,7 +48,10 @@ type Props = {
   onSearchChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
   onClearFilters: () => void;
-  onTryAr: (product: Product, variant: Variant) => void;
+  onTryAr: (product: Product, variant: Variant) => void | Promise<void>;
+  offlineArBusy: boolean;
+  offlineArStatus: string;
+  onPrepareOfflineAr: () => void | Promise<void>;
   onCatalogRefresh: () => Promise<void>;
   onIdentityChange: (identity: Identity) => void;
   onAdminMode?: () => void;
@@ -90,6 +93,9 @@ export function CatalogScreen({
   onCategoryChange,
   onClearFilters,
   onTryAr,
+  offlineArBusy,
+  offlineArStatus,
+  onPrepareOfflineAr,
   onCatalogRefresh,
   onIdentityChange,
   onAdminMode,
@@ -493,6 +499,16 @@ export function CatalogScreen({
                 >
                   <Text style={styles.promoButtonText}>Ver vestido en AR →</Text>
                 </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Preparar prendas AR sin conexión"
+                  disabled={offlineArBusy}
+                  style={[styles.offlineButton, offlineArBusy && styles.buttonDisabled]}
+                  onPress={() => void onPrepareOfflineAr()}
+                >
+                  <Text style={styles.offlineButtonText}>{offlineArBusy ? 'Descargando…' : '↓ Guardar AR offline'}</Text>
+                </Pressable>
+                {!!offlineArStatus && <Text style={styles.offlineStatus}>{offlineArStatus}</Text>}
               </View>
               <View style={styles.promoArt}>
                 <Text style={styles.promoAr}>AR</Text>
@@ -1050,6 +1066,9 @@ const styles = StyleSheet.create({
     backgroundColor: green,
   },
   promoButtonText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+  offlineButton: { alignSelf: 'flex-start', marginTop: 7, paddingHorizontal: 13, paddingVertical: 8, borderRadius: 18, borderWidth: 1, borderColor: green, backgroundColor: '#fff' },
+  offlineButtonText: { color: green, fontSize: 9, fontWeight: '800' },
+  offlineStatus: { color: '#526256', fontSize: 8, lineHeight: 12, marginTop: 5 },
   promoArt: {
     flex: 0.8,
     justifyContent: 'center',

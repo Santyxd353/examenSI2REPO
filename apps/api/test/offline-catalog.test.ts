@@ -148,6 +148,16 @@ test('crea, edita, adjunta y archiva catálogo offline de forma idempotente', as
   expect((await db.inventario.findUniqueOrThrow({ where: { id: inventory.id } })).fisico).toBe(11);
   await request(app.getHttpServer()).post('/api/offline/sync').auth(token, { type: 'bearer' }).send(deltaBody);
   expect((await db.inventario.findUniqueOrThrow({ where: { id: inventory.id } })).fisico).toBe(11);
+  const recoveredReceipt = await request(app.getHttpServer())
+    .get(`/api/offline/receipts/${deltaId}?deviceId=${deviceId}`)
+    .auth(token, { type: 'bearer' });
+  expect(recoveredReceipt.body).toMatchObject({ operationId: deltaId, status: 'APPLIED' });
+  const mismatched = await request(app.getHttpServer()).post('/api/offline/sync').auth(token, { type: 'bearer' }).send({
+    ...deltaBody,
+    operations: [{ ...deltaBody.operations[0], payload: JSON.stringify({ locationId: inventory.ubicacion_id, variantId: firstVariant, delta: 4, reason: 'Contenido distinto con el mismo UUID' }) }],
+  });
+  expect(mismatched.status).toBe(409);
+  expect((await db.inventario.findUniqueOrThrow({ where: { id: inventory.id } })).fisico).toBe(11);
 
   const staleVersion = delta.body.receipts[0].serverVersion;
   await request(app.getHttpServer())
