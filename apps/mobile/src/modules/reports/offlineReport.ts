@@ -1,5 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { OfflineScope } from '../../offline/scope';
+import { offlineScopeKey } from '../../offline/scope';
+import type { VaultEnvelope } from '../../offline/crypto';
 
 export type OfflineDashboardReport = Readonly<{
   kpis: { pedidos: number; ventas: number; unidades: number; ticketPromedio: number };
@@ -10,6 +12,7 @@ export type OfflineDashboardReport = Readonly<{
 }>;
 
 type SnapshotRow = { payload: string; generated_at: string };
+const aadFor = (scope: OfflineScope, key: string) => `report:${offlineScopeKey(scope)}:${key}`;
 
 export function reportSnapshotKey(from: string, to: string, location?: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to)
@@ -33,6 +36,13 @@ export async function saveOfflineDashboard(
   report: OfflineDashboardReport,
 ) {
   verifyOfflineDashboard(report);
+  const [{ sealJson }, { readActiveDek }] = await Promise.all([
+    import('../../offline/crypto'),
+    import('../../offline/vault'),
+  ]);
+  const dek = await readActiveDek(scope);
+  if (!dek) throw new Error('El almacén offline está bloqueado para esta sesión.');
+  const payload = JSON.stringify(await sealJson(report, dek, aadFor(scope, key)));
   await database.runAsync(
     `INSERT INTO offline_report_snapshot
       (tenant_id, actor_id, device_id, report_key, payload, generated_at)
@@ -43,7 +53,7 @@ export async function saveOfflineDashboard(
     scope.actorId,
     scope.deviceId,
     key,
-    JSON.stringify(report),
+    payload,
     new Date().toISOString(),
   );
 }
@@ -63,7 +73,15 @@ export async function loadOfflineDashboard(
   );
   if (!row) return null;
   try {
-    return { report: verifyOfflineDashboard(JSON.parse(row.payload) as OfflineDashboardReport), generatedAt: row.generated_at };
+    const [{ openJson }, { readActiveDek }] = await Promise.all([
+      import('../../offline/crypto'),
+      import('../../offline/vault'),
+    ]);
+    const parsed = JSON.parse(row.payload) as OfflineDashboardReport | VaultEnvelope;
+    const value = 'algorithm' in parsed
+      ? await openJson<OfflineDashboardReport>(parsed, (await readActiveDek(scope)) || '', aadFor(scope, key))
+      : parsed;
+    return { report: verifyOfflineDashboard(value), generatedAt: row.generated_at };
   } catch {
     return null;
   }

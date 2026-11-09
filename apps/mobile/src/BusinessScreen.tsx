@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { api } from './api';
+import { randomUUID } from 'expo-crypto';
 
 type Subscription = {
   subscription?: { planName: string; status: string; periodEnd: string | null; limits: Record<string, number> };
   usage: { locations: number; products: number; staff: number };
   trial: { active: boolean; endsAt: string | null };
 };
+type Plan = { code: 'esencial' | 'pro' | 'negocio'; name: string; monthlyAmount: number; currency: string; limits: Record<string, number>; features: string[] };
 
 const labels = { locations: 'Ubicaciones', products: 'Productos', staff: 'Equipo activo' } as const;
 
@@ -15,10 +17,21 @@ export function BusinessScreen() {
   const [data, setData] = useState<Subscription | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<Plan['code'] | ''>('');
+  const [confirming, setConfirming] = useState(false);
+  const [message, setMessage] = useState('');
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
-    try { setData(await api<Subscription>('/tenant/subscription')); }
+    try {
+      const [subscription, availablePlans] = await Promise.all([
+        api<Subscription>('/tenant/subscription'),
+        api<Plan[]>('/tenant/plans'),
+      ]);
+      setData(subscription);
+      setPlans(availablePlans);
+    }
     catch (reason) { setError((reason as Error).message); }
     finally { setLoading(false); }
   }, []);
@@ -26,6 +39,20 @@ export function BusinessScreen() {
 
   if (loading && !data) return <View style={styles.center}><ActivityIndicator color="#173e2a" /></View>;
   const endingAt = data?.trial.endsAt || data?.subscription?.periodEnd;
+  const confirmTestPlan = async () => {
+    if (!selectedPlan) return;
+    setConfirming(true); setError(''); setMessage('');
+    try {
+      await api('/tenant/subscription/test-confirm', {
+        method: 'POST',
+        body: JSON.stringify({ planCode: selectedPlan, operationId: randomUUID() }),
+      });
+      setMessage('Plan de demostración confirmado. No se realizó ningún cobro real.');
+      setSelectedPlan('');
+      await load();
+    } catch (reason) { setError((reason as Error).message); }
+    finally { setConfirming(false); }
+  };
 
   return (
     <ScrollView
@@ -64,6 +91,11 @@ export function BusinessScreen() {
           </View>
         </>
       ) : <View style={styles.empty}><Text style={styles.emptyTitle}>Aún no hay un plan asignado</Text><Text style={styles.emptyCopy}>Actualiza la información o revisa la configuración de la tienda.</Text></View>}
+      <View style={styles.sectionHeading}><Text style={styles.section}>Planes disponibles</Text><Text style={styles.sectionHint}>ENTORNO TEST</Text></View>
+      <Text style={styles.testNotice}>Simulación académica: confirmar cambia el plan de prueba durante 30 días y no solicita tarjeta ni cobra dinero.</Text>
+      <View style={styles.usageGrid}>{plans.map((plan) => <Pressable key={plan.code} accessibilityRole="radio" accessibilityState={{ checked: selectedPlan === plan.code }} onPress={() => setSelectedPlan(plan.code)} style={[styles.planOption, selectedPlan === plan.code && styles.planOptionActive]}><View><Text style={[styles.planOptionName, selectedPlan === plan.code && styles.planOptionNameActive]}>{plan.name}</Text><Text style={[styles.planOptionLimits, selectedPlan === plan.code && styles.planOptionLimitsActive]}>{plan.limits.locations} ubicaciones · {plan.limits.staff} personas · {plan.limits.products} productos</Text></View><Text style={[styles.planOptionPrice, selectedPlan === plan.code && styles.planOptionNameActive]}>Bs {plan.monthlyAmount}/mes</Text></Pressable>)}</View>
+      {message ? <Text style={styles.success}>{message}</Text> : null}
+      <Pressable accessibilityRole="button" disabled={!selectedPlan || confirming} onPress={() => void confirmTestPlan()} style={[styles.button, (!selectedPlan || confirming) && styles.disabled]}><Text style={styles.buttonText}>{confirming ? 'Confirmando…' : 'Confirmar plan TEST'}</Text></Pressable>
       <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.button}><Text style={styles.buttonText}>Actualizar información</Text></Pressable>
     </ScrollView>
   );
@@ -77,4 +109,5 @@ const styles = StyleSheet.create({
   planCard: { backgroundColor: '#173e2a', borderRadius: 18, padding: 18 }, planTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }, caption: { color: '#bed2c3', fontSize: 9, letterSpacing: 1.4, fontWeight: '900' }, plan: { color: '#fff', fontSize: 25, fontWeight: '900', marginTop: 6 }, status: { backgroundColor: '#ffffff1c', borderRadius: 12, borderWidth: 1, borderColor: '#ffffff38', paddingHorizontal: 9, paddingVertical: 6 }, statusText: { color: '#e4f2e4', fontSize: 8, fontWeight: '900', letterSpacing: 1 }, planDivider: { height: 1, backgroundColor: '#ffffff26', marginVertical: 15 }, planDetail: { color: '#e1ebe2', fontSize: 12 }, planDate: { color: '#b8ccb9', fontSize: 10, marginTop: 7 },
   sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 6 }, section: { color: '#1b2920', fontSize: 17, fontWeight: '900' }, sectionHint: { color: '#909991', fontSize: 8, fontWeight: '900', letterSpacing: 1 }, usageGrid: { gap: 9 }, usageCard: { borderWidth: 1, borderColor: '#e5e7e2', borderRadius: 14, backgroundColor: '#fff', padding: 14 }, usageTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 }, usageLabel: { color: '#536157', fontSize: 11, fontWeight: '700' }, usageValue: { color: '#173e2a', fontSize: 12, fontWeight: '900' }, track: { height: 6, backgroundColor: '#edf0ea', borderRadius: 3, overflow: 'hidden', marginTop: 12 }, fill: { height: '100%', backgroundColor: '#4e9167', borderRadius: 3 }, usageNote: { color: '#939a94', fontSize: 9, marginTop: 6 },
   button: { alignSelf: 'flex-start', backgroundColor: '#173e2a', borderRadius: 13, paddingHorizontal: 17, paddingVertical: 12, marginTop: 4 }, buttonText: { color: '#fff', fontWeight: '900', fontSize: 11 }, error: { color: '#9a2e2e', backgroundColor: '#fff0ec', borderRadius: 10, padding: 12 }, empty: { alignItems: 'center', borderWidth: 1, borderStyle: 'dashed', borderColor: '#cfd8d0', borderRadius: 14, padding: 26 }, emptyTitle: { color: '#294032', fontWeight: '900' }, emptyCopy: { color: '#79837b', fontSize: 11, textAlign: 'center', marginTop: 6 },
+  testNotice: { color: '#765820', backgroundColor: '#fff5df', borderWidth: 1, borderColor: '#ead7a9', borderRadius: 11, padding: 11, fontSize: 10, lineHeight: 15 }, planOption: { minHeight: 70, borderWidth: 1, borderColor: '#e1e5df', borderRadius: 13, padding: 13, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, planOptionActive: { backgroundColor: '#173e2a', borderColor: '#173e2a' }, planOptionName: { color: '#24372b', fontSize: 12, fontWeight: '900' }, planOptionNameActive: { color: '#fff' }, planOptionLimits: { color: '#7b857d', fontSize: 8, marginTop: 5 }, planOptionLimitsActive: { color: '#c9d7cc' }, planOptionPrice: { color: '#173e2a', fontSize: 11, fontWeight: '900' }, success: { color: '#25623b', backgroundColor: '#e9f5eb', borderRadius: 10, padding: 11, fontSize: 10 }, disabled: { opacity: 0.45 },
 });

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   ForbiddenException,
   Get,
@@ -7,6 +8,7 @@ import {
   Injectable,
   NotFoundException,
   OnModuleDestroy,
+  Post,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -16,6 +18,7 @@ import { resolve } from 'path';
 import { currentTenant, TenantContext } from './context';
 import { AuthGuard, AuthRequest, requirePermission } from '../auth';
 import { Db } from '../db';
+import { z } from 'zod';
 
 export const DEFAULT_TENANT_ID = '00000000-0000-4000-8000-000000000018';
 export const validTenantSlug = (slug: string) =>
@@ -75,32 +78,39 @@ export class TenantRegistry implements OnModuleDestroy {
         {
           code: 'piloto',
           name: 'Piloto Lúmina',
+          monthlyAmount: 0,
           limits: { locations: 20, staff: 100, products: 10000 },
           features: ['offline', 'reports', 'ai', 'ml'],
         },
         {
           code: 'esencial',
           name: 'Esencial',
+          monthlyAmount: 149,
           limits: { locations: 1, staff: 3, products: 200 },
           features: ['offline', 'reports'],
         },
         {
           code: 'pro',
           name: 'Profesional',
+          monthlyAmount: 299,
           limits: { locations: 5, staff: 15, products: 2000 },
           features: ['offline', 'reports', 'ai', 'ml'],
         },
         {
           code: 'negocio',
           name: 'Negocio',
+          monthlyAmount: 599,
           limits: { locations: 20, staff: 100, products: 10000 },
           features: ['offline', 'reports', 'ai', 'ml'],
         },
       ];
       for (const plan of plans)
         await connection.query(
-          'INSERT INTO platform.plan(code,name,limits,features) VALUES($1,$2,$3,$4) ON CONFLICT(code) DO NOTHING',
-          [plan.code, plan.name, plan.limits, JSON.stringify(plan.features)],
+          `INSERT INTO platform.plan(code,name,monthly_amount,currency,limits,features,published)
+           VALUES($1,$2,$3,'BOB',$4,$5,$6)
+           ON CONFLICT(code) DO UPDATE SET name=EXCLUDED.name,monthly_amount=EXCLUDED.monthly_amount,
+             limits=EXCLUDED.limits,features=EXCLUDED.features,published=EXCLUDED.published`,
+          [plan.code, plan.name, plan.monthlyAmount, plan.limits, JSON.stringify(plan.features), plan.code !== 'piloto'],
         );
       const databaseName = decodeURIComponent(new URL(this.businessUrl).pathname.slice(1));
       await connection.query(
@@ -178,6 +188,57 @@ export class TenantRegistry implements OnModuleDestroy {
     return Promise.all(rows.rows.map((row) => this.resolve(row.slug, true)));
   }
 
+  async plans() {
+    await this.initialize();
+    const result = await this.pool.query<{
+      code: string; name: string; monthly_amount: string; currency: string;
+      limits: Record<string, number>; features: string[];
+    }>(`SELECT code,name,monthly_amount,currency,limits,features
+        FROM platform.plan WHERE published ORDER BY monthly_amount`);
+    return result.rows.map((row) => ({
+      code: row.code,
+      name: row.name,
+      monthlyAmount: Number(row.monthly_amount),
+      currency: row.currency,
+      limits: row.limits,
+      features: row.features,
+    }));
+  }
+
+  async activateTestPlan(tenantId: string, planCode: string, operationId: string) {
+    await this.initialize();
+    const connection = await this.pool.connect();
+    try {
+      await connection.query('BEGIN');
+      const existing = await connection.query(
+        `SELECT 1 FROM platform.billing_event WHERE provider='QR_SIMULATED' AND external_id=$1`,
+        [operationId],
+      );
+      if (!existing.rowCount) {
+        const selected = await connection.query(`SELECT code FROM platform.plan WHERE code=$1 AND published`, [planCode]);
+        if (!selected.rowCount) throw new BadRequestException('El plan seleccionado no está disponible.');
+        await connection.query(
+          `UPDATE platform.subscription SET plan_code=$1,status='ACTIVE',provider='QR_SIMULATED',
+             trial_ends_at=NULL,current_period_end=now()+interval '30 days',version=version+1,updated_at=now()
+           WHERE tenant_id=$2`,
+          [planCode, tenantId],
+        );
+        await connection.query(
+          `INSERT INTO platform.billing_event(tenant_id,provider,external_id,event_type,status)
+           VALUES($1,'QR_SIMULATED',$2,'TEST_PLAN_CONFIRMED','APPLIED')`,
+          [tenantId, operationId],
+        );
+      }
+      await connection.query('COMMIT');
+    } catch (error) {
+      await connection.query('ROLLBACK');
+      throw error;
+    } finally {
+      connection.release();
+    }
+    return this.resolve(currentTenant()?.slug || '', true);
+  }
+
   async onModuleDestroy() {
     await this.pool.end();
   }
@@ -185,7 +246,21 @@ export class TenantRegistry implements OnModuleDestroy {
 
 @Controller('tenant')
 export class TenantController {
-  constructor(@Inject(Db) private readonly db: Db) {}
+  constructor(@Inject(Db) private readonly db: Db, @Inject(TenantRegistry) private readonly registry: TenantRegistry) {}
+
+  private async usage() {
+    const [locations, products, staff] = await Promise.all([
+      this.db.ubicacion.count({ where: { activa: true } }),
+      this.db.producto.count(),
+      this.db.usuario.count({
+        where: {
+          estado: 'ACTIVO',
+          usuario_rol: { some: { rol: { nombre: { in: ['Administrador', 'Vendedor', 'Analista'] } } } },
+        },
+      }),
+    ]);
+    return { locations, products, staff };
+  }
 
   @Get()
   info() {
@@ -205,24 +280,38 @@ export class TenantController {
   async subscription(@Req() request: AuthRequest) {
     requirePermission(request.user, 'usuarios:gestionar');
     const tenant = currentTenant();
-    const [locations, products, staff] = await Promise.all([
-      this.db.ubicacion.count({ where: { activa: true } }),
-      this.db.producto.count(),
-      this.db.usuario.count({
-        where: {
-          estado: 'ACTIVO',
-          usuario_rol: { some: { rol: { nombre: { in: ['Administrador', 'Vendedor', 'Analista'] } } } },
-        },
-      }),
-    ]);
+    const usage = await this.usage();
     return {
       subscription: tenant?.subscription,
-      usage: { locations, products, staff },
+      usage,
       trial: {
         active: tenant?.subscription?.status === 'TRIALING',
         endsAt: tenant?.subscription?.status === 'TRIALING' ? tenant.subscription.periodEnd : null,
       },
     };
+  }
+
+  @Get('plans')
+  @UseGuards(AuthGuard)
+  plans(@Req() request: AuthRequest) {
+    requirePermission(request.user, 'usuarios:gestionar');
+    return this.registry.plans();
+  }
+
+  @Post('subscription/test-confirm')
+  @UseGuards(AuthGuard)
+  async confirmTestPlan(@Req() request: AuthRequest, @Body() body: unknown) {
+    requirePermission(request.user, 'usuarios:gestionar');
+    const input = z.object({ planCode: z.enum(['esencial', 'pro', 'negocio']), operationId: z.string().uuid() }).strict().parse(body);
+    const plan = (await this.registry.plans()).find((item) => item.code === input.planCode)!;
+    const usage = await this.usage();
+    const exceeded = (Object.keys(usage) as (keyof typeof usage)[]).filter((key) => usage[key] > (plan.limits[key] ?? Number.MAX_SAFE_INTEGER));
+    if (exceeded.length)
+      throw new BadRequestException(`El plan no admite el consumo actual de: ${exceeded.join(', ')}.`);
+    const tenant = currentTenant();
+    if (!tenant) throw new BadRequestException('La tienda no está disponible.');
+    await this.registry.activateTestPlan(tenant.id, input.planCode, input.operationId);
+    return { confirmed: true, provider: 'QR_SIMULATED', subscription: (await this.registry.resolve(tenant.slug, true)).subscription };
   }
 }
 

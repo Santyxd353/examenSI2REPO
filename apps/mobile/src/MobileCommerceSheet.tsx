@@ -102,6 +102,9 @@ export function MobileCommerceSheet({
   const [stripeBusy, setStripeBusy] = useState(false);
   const [stripeError, setStripeError] = useState('');
   const [stripeMessage, setStripeMessage] = useState('');
+  const [returnReason, setReturnReason] = useState('La prenda no cumplió mis expectativas.');
+  const [orderActionMessage, setOrderActionMessage] = useState('');
+  const [orderActionError, setOrderActionError] = useState('');
   const unavailable = lines.some((line) => line.available < line.quantity || line.price <= 0);
 
   useEffect(() => {
@@ -209,6 +212,25 @@ export function MobileCommerceSheet({
     }
   }
 
+  async function requestReturn(order: MobileOrder) {
+    if (returnReason.trim().length < 10) {
+      setOrderActionError('Explica el motivo de la devolución con al menos 10 caracteres.');
+      return;
+    }
+    setOrderActionError(''); setOrderActionMessage('');
+    try {
+      await api(`/commerce/orders/${order.id}/returns`, {
+        method: 'POST',
+        body: JSON.stringify({
+          reason: returnReason.trim(),
+          items: order.detalle_pedido.map((line) => ({ detailId: line.id, quantity: line.cantidad })),
+        }),
+      });
+      setOrderActionMessage('Solicitud enviada. El equipo revisará las cantidades y el reembolso.');
+      await onReload();
+    } catch (reason) { setOrderActionError((reason as Error).message); }
+  }
+
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -255,6 +277,8 @@ export function MobileCommerceSheet({
           {!!error && <Text style={styles.error}>{error}</Text>}
           {!!message && <Text style={styles.message}>{message}</Text>}
           {!!stripeMessage && <Text style={styles.message}>{stripeMessage}</Text>}
+          {!!orderActionMessage && <Text style={styles.message}>{orderActionMessage}</Text>}
+          {!!orderActionError && <Text style={styles.error}>{orderActionError}</Text>}
 
           {tab === 'cart' ? (
             <CartContent
@@ -288,7 +312,7 @@ export function MobileCommerceSheet({
               onCheckout={checkout}
             />
           ) : (
-            <OrdersContent orders={orders} busy={busy} onOpenPayment={setPaymentOrder} />
+            <OrdersContent orders={orders} busy={busy} returnReason={returnReason} onReturnReason={setReturnReason} onOpenPayment={setPaymentOrder} onRequestReturn={(order) => void requestReturn(order)} />
           )}
         </View>
         <DemoPaymentSheet
@@ -513,11 +537,17 @@ function CartContent({
 function OrdersContent({
   orders,
   busy,
+  returnReason,
+  onReturnReason,
   onOpenPayment,
+  onRequestReturn,
 }: {
   orders: MobileOrder[];
   busy: boolean;
+  returnReason: string;
+  onReturnReason: (value: string) => void;
   onOpenPayment: (order: MobileOrder) => void;
+  onRequestReturn: (order: MobileOrder) => void;
 }) {
   if (!orders.length)
     return (
@@ -530,6 +560,7 @@ function OrdersContent({
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <TextInput value={returnReason} onChangeText={onReturnReason} placeholder="Motivo para una devolución" placeholderTextColor="#8a8f8a" style={styles.returnReason} />
       {orders.map((order) => (
         <View key={order.id} style={styles.order}>
           <View style={styles.orderHeader}>
@@ -580,6 +611,9 @@ function OrdersContent({
             <Text style={styles.returnText}>
               Devolución: {order.devolucion[0]!.estado.toLowerCase()}
             </Text>
+          )}
+          {['CONFIRMADO', 'PREPARANDO', 'DESPACHADO', 'ENTREGADO', 'CERRADO'].includes(order.estado) && !order.devolucion.some((item) => item.estado !== 'RECHAZADA') && (
+            <Pressable disabled={busy || returnReason.trim().length < 10} style={[styles.returnButton, (busy || returnReason.trim().length < 10) && styles.disabled]} onPress={() => onRequestReturn(order)}><Text style={styles.returnButtonText}>Solicitar devolución</Text></Pressable>
           )}
         </View>
       ))}
@@ -1016,6 +1050,9 @@ const styles = StyleSheet.create({
   },
   rejectText: { color: '#9f382d', fontSize: 9, fontWeight: '800' },
   returnText: { color: '#825c23', fontSize: 8, marginTop: 8 },
+  returnReason: { minHeight: 44, borderWidth: 1, borderColor: '#d9ddd7', borderRadius: 10, paddingHorizontal: 11, color: '#263229', fontSize: 10, backgroundColor: '#fff', marginBottom: 8 },
+  returnButton: { alignSelf: 'flex-start', borderWidth: 1, borderColor: green, borderRadius: 9, paddingHorizontal: 11, paddingVertical: 8, marginTop: 9 },
+  returnButtonText: { color: green, fontSize: 9, fontWeight: '900' },
   gatewayOverlay: {
     flex: 1,
     backgroundColor: '#111a',

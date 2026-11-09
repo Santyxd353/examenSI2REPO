@@ -16,11 +16,14 @@ import type { Identity } from './types';
 import type { MobileBusinessModule } from './modules/registry';
 import { CatalogAdminScreen } from './modules/catalog/CatalogAdminScreen';
 import { projectDelta } from './modules/inventory/stockProjection';
+import { ReportAssistant } from './modules/reports/ReportAssistant';
+import { loadOfflineDashboard, reportSnapshotKey, saveOfflineDashboard, type OfflineDashboardReport } from './modules/reports/offlineReport';
+import { shareReportCsv, shareReportPdf } from './modules/reports/reportExport';
 
 type Props = { module: Exclude<MobileBusinessModule, 'home' | 'sync' | 'business'>; user: Identity };
 type Location = { id: string; nombre: string; tipo: string; direccion?: string | null; activa: boolean; _count?: { inventario: number; usuario_ubicacion: number } };
 type Inventory = { id: string; variante_id: string; fisico: number; reservado: number; comprometido: number; disponible: number; version: number; alertaStock: boolean; variante: { sku: string; talla: string; color: string; producto: { nombre: string } } };
-type Order = { id: string; numero: string; estado: string; total: string | number; creado_en: string; ubicacion?: { nombre: string }; usuario_pedido_usuario_idTousuario?: { nombres: string; apellidos: string } };
+type Order = { id: string; numero: string; estado: string; total: string | number; creado_en: string; ubicacion?: { nombre: string }; usuario_pedido_usuario_idTousuario?: { nombres: string; apellidos: string }; devolucion?: { id: string; estado: string; detalle_devolucion: { id: string; cantidad: number }[] }[] };
 
 const names: Record<Props['module'], { eyebrow: string; title: string; copy: string }> = {
   catalog: { eyebrow: 'PRODUCTOS', title: 'Catálogo', copy: 'Crea borradores y consulta las prendas publicadas de la tienda.' },
@@ -41,7 +44,7 @@ export function AdminOperationsScreen({ module, user }: Props) {
     {module === 'inventory' ? <InventoryModule user={user} /> : null}
     {module === 'team' ? <TeamModule /> : null}
     {module === 'sales-orders' ? <OrdersModule /> : null}
-    {module === 'reports-analysis' ? <ReportsModule /> : null}
+    {module === 'reports-analysis' ? <ReportsModule user={user} /> : null}
   </ScrollView>;
 }
 
@@ -230,13 +233,64 @@ function OrdersModule() {
   const remote = useRemote<Order[]>('/admin/orders'); const [reason, setReason] = useState('Actualización desde administración móvil'); const [tracking, setTracking] = useState(''); const [busyId, setBusyId] = useState(''); const money = (value: string | number) => new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(Number(value));
   const next: Record<string, string | undefined> = { CONFIRMADO: 'PREPARANDO', PREPARANDO: 'DESPACHADO', DESPACHADO: 'ENTREGADO', ENTREGADO: 'CERRADO' };
   const advance = async (item: Order) => { const status = next[item.estado]; if (!status) return; setBusyId(item.id); try { await api(`/admin/orders/${item.id}/status`, { method: 'PATCH', body: JSON.stringify({ status, reason, ...(status === 'DESPACHADO' ? { tracking } : {}) }) }); setTracking(''); await remote.load(); } catch (error) { remote.setError((error as Error).message); } finally { setBusyId(''); } };
-  return <Block title="Pedidos recientes"><Field value={reason} onChangeText={setReason} placeholder="Motivo de cambio de estado" /><Field value={tracking} onChangeText={setTracking} placeholder="Código de seguimiento (solo al despachar)" /><Loading busy={remote.busy} />{remote.error ? <Notice>{remote.error}</Notice> : null}{remote.data?.length ? remote.data.map((item) => <View key={item.id} style={styles.order}><Row title={`${item.numero} · ${item.estado}`} detail={`${item.ubicacion?.nombre || 'Sin ubicación'} · ${money(item.total)} · ${new Date(item.creado_en).toLocaleDateString('es-BO')}`} />{next[item.estado] ? <Action label={busyId === item.id ? 'Actualizando…' : `Pasar a ${next[item.estado]}`} disabled={busyId === item.id || reason.trim().length < 3 || (next[item.estado] === 'DESPACHADO' && tracking.trim().length < 3)} onPress={() => void advance(item)} /> : null}</View>) : <Notice>No hay pedidos disponibles.</Notice>}</Block>;
+  const reviewReturn = async (item: Order, decision: 'APROBAR' | 'RECHAZAR') => {
+    const current = item.devolucion?.find((entry) => entry.estado === 'SOLICITADA');
+    if (!current) return;
+    setBusyId(current.id); remote.setError('');
+    try {
+      await api(`/admin/orders/returns/${current.id}/review`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          decision,
+          resolution: reason.trim(),
+          idempotency: randomUUID(),
+          items: decision === 'APROBAR'
+            ? current.detalle_devolucion.map((detail) => ({ returnDetailId: detail.id, acceptedQuantity: detail.cantidad }))
+            : [],
+        }),
+      });
+      await remote.load();
+    } catch (error) { remote.setError((error as Error).message); }
+    finally { setBusyId(''); }
+  };
+  return <Block title="Pedidos recientes"><Field value={reason} onChangeText={setReason} placeholder="Motivo o resolución (mín. 10 caracteres)" /><Field value={tracking} onChangeText={setTracking} placeholder="Código de seguimiento (solo al despachar)" /><Loading busy={remote.busy} />{remote.error ? <Notice>{remote.error}</Notice> : null}{remote.data?.length ? remote.data.map((item) => { const pendingReturn = item.devolucion?.find((entry) => entry.estado === 'SOLICITADA'); return <View key={item.id} style={styles.order}><Row title={`${item.numero} · ${item.estado}`} detail={`${item.ubicacion?.nombre || 'Sin ubicación'} · ${money(item.total)} · ${new Date(item.creado_en).toLocaleDateString('es-BO')}`} />{next[item.estado] ? <Action label={busyId === item.id ? 'Actualizando…' : `Pasar a ${next[item.estado]}`} disabled={busyId === item.id || reason.trim().length < 3 || (next[item.estado] === 'DESPACHADO' && tracking.trim().length < 3)} onPress={() => void advance(item)} /> : null}{pendingReturn ? <View style={styles.returnReview}><Notice>Devolución solicitada por {pendingReturn.detalle_devolucion.reduce((sum, detail) => sum + detail.cantidad, 0)} unidad(es).</Notice><View style={styles.chips}><Action label="Aprobar devolución" disabled={busyId === pendingReturn.id || reason.trim().length < 10} onPress={() => void reviewReturn(item, 'APROBAR')} /><Action label="Rechazar" disabled={busyId === pendingReturn.id || reason.trim().length < 10} onPress={() => void reviewReturn(item, 'RECHAZAR')} /></View></View> : null}</View>; }) : <Notice>No hay pedidos disponibles.</Notice>}</Block>;
 }
 
-function ReportsModule() {
-  const from = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10); const to = new Date().toISOString().slice(0, 10); const remote = useRemote<{ kpis: { ventas: number; pedidos: number; unidades: number; ticketPromedio: number }; summary: string }>(`/reports/summary?from=${from}&to=${to}`); const [question, setQuestion] = useState(''); const [answer, setAnswer] = useState('');
-  const ask = async () => { try { const result = await api<{ answer: string }>('/analytics/query', { method: 'POST', body: JSON.stringify({ from, to, question }) }); setAnswer(result.answer); } catch (e) { remote.setError((e as Error).message); } };
-  return <><Block title="Últimos 30 días"><Loading busy={remote.busy} />{remote.error ? <Notice>{remote.error}</Notice> : null}{remote.data ? <><View style={styles.metrics}><Metric label="Ventas" value={`Bs. ${Number(remote.data.kpis.ventas).toFixed(2)}`} /><Metric label="Pedidos" value={String(remote.data.kpis.pedidos)} /><Metric label="Unidades" value={String(remote.data.kpis.unidades)} /></View><Notice>{remote.data.summary}</Notice></> : null}</Block><Block title="Pregunta al asistente"><Field value={question} onChangeText={setQuestion} placeholder="Ej. ¿Cómo están las ventas y el inventario?" /><Action label="Consultar reporte" disabled={question.trim().length < 4} onPress={() => void ask()} />{answer ? <Notice>{answer}</Notice> : null}</Block></>;
+function ReportsModule({ user }: { user: Identity }) {
+  const from = new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
+  const to = new Date().toISOString().slice(0, 10);
+  const key = reportSnapshotKey(from, to);
+  const remote = useRemote<OfflineDashboardReport>(`/reports/summary?from=${from}&to=${to}`);
+  const [offline, setOffline] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const scope = useCallback(async (): Promise<OfflineScope | null> => user.tenant
+    ? { tenantId: user.tenant.id, actorId: user.id, deviceId: await getOfflineDeviceId() }
+    : null, [user.id, user.tenant?.id]);
+  useEffect(() => {
+    if (!remote.data || remote.failure) return;
+    void scope().then(async (current) => {
+      if (current) await saveOfflineDashboard(await openOfflineDatabase(), current, key, remote.data!);
+    }).then(() => setOffline(false)).catch((reason) => remote.setError((reason as Error).message));
+  }, [remote.data, remote.failure, scope, key, remote.setError]);
+  useEffect(() => {
+    if (!ApiProblem.isNetwork(remote.failure)) return;
+    void scope().then(async (current) => current
+      ? loadOfflineDashboard(await openOfflineDatabase(), current, key)
+      : null).then((cached) => {
+        if (!cached) return;
+        remote.setData(cached.report);
+        remote.setError('');
+        setOffline(true);
+      }).catch((reason) => remote.setError((reason as Error).message));
+  }, [remote.failure, scope, key, remote.setData, remote.setError]);
+  const exportFile = async (kind: 'csv' | 'pdf') => {
+    if (!remote.data) return;
+    setExporting(true);
+    try { if (kind === 'csv') await shareReportCsv(remote.data, from, to); else await shareReportPdf(remote.data, from, to); }
+    catch (reason) { remote.setError((reason as Error).message); }
+    finally { setExporting(false); }
+  };
+  return <><Block title="Últimos 30 días"><Loading busy={remote.busy} />{remote.error ? <Notice>{remote.error}</Notice> : null}{offline ? <Notice>Copia cifrada del último dashboard; puede consultarse y exportarse sin conexión.</Notice> : null}{remote.data ? <><View style={styles.metrics}><Metric label="Ventas" value={`Bs. ${Number(remote.data.kpis.ventas).toFixed(2)}`} /><Metric label="Pedidos" value={String(remote.data.kpis.pedidos)} /><Metric label="Unidades" value={String(remote.data.kpis.unidades)} /></View><Notice>{remote.data.summary}</Notice><View style={styles.chips}><Action label={exporting ? 'Preparando…' : 'Exportar CSV'} disabled={exporting} onPress={() => void exportFile('csv')} /><Action label="Exportar PDF" disabled={exporting} onPress={() => void exportFile('pdf')} /></View></> : null}</Block><ReportAssistant from={from} to={to} offlineReport={remote.data} /></>;
 }
 
 function Row({ title, detail }: { title: string; detail: string }) { return <View style={styles.row}><Text style={styles.rowTitle}>{title}</Text><Text style={styles.rowDetail}>{detail}</Text></View>; }
@@ -244,4 +298,5 @@ function Metric({ label, value }: { label: string; value: string }) { return <Vi
 
 const styles = StyleSheet.create({
   page: { flexGrow: 1, padding: 20, paddingBottom: 48, gap: 14, backgroundColor: '#fbfaf6' }, pageWide: { width: 720, alignSelf: 'center' }, eyebrow: { color: '#728176', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 }, title: { color: '#173e2a', fontSize: 29, fontWeight: '900', marginTop: 4 }, copy: { color: '#5d6d61', fontSize: 12, lineHeight: 18, maxWidth: 480 }, block: { gap: 10, padding: 15, borderWidth: 1, borderColor: '#e3e7e1', backgroundColor: '#fff', borderRadius: 16 }, blockTitle: { color: '#223429', fontSize: 14, fontWeight: '900' }, input: { minHeight: 45, borderColor: '#dbe1da', borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, color: '#1c2b20', fontSize: 12 }, action: { alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 11, borderRadius: 11, backgroundColor: '#173e2a' }, actionText: { color: '#fff', fontSize: 11, fontWeight: '900' }, disabled: { opacity: 0.42 }, notice: { color: '#637167', backgroundColor: '#eff4ef', borderRadius: 9, padding: 10, fontSize: 10, lineHeight: 15 }, chips: { flexDirection: 'row', gap: 7 }, chip: { borderWidth: 1, borderColor: '#dbe1da', borderRadius: 15, paddingHorizontal: 10, paddingVertical: 7 }, chipActive: { backgroundColor: '#173e2a', borderColor: '#173e2a' }, chipText: { color: '#5b695e', fontSize: 10, fontWeight: '700' }, chipTextActive: { color: '#fff' }, loading: { minHeight: 74, alignItems: 'center', justifyContent: 'center' }, rowPress: { borderRadius: 10 }, row: { borderTopWidth: 1, borderTopColor: '#eef0ec', paddingVertical: 10 }, rowTitle: { color: '#243429', fontSize: 11, fontWeight: '900' }, rowDetail: { color: '#7a847d', fontSize: 9, lineHeight: 14, marginTop: 3 }, order: { borderTopWidth: 1, borderTopColor: '#eef0ec', paddingVertical: 4 }, metrics: { flexDirection: 'row', gap: 8 }, metric: { flex: 1, minHeight: 75, padding: 10, backgroundColor: '#f2f6f1', borderRadius: 10, justifyContent: 'space-between' }, metricLabel: { color: '#6b776e', fontSize: 8, fontWeight: '800' }, metricValue: { color: '#173e2a', fontSize: 12, fontWeight: '900' },
+  returnReview: { gap: 8, paddingBottom: 10 },
 });
