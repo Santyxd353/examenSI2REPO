@@ -13,6 +13,7 @@ let registry: TenantRegistry;
 let userId = '';
 let token = '';
 let billingId = '';
+let activeLocationIds: string[] = [];
 
 beforeAll(async () => {
   const url = new URL(process.env.DATABASE_URL!);
@@ -29,6 +30,16 @@ beforeAll(async () => {
     },
   });
   userId = user.id;
+  activeLocationIds = (await db.ubicacion.findMany({
+    where: { activa: true },
+    select: { id: true },
+  })).map((location) => location.id);
+  if (activeLocationIds.length) {
+    await db.ubicacion.updateMany({
+      where: { id: { in: activeLocationIds } },
+      data: { activa: false },
+    });
+  }
   app = await createApp();
   registry = app.get(TenantRegistry);
   const login = await request(app.getHttpServer()).post('/api/auth/login')
@@ -39,6 +50,12 @@ beforeAll(async () => {
 afterAll(async () => {
   await registry?.pool.query(`UPDATE platform.subscription SET plan_code='piloto',status='ACTIVE',provider='NONE',current_period_end=NULL WHERE tenant_id=(SELECT id FROM platform.tenant WHERE slug='lumina')`);
   if (billingId) await registry?.pool.query(`DELETE FROM platform.billing_event WHERE external_id=$1`, [billingId]);
+  if (activeLocationIds.length) {
+    await db.ubicacion.updateMany({
+      where: { id: { in: activeLocationIds } },
+      data: { activa: true },
+    });
+  }
   if (userId) {
     await db.sesion.deleteMany({ where: { usuario_id: userId } });
     await db.usuario_rol.deleteMany({ where: { usuario_id: userId } });

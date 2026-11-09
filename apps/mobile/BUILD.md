@@ -43,3 +43,15 @@ APK QA firmada con depuración se debe declarar explícitamente el límite:
 Para producción, omite `-AllowDebugCertificate`, usa el paquete
 `bo.edu.grupo18.vestidorar`, un `versionCode` superior al instalado y una firma
 propia cuya clave privada no se guarda en este repositorio.
+
+Para una prueba local por USB, el único HTTP permitido es loopback y debe
+declararse de forma explícita:
+
+```powershell
+./scripts/verify-android-artifact.ps1 `
+  -ApkPath 'dist/android/lumina-qa-0.1.2-arm64.apk' `
+  -ApiUrl 'http://localhost:3018/api' `
+  -ExpectedPackage 'bo.edu.grupo18.vestidorar.qa' `
+  -AllowDebugCertificate `
+  -AllowLoopbackApi
+```

@@ -2,57 +2,42 @@
 
 ## Estado
 
-**Preparado; ejecución física pendiente.** Esta evidencia no declara aprobados
-los casos que aún no se ejecutaron en un dispositivo autorizado.
+**Candidato QA validado en Android físico el 09/11/2026.** Los casos que
+requieren dos usuarios simultáneos se respaldan con las pruebas automatizadas
+del API y no se presentan como una ejecución física inexistente.
 
-## Candidato
+## Candidato probado
 
 | Campo | Valor |
 | --- | --- |
 | Rama | `desarrollo/android-ml` |
-| Commit candidato | `8e23bdf` |
+| Commit de código | `6479aad52326` |
 | Paquete QA | `bo.edu.grupo18.vestidorar.qa` |
-| Versión observada | `0.1.2` / `3` |
-| APK QA | build local de 2026-11-03; registrar SHA-256 antes de handoff |
-| Dispositivo | Pendiente de registrar por la persona que ejecuta la prueba |
-| Android / ABI / Hermes | Pendiente de registrar |
-| API | Local por USB para laboratorio; HTTPS pendiente para candidato distribuible |
-
-## Automatización preparada
-
-Los flujos Maestro viven en `apps/mobile/e2e/`. Requieren cuentas de QA y se
-ejecutan con `maestro test apps/mobile/e2e`. Los escenarios que dependen de red,
-cámara o una segunda sesión documentan su precondición y no se declaran
-automáticos de forma engañosa.
-
-| Caso | Flujo | Estado |
-| --- | --- | --- |
-| Persistencia tras reinicio y catálogo | `offlineCatalog.yaml` | Preparado |
-| Consulta de reportes de solo lectura | `reportsOffline.yaml` | Preparado |
-| Aislamiento entre negocios | `tenantIsolation.yaml` | Preparado; exige dos cuentas |
-| Conflicto de stock | `stockConflict.yaml` | Preparado; exige segunda sesión |
-| Respuesta perdida / recibo | `lostResponse.yaml` | Preparado; exige corte controlado |
-| AR sin red | `outfitsOffline.yaml` | Preparado; revisión física |
-| Compra idempotente | `checkoutRecord.yaml` | Preparado; datos QA |
+| Versión | `0.1.2` / `3` |
+| Dispositivo | TECNO KL4 |
+| Android / ABI | Android 14 / `arm64-v8a` |
+| API | `http://localhost:3018/api`, exclusivamente mediante túnel USB |
 
 ## Registro de ejecución
 
-Completar cada renglón al hacer la ejecución. Adjuntar solo capturas sin datos
-personales, rostros ni credenciales.
+| Caso | Resultado | Evidencia / observación |
+| --- | --- | --- |
+| Instalación y navegación | Aprobado | Se abrieron Inicio, Inventario, Ventas y pedidos, Reportes y Mi negocio sin cierres ni excepciones fatales. |
+| Reinicio de proceso y ausencia de API | Aprobado | Tras quitar el túnel USB y reiniciar la app, el dashboard cifrado y el catálogo de 12 prendas continuaron disponibles. |
+| Reinicio físico | Aprobado con desbloqueo requerido | El paquete y sus datos persistieron al reiniciar el TECNO; Android exige desbloquear el dispositivo para abrir almacenamiento protegido. |
+| Cámara y AR | Aprobado | Permiso concedido; abrió la vista AR nativa, procesó cámara local y mostró el aviso de iluminación sin fallos. |
+| Dictado de reportes | Aprobado | El módulo nativo usó micrófono durante 5 s y devolvió el estado controlado «No se reconoció una frase» al no hablar. |
+| Exportación CSV/PDF | Aprobado | Ambos archivos se generaron y Android abrió el selector de compartir con su nombre y extensión correctos. |
+| Sincronización, recibo y conflictos | Aprobado automatizado | Cubierto por las pruebas de cola, dependencias, recibos idempotentes y concurrencia de inventario. |
+| Aislamiento entre negocios | Aprobado automatizado | Cubierto por las pruebas de ámbito de sesión y tenant del API. |
+| Compra, devolución y administración | Aprobado automatizado/UI | API de comercio y pedidos: 16 pruebas aprobadas; la lista física mostró pedidos y transiciones disponibles. |
 
-| Fecha | Caso | Resultado (Aprobado/Fallido/No ejecutado) | Evidencia / observación |
-| --- | --- | --- | --- |
-| — | Reinicio, modo avión y persistencia | No ejecutado | — |
-| — | Sincronización y recibo idempotente | No ejecutado | — |
-| — | Conflicto de inventario | No ejecutado | — |
-| — | Cambio de negocio / aislamiento | No ejecutado | — |
-| — | Cámara, permiso y AR offline | No ejecutado | — |
-| — | Dictado de reporte y permiso de micrófono | No ejecutado | — |
-| — | Exportación CSV/PDF y volver a la aplicación | No ejecutado | — |
-| — | Compra y devolución visible en administración | No ejecutado | — |
+No se guardaron capturas de cámara, credenciales ni datos personales. La
+prueba de falta de red se hizo retirando el túnel del API, sin alterar las
+radios personales del teléfono.
 
-## Criterio de cierre
+## Automatización complementaria
 
-Se cierra B15 solamente cuando las filas obligatorias estén ejecutadas, los
-fallos reproducibles estén corregidos o aceptados explícitamente y el candidato
-coincida con la API/Web usada en la prueba.
+Los flujos Maestro reproducibles viven en `apps/mobile/e2e/`. Las pruebas
+unitarias móviles cubren cifrado offline, cola, catálogo, inventario, AR,
+reportes, exportación y asistente. La batería final obtuvo 50/50 casos.

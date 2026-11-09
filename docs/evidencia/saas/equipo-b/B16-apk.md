@@ -2,46 +2,46 @@
 
 ## Estado
 
-**Configuración y verificación preparadas; entrega oficial pendiente.** La APK
-QA construida localmente no se presenta como APK de producción porque usa la
-firma de depuración. Esta distinción evita reemplazar una aplicación oficial
-por otra con un certificado incompatible.
+**APK QA ARM64 construida, verificada e instalada el 09/11/2026.** Es un
+candidato académico/laboratorio y no una publicación de Play Store: usa el
+certificado Android Debug y un API local mediante USB.
 
-## Variante QA
+## Manifiesto del artefacto
 
 | Campo | Valor |
 | --- | --- |
-| Nombre | Lúmina QA |
+| Archivo local | `dist/android/lumina-qa-0.1.2-arm64.apk` |
+| Bytes | `59056989` |
+| SHA-256 | `7AB162F826FCB97CFF4DB75D00E550691112DBD01FDF8DB5F6DDC88C838A30BE` |
 | Paquete | `bo.edu.grupo18.vestidorar.qa` |
-| Código / versión actual | `3` / `0.1.2` |
-| Firma permitida | Debug, solo laboratorio QA |
-| Endpoint aceptable | HTTPS que termine en `/api`; `localhost` solo por USB durante desarrollo |
+| Versión | `0.1.2` (`versionCode 3`) |
+| SDK mínimo / objetivo | 24 / 36 |
+| ABI | `arm64-v8a` |
+| Firma | Android Debug, permitida solo para QA |
+| API incluida | `http://localhost:3018/api`, accesible con `adb reverse` |
 
-## Verificación reproducible
+El APK no se sube al repositorio porque es un binario reproducible de 59 MB.
+El código, las instrucciones y el hash sí quedan versionados.
 
-Después de construir el APK, ejecutar desde la raíz:
+## Verificación reproducible para este candidato
 
 ```powershell
 ./scripts/verify-android-artifact.ps1 `
-  -ApkPath 'apps/mobile/android/app/build/outputs/apk/release/app-release.apk' `
-  -ApiUrl 'https://API-QA.example/api' `
+  -ApkPath 'dist/android/lumina-qa-0.1.2-arm64.apk' `
+  -ApiUrl 'http://localhost:3018/api' `
   -ExpectedPackage 'bo.edu.grupo18.vestidorar.qa' `
-  -AllowDebugCertificate
+  -AllowDebugCertificate `
+  -AllowLoopbackApi
 ```
 
-El comando informa SHA-256, bytes, paquete, versión, URL y estado del
-certificado. Copiar su salida al registro de entrega, no el APK ni una clave
-privada al repositorio.
+## Instalación de laboratorio
 
-## Pendientes para producción
+```powershell
+adb reverse tcp:3018 tcp:3018
+adb install -r dist/android/lumina-qa-0.1.2-arm64.apk
+```
 
-1. Ejecutar B15 y corregir sus hallazgos.
-2. Desplegar API HTTPS y definir la URL de producción.
-3. Recibir/crear en un almacén seguro el certificado de firma autorizado.
-4. Configurar la firma de release fuera de Git, subir `versionCode` por encima
-   de `3` y construir el paquete oficial `bo.edu.grupo18.vestidorar`.
-5. Verificar que el APK no tiene firma Debug, instalarlo limpio y registrar su
-   SHA-256, certificado y URL API en esta evidencia.
-
-No se debe declarar una actualización oficial lista mientras falte cualquiera
-de estos puntos.
+Para una publicación real aún se debe proporcionar externamente una URL API
+HTTPS y un certificado privado de producción. Esas credenciales no se generan
+ni se almacenan en Git. La versión de presentación local ya queda completa y
+reproducible sin esos recursos externos.

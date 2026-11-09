@@ -5,7 +5,8 @@ param(
   [Parameter(Mandatory = $true)]
   [string]$ApiUrl,
   [string]$ExpectedPackage = '',
-  [switch]$AllowDebugCertificate
+  [switch]$AllowDebugCertificate,
+  [switch]$AllowLoopbackApi
 )
 
 $ErrorActionPreference = 'Stop'
@@ -26,7 +27,11 @@ function Find-AndroidBuildTool([string]$name) {
 $resolvedApk = (Resolve-Path -LiteralPath $ApkPath).Path
 if (-not $resolvedApk.EndsWith('.apk', [StringComparison]::OrdinalIgnoreCase)) { throw 'ApkPath debe referirse a un archivo .apk.' }
 $uri = [Uri]$ApiUrl
-if ($uri.Scheme -ne 'https' -or -not $uri.AbsolutePath.EndsWith('/api')) { throw 'ApiUrl debe usar HTTPS y terminar exactamente en /api.' }
+$loopbackHosts = @('localhost', '127.0.0.1', '::1')
+$isAllowedLoopback = $AllowLoopbackApi -and $uri.Scheme -eq 'http' -and $loopbackHosts -contains $uri.Host
+if (($uri.Scheme -ne 'https' -and -not $isAllowedLoopback) -or -not $uri.AbsolutePath.EndsWith('/api')) {
+  throw 'ApiUrl debe usar HTTPS y terminar en /api. Para QA por USB se permite HTTP loopback solo con -AllowLoopbackApi.'
+}
 
 $aapt = Find-AndroidBuildTool 'aapt'
 $apksigner = Find-AndroidBuildTool 'apksigner'
@@ -53,6 +58,7 @@ $result = [ordered]@{
   versionName = $versionName
   versionCode = [int]$versionCode
   apiUrl = $uri.AbsoluteUri.TrimEnd('/')
+  apiTransport = if ($isAllowedLoopback) { 'HTTP loopback (solo QA por USB)' } else { 'HTTPS' }
   certificate = if ($debugSigned) { 'debug (solo QA)' } else { 'no-debug verificado' }
   verifiedAtUtc = [DateTime]::UtcNow.ToString('o')
 }

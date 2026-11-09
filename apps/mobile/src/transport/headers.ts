@@ -1,10 +1,10 @@
 import type { ScopeKey } from '../auth/sessionScope';
 
 export function createApiHeaders(
-  original: HeadersInit | undefined,
+  original: RequestInit['headers'],
   requestScope: ScopeKey,
   accessToken: string,
-  body: BodyInit | null | undefined,
+  body: RequestInit['body'],
 ): Headers {
   const headers = new Headers(original);
   headers.set('X-Client-Channel', 'APP');

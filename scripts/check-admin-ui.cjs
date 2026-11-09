@@ -21,7 +21,14 @@ async function main() {
   const app = await require('../dist/api/app').createApp();
   await app.listen(port, '127.0.0.1');
   const db = new PrismaClient();
-  const browser = await chromium.launch({ headless: true });
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true });
+  } catch (error) {
+    await db.$disconnect();
+    await app.close();
+    throw error;
+  }
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage();
   const errors = [];
