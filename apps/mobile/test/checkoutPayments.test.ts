@@ -1,6 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { demoWalletIntent, stripeSessionForOrder } from '../src/checkoutPayments';
+import {
+  demoWalletIntent,
+  stripeSessionForOrder,
+  stripePaymentFeedback,
+  qrPaymentFeedback,
+} from '../src/checkoutPayments';
+
+test('un pedido ya preparado o cancelado muestra su estado real al volver a comprobar el pago', () => {
+  assert.equal(stripePaymentFeedback({ pagado: true, estado: 'PREPARANDO' }).done, true);
+  assert.match(stripePaymentFeedback({ pagado: true, estado: 'PREPARANDO' }).message, /preparando/);
+  assert.match(stripePaymentFeedback({ pagado: true, estado: 'CANCELADO' }).message, /cancelado/);
+  assert.equal(stripePaymentFeedback({ pagado: false, estado: 'PENDIENTE_PAGO' }).done, false);
+  assert.match(qrPaymentFeedback({ numero: 'WEB-QA', estado: 'CANCELADO' }).message, /cancelado/);
+  assert.equal(qrPaymentFeedback({ numero: 'WEB-QA', estado: 'PENDIENTE_PAGO' }).done, false);
+});
 
 test('reabrir el lector o repetir un QR conserva la intención de pago tras perder la respuesta', () => {
   const qr = 'LUMINA-PAY-DEMO:00000000-0000-4000-8000-000000000001:50.00:BOB';

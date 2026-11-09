@@ -17,7 +17,12 @@ import QRCode from 'react-native-qrcode-svg';
 import { api } from './api';
 import type { CatalogLocation, CustomerAddress } from './types';
 import { checkoutBlocker } from './checkoutBlocker';
-import { demoWalletIntent, stripeSessionForOrder } from './checkoutPayments';
+import {
+  demoWalletIntent,
+  stripeSessionForOrder,
+  stripePaymentFeedback,
+  qrPaymentFeedback,
+} from './checkoutPayments';
 import { useSystemBars } from './systemBars';
 
 export type MobileCartLine = {
@@ -134,12 +139,11 @@ export function MobileCommerceSheet({
         `/commerce/stripe-test-checkout?session_id=${encodeURIComponent(stripeSessionId)}`,
       );
       await onReload();
-      if (result.pagado && result.estado === 'CONFIRMADO') {
-        setStripeMessage('Stripe confirmó el pago de prueba. Pedido confirmado.');
+      const feedback = stripePaymentFeedback(result);
+      setStripeMessage(feedback.message);
+      if (feedback.done) {
         setStripeSessionId('');
         setPaymentOrder(null);
-      } else {
-        setStripeMessage('El pago aún no aparece confirmado en Stripe.');
       }
     } catch (reason) {
       setStripeError((reason as Error).message);
@@ -697,6 +701,7 @@ function DemoWalletScanner({
 }) {
   const [permission, requestPermission] = useCameraPermissions();
   const [handled, setHandled] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const scanFlight = useRef(false);
   const [status, setStatus] = useState('Apunta la cámara al QR de Lúmina Pay Demo.');
   const [error, setError] = useState('');
@@ -704,6 +709,7 @@ function DemoWalletScanner({
   useEffect(() => {
     if (!visible) return;
     setHandled(false);
+    setCompleted(false);
     setError('');
     setStatus('Apunta la cámara al QR de Lúmina Pay Demo.');
   }, [visible]);
@@ -720,7 +726,9 @@ function DemoWalletScanner({
         body: JSON.stringify(demoWalletIntent(qr)),
       });
       await onPaid();
-      setStatus(`Pago confirmado: ${order.numero} · ${money(Number(order.total))}`);
+      const feedback = qrPaymentFeedback(order);
+      setStatus(feedback.message + ' · ' + money(Number(order.total)));
+      setCompleted(feedback.done);
     } catch (reason) {
       setError((reason as Error).message);
       setStatus('No se pudo procesar el QR. Revísalo e inténtalo nuevamente.');
@@ -771,7 +779,7 @@ function DemoWalletScanner({
           )}
           <Text style={styles.walletStatus}>{status}</Text>
           {!!error && <Text style={styles.walletError}>{error}</Text>}
-          {handled && !error && status.startsWith('Pago confirmado') ? (
+          {handled && !error && completed ? (
             <Pressable style={styles.gatewayPay} onPress={onClose}>
               <Text style={styles.gatewayPayText}>Listo</Text>
             </Pressable>

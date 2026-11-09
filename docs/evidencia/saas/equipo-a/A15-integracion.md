@@ -44,12 +44,12 @@ Resultados observados hasta este avance:
 | Comprobación | Resultado |
 | --- | --- |
 | Contratos y motor compartido | 25 pruebas aprobadas |
-| Unitarios móviles, incluido SQLite real y WebCrypto en Node | 74 pruebas aprobadas |
+| Unitarios móviles, incluido SQLite real y WebCrypto en Node | 75 pruebas aprobadas |
 | TypeScript móvil | Aprobado |
 | Compatibilidad de dependencias Expo | Aprobada |
 | Exportación Android/Hermes | Aprobada: 1195 módulos, bundle de aproximadamente 3,8 MB |
 | Compilación API/web | Aprobada |
-| Suite completa API tras integrar pagos | 49 suites y 242 pruebas aprobadas, 462 segundos |
+| Suite completa API tras integrar pagos y compatibilidad de recibos anteriores | 49 suites y 243 pruebas aprobadas, sin omitidas; repetición por archivo, 978 segundos de procesos |
 | Pagos y regresión de comercio | 3 suites y 18 pruebas aprobadas; QR y Stripe con proveedor simulado |
 | Regresión de reintento web en la misma pestaña | 2 pruebas adicionales aprobadas |
 | Recorrido Chromium offline de vestidor y sincronización | Aprobado: diez prendas, avatar, reapertura, recuperación, conflicto y reenvío sin duplicación |
@@ -88,6 +88,6 @@ node scripts/check-saas-integrated.cjs
 - Cerrar A06/B14: regeneración de avatar sin fotos purgadas y evidencia de inferencia válida desde fotos reales autorizadas.
 - Aceptación en dispositivo: cierre y reapertura, pérdida de red, claves, cámara, audio, conflictos y dashboards offline. La compilación Hermes no sustituye estas pruebas.
 - Revisión final de la rama y trazabilidad RF/CU. Las métricas analíticas siguen siendo de demostración sintética; su calidad y limitaciones se conservan en A13.
-- Resolver antes de publicar las alertas reales de dependencias: la auditoría de producción detectó seis entradas de API (cuatro altas y dos moderadas, sin críticas) y cuatro moderadas en dependencias de herramientas Expo. Se revisarán las versiones compatibles; no se aplicó `audit fix --force` ni se cambió de versión mayor por una sugerencia automática.
+- Completar las comprobaciones de publicación de A16. Las diez alertas iniciales de dependencias de producción ya se resolvieron: la auditoría actual informa cero en API/web y Android; la instalación aislada conserva las herramientas de migración y excluye Jest/Vite. La auditoría que incluye herramientas de desarrollo aún tiene alertas. El build Linux y el arranque del contenedor siguen pendientes. Véase [A16 — preparación local](A16-preparacion-local.md).
 
 La VM nueva, el despliegue, las credenciales reales de proveedores, la firma/distribución final del APK y el cierre del Word corresponden a los bloques posteriores. No se han ejecutado operaciones sobre la VM anterior.

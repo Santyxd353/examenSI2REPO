@@ -22,7 +22,7 @@ fi
 mkdir -p "${STORAGE_ROOT}/public/catalog-women"
 cp -n catalog-assets/women/*.jpg "${STORAGE_ROOT}/public/catalog-women/"
 
-if [ "${RUN_DB_SEED:-true}" = "true" ]; then
+if [ "${RUN_DB_SEED:-false}" = "true" ]; then
   ./node_modules/.bin/tsx scripts/seed.ts
 fi
 

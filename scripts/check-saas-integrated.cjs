@@ -13,22 +13,29 @@ if (!['127.0.0.1', 'localhost', '::1'].includes(url.hostname))
 url.pathname = '/vestidor18_test';
 const env = {
   ...process.env,
+  NODE_ENV: 'test',
   DATABASE_URL: url.toString(),
   PLATFORM_DATABASE_URL: url.toString(),
   TENANT_DATABASE_URL: url.toString(),
-  NODE_OPTIONS: '--max-old-space-size=768',
+  NODE_OPTIONS: process.env.SAAS_QA_NODE_OPTIONS || '--max-old-space-size=1024',
 };
 mkdirSync(output, { recursive: true });
-const tests = full
-  ? readdirSync(join(root, 'apps/api/test'))
-      .filter((name) => name.endsWith('.test.ts'))
-      .sort()
-  : [
-      'saas-acceptance.test.ts',
-      'offline-sync.test.ts',
-      'report-datasets.test.ts',
-      'analytics-isolation.test.ts',
-    ];
+const available = readdirSync(join(root, 'apps/api/test'))
+  .filter((name) => name.endsWith('.test.ts'))
+  .sort();
+const selected = process.argv.find((value) => value.startsWith('--test='))?.slice(7);
+if (selected && (!available.includes(selected) || full))
+  throw new Error('Selecciona una suite existente con --test=nombre.test.ts o utiliza --full.');
+const tests = selected
+  ? [selected]
+  : full
+    ? available
+    : [
+        'saas-acceptance.test.ts',
+        'offline-sync.test.ts',
+        'report-datasets.test.ts',
+        'analytics-isolation.test.ts',
+      ];
 const results = [];
 function run(name, args, cwd = root) {
   return new Promise((resolveRun) => {
@@ -41,12 +48,18 @@ function run(name, args, cwd = root) {
     child.once('error', (error) => {
       stream.write(error.message);
     });
-    child.once('close', (code) => {
-      stream.end();
-      const result = { name, code, elapsedMs: Date.now() - started, log };
-      results.push(result);
-      console.log((code === 0 ? 'PASS ' : 'FAIL ') + name);
-      resolveRun(result);
+    child.once('close', (code, signal) => {
+      stream.end(() => {
+        const result = { name, code, signal, elapsedMs: Date.now() - started, log };
+        results.push(result);
+        writeFileSync(join(output, 'progress.json'), JSON.stringify({ results }, null, 2));
+        console.log(
+          (code === 0 ? 'PASS ' : 'FAIL ') +
+            name +
+            (code === 0 ? '' : ' exit=' + code + ' signal=' + signal),
+        );
+        resolveRun(result);
+      });
     });
   });
 }

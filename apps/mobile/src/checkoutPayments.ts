@@ -1,4 +1,39 @@
 type SavedPaymentOrder = { pago: { proveedor: string; referencia?: string | null }[] };
+const paidStates = new Set(['CONFIRMADO', 'PREPARANDO', 'DESPACHADO', 'ENTREGADO', 'CERRADO']);
+export function stripePaymentFeedback(result: { pagado: boolean; estado: string }) {
+  const state = result.estado.replaceAll('_', ' ').toLocaleLowerCase('es-BO');
+  if (!result.pagado)
+    return { done: false, message: 'El pago aún no aparece confirmado en Stripe.' };
+  if (result.estado === 'CANCELADO')
+    return {
+      done: true,
+      message:
+        'Stripe registra el pago de prueba, pero el pedido está cancelado. Solicita su revisión en la tienda.',
+    };
+  return {
+    done: paidStates.has(result.estado),
+    message: 'Stripe confirmó el pago de prueba. Pedido ' + state + '.',
+  };
+}
+export function qrPaymentFeedback(order: { numero: string; estado: string }) {
+  const state = order.estado.replaceAll('_', ' ').toLocaleLowerCase('es-BO');
+  if (order.estado === 'CANCELADO')
+    return {
+      done: true,
+      message: 'El pedido ' + order.numero + ' está cancelado. El escaneo no realiza otro cobro.',
+    };
+  if (!paidStates.has(order.estado))
+    return {
+      done: false,
+      message:
+        'El pedido ' +
+        order.numero +
+        ' sigue ' +
+        state +
+        '. Comprueba su estado antes de continuar.',
+    };
+  return { done: true, message: 'Pago registrado: ' + order.numero + ' · pedido ' + state };
+}
 export function stripeSessionForOrder(order: SavedPaymentOrder | null) {
   const payment = order?.pago.find((row) => row.proveedor === 'STRIPE_TEST');
   return /^cs_test_[A-Za-z0-9_]{1,120}$/.test(payment?.referencia ?? '')

@@ -32,6 +32,7 @@ services:
       API_HOST: 0.0.0.0
       API_PORT: 3018
       DATABASE_URL: postgresql://vestidor:${POSTGRES_PASSWORD}@database:5432/vestidor18
+      PLATFORM_DATABASE_URL: postgresql://vestidor:${POSTGRES_PASSWORD}@database:5432/vestidor18
       JWT_SECRET: ${JWT_SECRET:?Configura JWT_SECRET}
       WEB_ORIGIN: https://${PUBLIC_HOST:?Configura PUBLIC_HOST}
       SERVE_WEB: "true"
@@ -39,9 +40,24 @@ services:
       TRUST_PROXY: "1"
       STORAGE_ROOT: /data/storage
       PYTHON_PATH: /opt/venv/bin/python
+      ANALYTICS_PYTHON_PATH: /opt/analytics-venv/bin/python
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
       POSE_MODEL_PATH: /opt/models/pose_landmarker.task
       BLENDER_PATH: /usr/bin/blender
-      RUN_DB_SEED: "true"
+      RUN_DB_SEED: "${RUN_DB_SEED:-false}"
+      OFFLINE_MASTER_KEY: ${OFFLINE_MASTER_KEY:?Configura OFFLINE_MASTER_KEY}
+      OFFLINE_WRAP_KEYS: ${OFFLINE_WRAP_KEYS:-}
+      OFFLINE_WRAP_KEY_VERSION: ${OFFLINE_WRAP_KEY_VERSION:-1}
+      PLATFORM_OPERATOR_USERNAME: ${PLATFORM_OPERATOR_USERNAME:?Configura PLATFORM_OPERATOR_USERNAME}
+      PLATFORM_OPERATOR_PASSWORD_HASH: ${PLATFORM_OPERATOR_PASSWORD_HASH:?Configura PLATFORM_OPERATOR_PASSWORD_HASH}
+      PLATFORM_OPERATOR_JWT_SECRET: ${PLATFORM_OPERATOR_JWT_SECRET:?Configura PLATFORM_OPERATOR_JWT_SECRET}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      REPORT_AI_OPENAI_KEY: ${REPORT_AI_OPENAI_KEY:-}
+      REPORT_AI_TEXT_MODEL: ${REPORT_AI_TEXT_MODEL:-}
+      REPORT_AI_VOICE_MODEL: ${REPORT_AI_VOICE_MODEL:-gpt-transcribe}
     volumes:
       - application-data:/data
     networks:

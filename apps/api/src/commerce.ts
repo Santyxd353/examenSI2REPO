@@ -692,9 +692,18 @@ export class CommerceController implements OnModuleInit, OnModuleDestroy {
     fingerprint: string,
     input: { method?: string; reference?: string },
   ) {
-    const prior = payload as { requestHash?: string } | null;
-    // Los recibos históricos sin metadata solo admiten el reenvío histórico vacío.
-    if (!prior?.requestHash && !input.method && !input.reference) return;
+    const prior = payload as {
+      requestHash?: string;
+      metodo?: string;
+      referencia?: string | null;
+    } | null;
+    // La versión anterior guardaba método y referencia, aunque no su huella.
+    if (
+      !prior?.requestHash &&
+      (prior?.metodo ?? 'NO_ESPECIFICADO') === (input.method ?? 'NO_ESPECIFICADO') &&
+      (prior?.referencia ?? null) === (input.reference ?? null)
+    )
+      return;
     assertRequestHash(prior?.requestHash, fingerprint);
   }
 

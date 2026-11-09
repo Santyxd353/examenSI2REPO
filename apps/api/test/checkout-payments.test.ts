@@ -45,10 +45,10 @@ beforeAll(async () => {
   (f.app.get(CommerceController) as any).stripeClient = () => ({
     checkout: { sessions: { create, retrieve } },
   });
-});
+}, 120000);
 afterAll(async () => {
   await f?.close();
-});
+}, 120000);
 
 async function pending(channel = 'WEB') {
   const item = await f.item();
@@ -100,6 +100,35 @@ test('dos escaneos simultáneos del mismo QR producen una venta WEB y conservan 
     ).toBe(9);
   });
   expect((await scan(order, randomUUID())).status).toBe(400);
+});
+
+test('un recibo QR de la versión anterior permite el reenvío idéntico y rechaza cambiar su referencia', async () => {
+  const { order } = await pending(),
+    idempotency = randomUUID();
+  const input = {
+    decision: 'APROBAR',
+    idempotency,
+    method: 'QR_PRUEBA',
+    reference: 'LEGACY-QR-01',
+  };
+  const pay = (body: object) => f.http('post', '/commerce/orders/' + order.id + '/payment', body);
+  expect((await pay(input)).status).toBe(201);
+  await f.inStore(() =>
+    f.db.evento_pago.updateMany({
+      where: { pago_id: order.pago[0].id },
+      data: {
+        payload_resumen: { simulacion: true, metodo: 'QR_PRUEBA', referencia: 'LEGACY-QR-01' },
+      },
+    }),
+  );
+  expect((await pay(input)).status).toBe(201);
+  expect((await pay({ ...input, reference: 'LEGACY-OTRO' })).status).toBe(409);
+  expect((await pay({ decision: 'APROBAR', idempotency })).status).toBe(409);
+  expect(
+    await f.inStore(() =>
+      f.db.movimiento_stock.count({ where: { pedido_id: order.id, tipo: 'SALIDA' } }),
+    ),
+  ).toBe(1);
 });
 
 test('QR rechaza monto cambiado, otra cuenta, tienda ajena, reserva vencida e identificador reutilizado', async () => {
