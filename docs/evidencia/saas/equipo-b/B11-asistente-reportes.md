@@ -1,11 +1,11 @@
 # B11 — Asistente de reportes por texto y voz
 
-Estado: `VERIFICADO_LOCAL_CON_PROVEEDOR_OPCIONAL` (09/11/2026).
+Estado: agente integrado y pruebas controladas aprobadas. Generación real bloqueada por el plan del proyecto de Google (09/11/2026).
 
 - La pantalla real de Reportes incorpora pregunta editable y dictado nativo Android.
-- El servidor puede usar OpenAI Responses con herramienta de solo lectura; la clave permanece
+- El servidor puede usar Gemini GenerateContent u OpenAI Responses con herramienta de solo lectura; la clave permanece
   exclusivamente en el servidor y el modelo no recibe SQL ni acceso directo a Prisma.
-- Si el proveedor no está configurado, usa el intérprete determinista autorizado del servidor.
+- Las consultas del agente exigen proveedor configurado y disponible; los errores se muestran en pantalla.
 - Sin conexión, responde únicamente ventas, pedidos y producto líder desde el dashboard cifrado;
   identifica explícitamente el modo offline y no inventa otros datos.
 - Permiso de micrófono denegado y proveedor/red no disponible producen mensajes recuperables.
@@ -19,20 +19,30 @@ con el tablero del mismo período. La lectura de pantalla verifica texto y respu
 
 ## Dashboard de consultas
 
-Web y Android consultan `POST /analytics/assistant/query`. La respuesta incluye proveedor,
-reporte autorizado y cuatro conjuntos de gráficos: ventas diarias, productos, ubicaciones
-e inventario. El gráfico inicial depende del tema consultado. La interfaz permite elegir
-barras, líneas o dona y consultar los valores exactos. La serie diaria incluye días sin ventas.
-Los reportes offline nuevos conservan la serie y el inventario. Las copias antiguas conservan
-productos y sucursales y muestran la ausencia de datos en las series que no habían guardado.
+Web y Android consultan `POST /analytics/assistant/query`. El agente interpreta la pregunta
+y llama a `generar_reporte` con un plan de hasta cuatro representaciones. Cada una declara
+métrica, dimensión, período, filtros de prendas y ubicación, límite y orden. Se admiten barras,
+líneas, circular, dona, tabla e indicadores. El servidor valida el plan y ejecuta SQL parametrizado
+con dimensiones permitidas y alcance de tienda/usuario. El agente recibe los resultados para
+redactar la interpretación. Las cifras dibujadas proceden de esa consulta.
 
-El API usa OpenAI Responses cuando existen `OPENAI_API_KEY` y `OPENAI_REPORTS_MODEL` en el
-servidor. El entorno local actual carece de ambas variables y responde en modo local.
-El proveedor dispone de un plazo total de 15 segundos, con retorno local ante indisponibilidad.
-La prueba de integración simula Responses para verificar lectura de mensajes REST y que las
-herramientas respeten el período y la ubicación de la consulta.
+`REPORTS_AI_PROVIDER=gemini`, `GEMINI_API_KEY` y `GEMINI_REPORTS_MODEL=gemini-2.5-flash`
+seleccionan Gemini. Se conserva la alternativa OpenAI mediante configuración de servidor.
+Las claves están excluidas de Git. Android y web permiten dictado. La consulta offline de
+un reporte guardado se identifica explícitamente y conserva su funcionamiento local de lectura.
 
-Validación: 9/9 pruebas API de reportes, 50/50 pruebas móviles y build web/API y typecheck
-móvil aprobados. Playwright verificó los tres gráficos en escritorio y ancho de 390 px.
-La APK se instaló en el TECNO y una consulta de sucursales mostró el dashboard y sus controles.
-Artefacto local: `dist/android/lumina-qa-reportes-arm64.apk`.
+Validación: 10/10 pruebas API de reportes, 50/50 móviles, build web/API y typecheck móvil.
+Las pruebas incluyen planes diferentes para ventas por ubicación en circular y unidades por
+talla en barras, cifras esperadas y conservación de firmas nativas de Gemini entre herramientas.
+Playwright validó seis representaciones y ancho de 390 px con fixture de interfaz.
+
+La prueba real reconoció la clave de Gemini (listado de modelos HTTP 200). La generación
+devolvió HTTP 403 con `PERMISSION_DENIED`: Google indica que el nivel gratuito no está
+disponible para este proyecto y pide configurar facturación. OpenAI también devolvió cuota
+insuficiente. Se requiere que el propietario habilite acceso de generación en su proveedor
+para completar la aceptación real. Ninguna respuesta simulada se presenta como generación real.
+
+APK actualizada instalada en el TECNO: `dist/android/lumina-qa-agente-gemini-arm64.apk`.
+SHA-256: `65136CE7241C00E6751A9DB944D2EA58E187DD5979A9797B5EE8A13DC9F3DFE5`.
+Una consulta real de ventas por sucursal desde Android llegó al servidor y mostró el mensaje
+controlado de acceso gratuito bloqueado por Google. La app permaneció abierta sin excepción fatal.

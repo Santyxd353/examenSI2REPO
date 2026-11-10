@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { BarChart3, Bot, RefreshCw, Send, Sparkles, TriangleAlert } from 'lucide-react';
+import { BarChart3, Bot, Mic, RefreshCw, Send, Sparkles, TriangleAlert } from 'lucide-react';
 import { api } from './api';
 import { QueryDashboard } from './QueryDashboard';
 import type { ReportChart } from '../../api/src/report-dashboard';
@@ -67,6 +67,24 @@ const ago = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
 const money = (value: number) =>
   new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(value);
 
+type BrowserSpeech = {
+  lang: string;
+  interimResults: boolean;
+  start(): void;
+  abort(): void;
+  onresult:
+    | ((event: {
+        results: { [index: number]: { [index: number]: { transcript: string } } };
+      }) => void)
+    | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+};
+type SpeechWindow = Window & {
+  SpeechRecognition?: new () => BrowserSpeech;
+  webkitSpeechRecognition?: new () => BrowserSpeech;
+};
+
 export function Reports() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [from, setFrom] = useState(ago);
@@ -76,14 +94,63 @@ export function Reports() {
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [question, setQuestion] = useState('¿Qué producto vendió más?');
   const [answer, setAnswer] = useState('');
-  const [queryResult, setQueryResult] = useState<{ dashboard: ReportChart[]; provider: string; report: { filters: { from: string; to: string } } } | null>(null);
+  const [queryResult, setQueryResult] = useState<{
+    dashboard: ReportChart[];
+    provider: string;
+    report: { filters: { from: string; to: string } };
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const queryRevision = useRef(0);
+  const speech = useRef<BrowserSpeech | null>(null);
+  const [listening, setListening] = useState(false);
+  useEffect(
+    () => () => {
+      speech.current?.abort();
+    },
+    [],
+  );
+  const dictate = () => {
+    const browser = window as SpeechWindow;
+    const Recognizer = browser.SpeechRecognition || browser.webkitSpeechRecognition;
+    if (!Recognizer) {
+      setError(
+        'El dictado no está disponible en este navegador. Puedes usar Chrome o dictar desde Android.',
+      );
+      return;
+    }
+    speech.current?.abort();
+    const recognizer = new Recognizer();
+    speech.current = recognizer;
+    recognizer.lang = 'es-BO';
+    recognizer.interimResults = false;
+    recognizer.onresult = (event) => {
+      setQuestion(event.results[0]?.[0]?.transcript || '');
+    };
+    recognizer.onerror = (event) => {
+      setError(
+        event.error === 'not-allowed'
+          ? 'Permite el micrófono para dictar.'
+          : 'No se pudo reconocer la frase. Reintenta o escribe la consulta.',
+      );
+    };
+    recognizer.onend = () => setListening(false);
+    setError('');
+    setListening(true);
+    try {
+      recognizer.start();
+    } catch {
+      setListening(false);
+      setError('No se pudo iniciar el micrófono.');
+    }
+  };
   useEffect(() => {
     queryRevision.current++;
-    setAnswer(''); setQueryResult(null);
-    return () => { queryRevision.current++; };
+    setAnswer('');
+    setQueryResult(null);
+    return () => {
+      queryRevision.current++;
+    };
   }, [from, to, location]);
 
   const filters = () => ({ from, to, ...(location ? { location } : {}) });
@@ -366,14 +433,23 @@ export function Reports() {
               id="commercial-question"
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Ej.: ¿Cuánto inventario disponible hay?"
+              placeholder="Ej.: compara las ventas por sucursal de este mes en un gráfico circular"
             />
+            <button type="button" onClick={dictate} disabled={listening || busy}>
+              <Mic size={16} />
+              {listening ? 'Escuchando…' : 'Dictar'}
+            </button>
             <button disabled={busy || question.trim().length < 4}>
-              <Send size={16} /> Consultar
+              <Send size={16} /> {busy ? 'Generando reporte…' : 'Consultar'}
             </button>
           </div>
           {answer && <p className="analytics-answer">{answer}</p>}
-          {queryResult && <><p>{queryResult.provider === 'openai' ? 'Asistente IA · OpenAI' : 'Modo local · analítica del sistema'} · {queryResult.report.filters.from} — {queryResult.report.filters.to}</p><QueryDashboard key={answer} charts={queryResult.dashboard} /></>}
+          {queryResult && (
+            <>
+              <p>Reporte generado por el agente IA · {queryResult.provider==='gemini'?'Gemini':'OpenAI'}</p>
+              <QueryDashboard key={answer} charts={queryResult.dashboard} />
+            </>
+          )}
         </form>
       </section>
     </section>

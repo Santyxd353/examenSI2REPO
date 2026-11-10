@@ -6,7 +6,8 @@ const requestTimeoutMs = 20_000;
 
 async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}) {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), requestTimeoutMs);
+  const timeoutMs = String(input).includes('/analytics/assistant/query') ? 40_000 : requestTimeoutMs;
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   const abortFromCaller = () => controller.abort();
   init.signal?.addEventListener('abort', abortFromCaller, { once: true });
   try {

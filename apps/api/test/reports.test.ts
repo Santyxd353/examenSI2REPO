@@ -14,8 +14,10 @@ let adminId: string;
 let locationId: string;
 let variantId: string;
 const stamp = Date.now();
+const originalProvider = process.env.REPORTS_AI_PROVIDER;
 
 beforeAll(async () => {
+  process.env.REPORTS_AI_PROVIDER = 'openai';
   const url = new URL(process.env.DATABASE_URL!);
   url.pathname = '/vestidor18_test';
   process.env.DATABASE_URL = url.toString();
@@ -137,6 +139,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  if (originalProvider === undefined) delete process.env.REPORTS_AI_PROVIDER;
+  else process.env.REPORTS_AI_PROVIDER = originalProvider;
   await app.close();
   await db.$disconnect();
 });
@@ -268,54 +272,166 @@ test('el agente exige configuración privada de servidor antes de llamar a un pr
   }
 });
 
-test('dashboard local conserva filtros, cifras del servidor y deniega acceso al cliente', async () => {
+test('el agente requiere credenciales y conserva la autorización del negocio', async () => {
   const key = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
   try {
-    const payload = { from:'2026-01-01',to:'2026-02-28',location:locationId,question:'Ventas por sucursal' };
-    const response = await request(app.getHttpServer()).post('/api/analytics/assistant/query')
-      .auth(adminToken,{type:'bearer'}).send(payload);
-    expect(response.status).toBe(201);
-    expect(response.body.provider).toBe('local');
-    expect(response.body.dashboard[0].id).toBe('locations');
-    const trend = response.body.dashboard.find((chart: {id:string}) => chart.id === 'sales');
-    expect(trend.points).toHaveLength(59);
-    expect(trend.points.reduce((total:number,p:{value:number}) => total+p.value,0)).toBe(response.body.report.kpis.ventas);
-    expect(response.body.report.filters.location).toBe(locationId);
-    const denied = await request(app.getHttpServer()).post('/api/analytics/assistant/query')
-      .auth(clientToken,{type:'bearer'}).send(payload);
+    const payload = {
+      from: '2026-01-01',
+      to: '2026-02-28',
+      location: locationId,
+      question: 'Ventas por sucursal',
+    };
+    const response = await request(app.getHttpServer())
+      .post('/api/analytics/assistant/query')
+      .auth(adminToken, { type: 'bearer' })
+      .send(payload);
+    expect(response.status).toBe(503);
+    expect(response.body.message).toContain('OPENAI_API_KEY');
+    expect(response.body.dashboard).toBeUndefined();
+    const denied = await request(app.getHttpServer())
+      .post('/api/analytics/assistant/query')
+      .auth(clientToken, { type: 'bearer' })
+      .send(payload);
     expect(denied.status).toBe(403);
-  } finally { if(key === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY=key; }
+  } finally {
+    if (key === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = key;
+  }
 });
 
-test('el asistente lee output_text dentro de mensajes REST y mantiene el alcance del dashboard', async () => {
-  const key=process.env.OPENAI_API_KEY, model=process.env.OPENAI_REPORTS_MODEL;
-  const original=global.fetch;
-  process.env.OPENAI_API_KEY='test-key';
-  process.env.OPENAI_REPORTS_MODEL='test-model';
-  const fetchMock=jest.fn()
-    .mockResolvedValueOnce({ok:true,json:async()=>({output:[{type:'function_call',name:'consultar_resumen_comercial',call_id:'qa',arguments:'{"from":"2000-01-01","to":"2030-01-01"}'}]})})
-    .mockResolvedValueOnce({ok:true,json:async()=>({output:[{type:'message',content:[{type:'output_text',text:'Resumen de ventas verificado.'}]}]})});
-  global.fetch=fetchMock as unknown as typeof fetch;
+test('el agente ejecuta planes distintos y grafica solo cifras consultadas con el filtro autorizado', async () => {
+  const key = process.env.OPENAI_API_KEY,
+    model = process.env.OPENAI_REPORTS_MODEL,
+    original = global.fetch;
+  process.env.OPENAI_API_KEY = 'test-key';
+  process.env.OPENAI_REPORTS_MODEL = 'test-model';
+  const plan = (metric: string, groupBy: string, representation: string) => ({
+    clarification: null,
+    charts: [
+      {
+        title: 'Resultado de la consulta',
+        metric,
+        groupBy,
+        representation,
+        from: '2026-01-01',
+        to: '2026-02-28',
+        limit: 10,
+        order: 'desc',
+        productSearch: null,
+        categorySearch: null,
+        color: null,
+        size: null,
+        locationSearch: null,
+        maximumStock: null,
+      },
+    ],
+  });
   try {
-    const response=await request(app.getHttpServer()).post('/api/analytics/assistant/query')
-      .auth(adminToken,{type:'bearer'}).send({from:'2026-01-01',to:'2026-02-28',location:locationId,question:'Ventas'});
-    expect(response.status).toBe(201);
-    expect(response.body.provider).toBe('openai');
-    expect(response.body.answer).toBe('Resumen de ventas verificado.');
-    const sent=JSON.parse(fetchMock.mock.calls[1][1].body);
-    const result=JSON.parse(sent.input.find((item:{type:string})=>item.type==='function_call_output').output);
-    expect(result.period.location).toBe(locationId);
-    expect(result.period.from).toBe('2026-01-01');
+    for (const spec of [plan('sales', 'location', 'pie'), plan('units', 'size', 'bar')]) {
+      const mock = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            output: [
+              {
+                type: 'function_call',
+                name: 'generar_reporte',
+                call_id: 'qa',
+                arguments: JSON.stringify(spec),
+              },
+            ],
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            output: [
+              { type: 'message', content: [{ type: 'output_text', text: 'Reporte verificado.' }] },
+            ],
+          }),
+        });
+      global.fetch = mock as unknown as typeof fetch;
+      const result = await request(app.getHttpServer())
+        .post('/api/analytics/assistant/query')
+        .auth(adminToken, { type: 'bearer' })
+        .send({
+          from: '2026-01-01',
+          to: '2026-02-28',
+          location: locationId,
+          question: 'Consulta comercial',
+        });
+      expect(result.status).toBe(201);
+      expect(result.body.provider).toBe('openai');
+      expect(result.body.dashboard).toHaveLength(1);
+      expect(result.body.dashboard[0]).toMatchObject({
+        metric: spec.charts[0].metric,
+        groupBy: spec.charts[0].groupBy,
+        defaultType: spec.charts[0].representation,
+      });
+      expect(result.body.report.filters.location).toBe(locationId);
+      const toolResult = JSON.parse(
+        JSON.parse(mock.mock.calls[1][1].body).input.find(
+          (item: { type: string }) => item.type === 'function_call_output',
+        ).output,
+      );
+      expect(toolResult.dashboard[0].points).toEqual(result.body.dashboard[0].points);
+      expect(result.body.dashboard[0].points.length).toBeGreaterThan(0);
+      expect(
+        result.body.dashboard[0].points.reduce(
+          (sum: number, p: { value: number }) => sum + p.value,
+          0,
+        ),
+      ).toBe(spec.charts[0].metric === 'sales' ? 1400 : 14);
+      if (spec.charts[0].groupBy === 'location')
+        expect(result.body.dashboard[0].points).toHaveLength(1);
+    }
   } finally {
+    global.fetch = original;
+    if (key === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = key;
+    if (model === undefined) delete process.env.OPENAI_REPORTS_MODEL;
+    else process.env.OPENAI_REPORTS_MODEL = model;
+  }
+});
+
+test('Gemini ejecuta el plan y conserva la firma nativa en la respuesta de herramienta',async()=>{
+  const original=global.fetch, previous=process.env.REPORTS_AI_PROVIDER;
+  process.env.REPORTS_AI_PROVIDER='gemini';
+  const key=process.env.GEMINI_API_KEY;process.env.GEMINI_API_KEY='qa-gemini-key';
+  const args={clarification:null,charts:[{
+    title:'Unidades por talla',metric:'units',groupBy:'size',representation:'bar',
+    from:'2026-01-01',to:'2026-02-28',limit:5,order:'desc',productSearch:null,categorySearch:null,
+    color:null,size:null,locationSearch:null,maximumStock:null,
+  }]};
+  const mock=jest.fn().mockResolvedValueOnce({ok:true,json:async()=>({candidates:[{content:{role:'model',parts:[{
+    thoughtSignature:'qa-signature',functionCall:{id:'gemini-call',name:'generar_reporte',args},
+  }]}}]})}).mockResolvedValueOnce({ok:true,json:async()=>({candidates:[{content:{role:'model',parts:[{text:'Se vendieron 14 unidades.'}]}}]})});
+  global.fetch=mock as unknown as typeof fetch;
+  try{
+    const result=await request(app.getHttpServer()).post('/api/analytics/assistant/query')
+      .auth(adminToken,{type:'bearer'}).send({from:'2026-01-01',to:'2026-02-28',location:locationId,question:'Unidades por talla en barras'});
+    expect(result.status).toBe(201);
+    expect(result.body.provider).toBe('gemini');
+    expect(result.body.dashboard).toHaveLength(1);
+    expect(result.body.dashboard[0].points.reduce((n:number,p:{value:number})=>n+p.value,0)).toBe(14);
+    const contents=JSON.parse(mock.mock.calls[1][1].body).contents;
+    expect(contents[1].parts[0].thoughtSignature).toBe('qa-signature');
+    expect(contents[2].parts[0].functionResponse.id).toBe('gemini-call');
+    expect(contents[2].parts[0].functionResponse.response.dashboard[0].metric).toBe('units');
+  }finally{
     global.fetch=original;
-    if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;
-    if(model===undefined)delete process.env.OPENAI_REPORTS_MODEL;else process.env.OPENAI_REPORTS_MODEL=model;
+    if(key===undefined)delete process.env.GEMINI_API_KEY;else process.env.GEMINI_API_KEY=key;
+    if(previous===undefined)delete process.env.REPORTS_AI_PROVIDER;else process.env.REPORTS_AI_PROVIDER=previous;
   }
 });
 
 test('detecta una venta semanal extrema usando semanas anteriores como referencia', async () => {
-  const variant = await db.variante.findUniqueOrThrow({ where: { id: variantId }, include: { producto: true } });
+  const variant = await db.variante.findUniqueOrThrow({
+    where: { id: variantId },
+    include: { producto: true },
+  });
   const createdAt = new Date(Date.UTC(2026, 1, 9, 12));
   const order = await db.pedido.create({
     data: {

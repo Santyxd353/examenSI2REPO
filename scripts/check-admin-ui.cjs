@@ -145,20 +145,51 @@ async function main() {
     // El informe debe incluir esta venta de la ubicación exclusiva de la prueba.
     await nav.getByRole('button', { name: 'Reportes y análisis', exact: true }).click();
     await expect(page.getByRole('heading', { name: /Reportes/, level: 1 })).toBeVisible();
-    await page.getByLabel('Pregunta sobre tus datos').fill('Ventas por sucursal');
+    // Fixture de interfaz. El agente y sus consultas SQL se verifican en reports.test.ts.
+    await page.route('**/api/analytics/assistant/query', (route) =>
+      route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          provider: 'openai',
+          answer: 'La sucursal Centro concentra el 60% de las ventas del período.',
+          dashboard: [
+            {
+              id: 'query-0',
+              title: 'Participación de ventas por sucursal',
+              unit: 'Bs',
+              defaultType: 'pie',
+              description: '01/11/2026 — 09/11/2026',
+              points: [
+                { label: 'Centro', value: 600 },
+                { label: 'Norte', value: 400 },
+              ],
+              total: 1000,
+            },
+          ],
+          report: { filters: { from: '2026-11-01', to: '2026-11-09' } },
+        }),
+      }),
+    );
+    await page
+      .getByLabel('Pregunta sobre tus datos')
+      .fill('Participación de ventas por sucursal en un gráfico circular');
     await page.getByRole('button', { name: 'Consultar', exact: true }).click();
     const dashboard = page.getByRole('region', { name: 'Dashboard de la consulta' });
     await expect(dashboard).toBeVisible();
-    await expect(dashboard.locator('svg')).toBeVisible();
-    for (const type of ['bar', 'line', 'donut']) {
-      await dashboard.getByLabel('Tipo de gráfico').selectOption(type);
-      await expect(dashboard.locator('svg')).toBeVisible();
+    for (const type of ['pie', 'bar', 'line', 'donut', 'table', 'kpi']) {
+      await dashboard.getByRole('combobox').selectOption(type);
+      if (type === 'bar') await expect(dashboard.locator('.horizontal-bars')).toBeVisible();
+      else if (type === 'table') await expect(dashboard.getByRole('table')).toBeVisible();
+      else if (type === 'kpi') await expect(dashboard.locator('.generated-kpis')).toBeVisible();
+      else await expect(dashboard.locator('svg')).toBeVisible();
     }
-    await page.setViewportSize({ width:390, height:844 });
+    await dashboard.getByRole('combobox').selectOption('pie');
+    await page.setViewportSize({ width: 390, height: 844 });
     if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1))
       throw Error('El dashboard de consulta desborda el ancho móvil.');
-    await page.screenshot({ path:'.local/query-dashboard-mobile.png', fullPage:true });
-    await page.setViewportSize({ width:1440,height:1000 });
+    await page.screenshot({ path: '.local/query-dashboard-mobile.png', fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 1000 });
     for (const [roleName, allowed, denied] of [
       ['Vendedor', 'Vender', 'Reportes y análisis'],
       ['Analista', 'Reportes y análisis', 'Vender'],

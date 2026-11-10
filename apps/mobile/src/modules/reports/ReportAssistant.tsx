@@ -6,10 +6,10 @@ import { VoiceQueryButton } from './VoiceQueryButton';
 import type { OfflineDashboardReport } from './offlineReport';
 import { askOfflineReport } from './offlineReportAssistant';
 import { QueryDashboard } from './QueryDashboard';
-import { reportDashboard, type ReportChart } from '../../../../api/src/report-dashboard';
+import type { ReportChart } from '../../../../api/src/report-dashboard';
 
 type Props = { from: string; to: string; offlineReport?: OfflineDashboardReport | null };
-type AgentAnswer = { provider: 'openai' | 'local'; answer: string; dashboard: ReportChart[] };
+type AgentAnswer = { provider: 'openai' | 'gemini'; answer: string; dashboard: ReportChart[] };
 
 export function ReportAssistant({ from, to, offlineReport }: Props) {
   const [text, setText] = useState('');
@@ -36,13 +36,12 @@ export function ReportAssistant({ from, to, offlineReport }: Props) {
       const body = JSON.stringify({ question: question.trim(), from, to });
       const result = await api<AgentAnswer>('/analytics/assistant/query', { method: 'POST', body });
       if (id !== requestId.current) return;
-      setNotice((result.provider === 'openai' ? 'IA · OpenAI: ' : 'Modo local: ') + result.answer);
+      setNotice((result.provider === 'gemini' ? 'IA · Gemini: ' : 'IA · OpenAI: ') + result.answer);
       setCharts(result.dashboard);
     } catch (error) {
       if (id !== requestId.current) return;
       if (ApiProblem.isNetwork(error) && offlineReport) {
         setNotice(`Modo offline: ${askOfflineReport(offlineReport, question).answer}`);
-        setCharts(reportDashboard(offlineReport, question));
       } else
         setNotice(
           error instanceof Error ? error.message : 'No fue posible consultar el asistente.',
@@ -80,7 +79,8 @@ export function ReportAssistant({ from, to, offlineReport }: Props) {
         }}
       />
       <Text style={{ color: '#6a706c', fontSize: 10 }}>
-        Solo consulta datos autorizados del período visible; no modifica ventas ni inventario.
+        Describe qué quieres analizar y cómo quieres verlo. Puedes indicar período, sucursal,
+        prendas y tipo de gráfico.
       </Text>
       <VoiceQueryButton
         onText={(spoken) => {
