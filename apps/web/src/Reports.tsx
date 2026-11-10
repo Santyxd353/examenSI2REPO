@@ -446,7 +446,14 @@ export function Reports() {
           {answer && <p className="analytics-answer">{answer}</p>}
           {queryResult && (
             <>
-              <p>Reporte generado por el agente IA · {queryResult.provider==='gemini'?'Gemini':'OpenAI'}</p>
+              <p>
+                Reporte generado por el agente IA ·{' '}
+                {queryResult.provider === 'groq'
+                  ? 'Groq'
+                  : queryResult.provider === 'gemini'
+                    ? 'Gemini'
+                    : 'OpenAI'}
+              </p>
               <QueryDashboard key={answer} charts={queryResult.dashboard} />
             </>
           )}

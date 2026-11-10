@@ -5,6 +5,8 @@ import { randomUUID } from 'crypto';
 import { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { createApp } from '../src/app';
+import { executeReportPlan, reportPlanSchema } from '../src/agent-report';
+import { Db } from '../src/db';
 
 let app: INestApplication;
 let db: PrismaClient;
@@ -424,6 +426,25 @@ test('Gemini ejecuta el plan y conserva la firma nativa en la respuesta de herra
     global.fetch=original;
     if(key===undefined)delete process.env.GEMINI_API_KEY;else process.env.GEMINI_API_KEY=key;
     if(previous===undefined)delete process.env.REPORTS_AI_PROVIDER;else process.env.REPORTS_AI_PROVIDER=previous;
+  }
+});
+
+test('umbral de stock compara el total de la prenda entre ubicaciones autorizadas', async()=>{
+  const extra=await db.ubicacion.create({data:{nombre:'QA umbral '+randomUUID(),tipo:'ALMACEN',activa:true}});
+  await db.inventario.create({data:{variante_id:variantId,ubicacion_id:extra.id,fisico:2,reservado:0,comprometido:0,version:1}});
+  try{
+    const plan=reportPlanSchema.parse({clarification:null,charts:[{
+      title:'Stock bajo',metric:'stock',groupBy:'product',representation:'table',from:'2026-01-01',to:'2026-02-28',
+      limit:10,order:'asc',productSearch:null,categorySearch:null,color:null,size:null,locationSearch:null,maximumStock:3,
+    }]});
+    const result=await executeReportPlan(app.get(Db),plan,[locationId,extra.id]);
+    expect(result[0].points).toHaveLength(0);
+    plan.charts[0].maximumStock=15;
+    const included=await executeReportPlan(app.get(Db),plan,[locationId,extra.id]);
+    expect(included[0].points).toEqual([expect.objectContaining({value:14})]);
+  }finally{
+    await db.inventario.deleteMany({where:{ubicacion_id:extra.id}});
+    await db.ubicacion.delete({where:{id:extra.id}});
   }
 });
 

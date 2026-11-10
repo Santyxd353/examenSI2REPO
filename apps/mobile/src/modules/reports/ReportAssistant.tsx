@@ -9,7 +9,11 @@ import { QueryDashboard } from './QueryDashboard';
 import type { ReportChart } from '../../../../api/src/report-dashboard';
 
 type Props = { from: string; to: string; offlineReport?: OfflineDashboardReport | null };
-type AgentAnswer = { provider: 'openai' | 'gemini'; answer: string; dashboard: ReportChart[] };
+type AgentAnswer = {
+  provider: 'openai' | 'gemini' | 'groq';
+  answer: string;
+  dashboard: ReportChart[];
+};
 
 export function ReportAssistant({ from, to, offlineReport }: Props) {
   const [text, setText] = useState('');
@@ -36,7 +40,8 @@ export function ReportAssistant({ from, to, offlineReport }: Props) {
       const body = JSON.stringify({ question: question.trim(), from, to });
       const result = await api<AgentAnswer>('/analytics/assistant/query', { method: 'POST', body });
       if (id !== requestId.current) return;
-      setNotice((result.provider === 'gemini' ? 'IA · Gemini: ' : 'IA · OpenAI: ') + result.answer);
+      const providerName = { groq: 'Groq', gemini: 'Gemini', openai: 'OpenAI' }[result.provider];
+      setNotice('IA · ' + providerName + ': ' + result.answer);
       setCharts(result.dashboard);
     } catch (error) {
       if (id !== requestId.current) return;

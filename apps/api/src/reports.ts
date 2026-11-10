@@ -21,6 +21,7 @@ import { can, requireLocationScope } from './locations';
 import type { ReportChart } from './report-dashboard';
 import { executeReportPlan, reportPlanSchema, reportTool } from './agent-report';
 import { GeminiReportAgent } from './gemini-report-agent';
+import { GroqReportAgent } from './groq-report-agent';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const filterSchema = z
@@ -544,25 +545,35 @@ export class CommercialAnalytics {
     const scope = await this.scope(user, input.location);
     const provider =
       process.env.REPORTS_AI_PROVIDER || (process.env.GEMINI_API_KEY ? 'gemini' : 'openai');
-    if (!['gemini', 'openai'].includes(provider))
-      throw new ServiceUnavailableException('REPORTS_AI_PROVIDER debe ser gemini u openai.');
-    const apiKey = provider === 'gemini' ? process.env.GEMINI_API_KEY : process.env.OPENAI_API_KEY;
+    if (!['gemini', 'openai', 'groq'].includes(provider))
+      throw new ServiceUnavailableException('REPORTS_AI_PROVIDER debe ser groq, gemini u openai.');
+    const apiKey =
+      provider === 'groq'
+        ? process.env.GROQ_API_KEY
+        : provider === 'gemini'
+          ? process.env.GEMINI_API_KEY
+          : process.env.OPENAI_API_KEY;
     const model =
-      provider === 'gemini'
-        ? process.env.GEMINI_REPORTS_MODEL || 'gemini-2.5-flash'
-        : process.env.OPENAI_REPORTS_MODEL;
+      provider === 'groq'
+        ? process.env.GROQ_REPORTS_MODEL || 'openai/gpt-oss-20b'
+        : provider === 'gemini'
+          ? process.env.GEMINI_REPORTS_MODEL || 'gemini-2.5-flash'
+          : process.env.OPENAI_REPORTS_MODEL;
     if (!apiKey || !model)
       throw new ServiceUnavailableException({
         code: 'AI_CONFIGURATION_REQUIRED',
         message:
-          provider === 'gemini'
-            ? 'Configura GEMINI_API_KEY en el servidor para generar reportes con el agente.'
-            : 'El agente IA requiere OPENAI_API_KEY y OPENAI_REPORTS_MODEL en el servidor. Configúralos para generar un reporte a partir de tu consulta.',
+          provider === 'groq'
+            ? 'Configura GROQ_API_KEY en el servidor para generar reportes con el agente.'
+            : provider === 'gemini'
+              ? 'Configura GEMINI_API_KEY en el servidor para generar reportes con el agente.'
+              : 'El agente IA requiere OPENAI_API_KEY y OPENAI_REPORTS_MODEL en el servidor. Configúralos para generar un reporte a partir de tu consulta.',
       });
 
     const deadline = Date.now() + 30000;
     const gemini =
       provider === 'gemini' ? new GeminiReportAgent(apiKey, model, input.question) : null;
+    const groq = provider === 'groq' ? new GroqReportAgent(apiKey, model, input.question) : null;
     const instructions = [
       'Eres el agente analista comercial de Lúmina. Habla español.',
       'Interpreta la pregunta y llama a generar_reporte para obtener cifras y construir el dashboard solicitado.',
@@ -574,6 +585,8 @@ export class CommercialAnalytics {
       'Usa null en filtros que no se han solicitado. Si no hay fechas explícitas usa el período seleccionado.',
       'El stock es actual, no histórico. Los pedidos por producto pueden repetirse entre grupos.',
       'Resume únicamente los resultados devueltos por la herramienta e indica ausencia de datos. No omitas registros en tablas solicitadas sin explicar el límite.',
+      'La respuesta final debe ser texto simple de máximo tres frases, sin Markdown, tablas ni listas. Las tablas y gráficos ya se dibujan desde la herramienta. No afirmes que no hay más registros si el resultado está limitado. Cuenta las filas de points de la herramienta si mencionas cantidades de grupos.',
+      'Un mes nombrado con año se interpreta como el mes calendario completo. Este mes significa desde su primer día hasta la fecha de referencia. Para fechas elegidas en la herramienta, usa siempre su period en la explicación.',
       'Fecha de referencia en Bolivia: ' +
         new Intl.DateTimeFormat('en-CA', {
           timeZone: 'America/La_Paz',
@@ -592,6 +605,7 @@ export class CommercialAnalytics {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), Math.max(1, deadline - Date.now()));
       try {
+        if (groq) return await groq.request(conversation, round, controller.signal, instructions);
         if (gemini)
           return await gemini.request(conversation, round, controller.signal, instructions);
         const response = await fetch('https://api.openai.com/v1/responses', {
@@ -665,7 +679,32 @@ export class CommercialAnalytics {
           );
         return {
           provider,
-          answer,
+          answer:
+            clarification ||
+            dashboard
+              .map((chart) => {
+                if (!chart.points.length)
+                  return chart.title + ': no hay registros con estos filtros.';
+                const top = chart.points
+                  .filter((point) => point.label !== 'Otros')
+                  .reduce((best, point) => (point.value > best.value ? point : best));
+                const value = top.value.toLocaleString('es-BO', { maximumFractionDigits: 2 });
+                return (
+                  chart.title +
+                  '. ' +
+                  (chart.description || '') +
+                  '. ' +
+                  chart.points.length +
+                  ' grupos mostrados. Mayor valor: ' +
+                  top.label +
+                  ' (' +
+                  value +
+                  ' ' +
+                  chart.unit +
+                  ').'
+                );
+              })
+              .join('\n'),
           dashboard,
           report: { filters: { from: input.from, to: input.to, location: input.location } },
           generatedAt: new Date().toISOString(),

@@ -187,7 +187,6 @@ export async function executeReportPlan(
     ];
     if (stock) {
       clauses.push(Prisma.sql`u.activa`);
-      if (spec.maximumStock !== null) clauses.push(Prisma.sql`i.disponible<=${spec.maximumStock}`);
       if (spec.metric === 'low_stock')
         clauses.push(Prisma.sql`i.disponible<=COALESCE(d.stock_seguridad,0)`);
     } else {
@@ -207,12 +206,16 @@ export async function executeReportPlan(
         : spec.order === 'asc'
           ? Prisma.sql`value ASC,label ASC`
           : Prisma.sql`value DESC,label ASC`;
+    const threshold =
+      stock && spec.maximumStock !== null
+        ? Prisma.sql`HAVING SUM(i.disponible)<=${spec.maximumStock}`
+        : Prisma.empty;
     const rows = await db.$queryRaw<
       { label: string; value: unknown; groups: bigint; total: unknown }[]
     >(Prisma.sql`
       WITH grouped AS (SELECT ${group} AS label,${metric} AS value FROM ${source}
         JOIN producto p ON p.id=v.producto_id JOIN categoria c ON c.id=p.categoria_id
-        WHERE ${Prisma.join(clauses, ' AND ')} GROUP BY 1)
+        WHERE ${Prisma.join(clauses, ' AND ')} GROUP BY 1 ${threshold})
       SELECT label,value,COUNT(*) OVER() AS groups,SUM(value) OVER() AS total FROM grouped
       ORDER BY ${order} LIMIT ${spec.limit}`);
     const points = rows.map((row) => ({
