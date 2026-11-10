@@ -58,6 +58,10 @@ services:
       REPORT_AI_OPENAI_KEY: ${REPORT_AI_OPENAI_KEY:-}
       REPORT_AI_TEXT_MODEL: ${REPORT_AI_TEXT_MODEL:-}
       REPORT_AI_VOICE_MODEL: ${REPORT_AI_VOICE_MODEL:-gpt-transcribe}
+      REPORT_AI_PROVIDER: ${REPORT_AI_PROVIDER:-openai}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_REPORTS_MODEL: ${GROQ_REPORTS_MODEL:-openai/gpt-oss-20b}
+      GROQ_VOICE_MODEL: ${GROQ_VOICE_MODEL:-whisper-large-v3-turbo}
     volumes:
       - application-data:/data
     networks:

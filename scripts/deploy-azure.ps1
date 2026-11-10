@@ -6,6 +6,14 @@ param(
   [string]$SubscriptionId = '',
   [string]$PostgresAdminPassword = '',
   [string]$JwtSecret = '',
+  [string]$OfflineMasterKey = '',
+  [string]$ReportAiProvider = '',
+  [string]$ReportAiOpenAiKey = '',
+  [string]$ReportAiTextModel = '',
+  [string]$ReportAiVoiceModel = '',
+  [string]$GroqApiKey = '',
+  [string]$GroqReportsModel = '',
+  [string]$GroqVoiceModel = '',
   [string]$ImageTag = ''
 )
 
@@ -16,6 +24,12 @@ function New-RandomSecret([int]$Bytes = 48) {
   $data = [byte[]]::new($Bytes)
   [Security.Cryptography.RandomNumberGenerator]::Fill($data)
   return 'Aa1' + [Convert]::ToBase64String($data).Replace('+', 'A').Replace('/', 'B').Replace('=', 'C')
+}
+
+function New-Base64Secret([int]$Bytes = 32) {
+  $data = [byte[]]::new($Bytes)
+  [Security.Cryptography.RandomNumberGenerator]::Fill($data)
+  return [Convert]::ToBase64String($data)
 }
 
 function Invoke-AzJson([string[]]$Arguments) {
@@ -43,10 +57,26 @@ foreach ($namespace in @('Microsoft.App', 'Microsoft.ContainerRegistry', 'Micros
 
 if (-not $PostgresAdminPassword) { $PostgresAdminPassword = $env:AZURE_POSTGRES_PASSWORD }
 if (-not $JwtSecret) { $JwtSecret = $env:AZURE_JWT_SECRET }
+if (-not $OfflineMasterKey) { $OfflineMasterKey = $env:AZURE_OFFLINE_MASTER_KEY }
+if (-not $ReportAiProvider) { $ReportAiProvider = $env:REPORT_AI_PROVIDER }
+if (-not $ReportAiOpenAiKey) { $ReportAiOpenAiKey = $env:REPORT_AI_OPENAI_KEY }
+if (-not $ReportAiTextModel) { $ReportAiTextModel = $env:REPORT_AI_TEXT_MODEL }
+if (-not $ReportAiVoiceModel) { $ReportAiVoiceModel = $env:REPORT_AI_VOICE_MODEL }
+if (-not $GroqApiKey) { $GroqApiKey = $env:GROQ_API_KEY }
+if (-not $GroqReportsModel) { $GroqReportsModel = $env:GROQ_REPORTS_MODEL }
+if (-not $GroqVoiceModel) { $GroqVoiceModel = $env:GROQ_VOICE_MODEL }
 if (-not $PostgresAdminPassword) { $PostgresAdminPassword = New-RandomSecret 36 }
 if (-not $JwtSecret) { $JwtSecret = New-RandomSecret 64 }
+if (-not $OfflineMasterKey) { $OfflineMasterKey = New-Base64Secret 32 }
+if (-not $ReportAiProvider) { $ReportAiProvider = if ($GroqApiKey) { 'groq' } else { 'openai' } }
+if (-not $GroqReportsModel) { $GroqReportsModel = 'openai/gpt-oss-20b' }
+if (-not $GroqVoiceModel) { $GroqVoiceModel = 'whisper-large-v3-turbo' }
 if ($PostgresAdminPassword.Length -lt 24) { throw 'PostgresAdminPassword debe tener al menos 24 caracteres.' }
 if ($JwtSecret.Length -lt 48) { throw 'JwtSecret debe tener al menos 48 caracteres.' }
+try { if ([Convert]::FromBase64String($OfflineMasterKey).Length -ne 32) { throw 'invalid' } } catch { throw 'OfflineMasterKey debe ser base64 de exactamente 32 bytes.' }
+if ($ReportAiProvider -notin @('openai', 'groq')) { throw 'ReportAiProvider debe ser openai o groq.' }
+if ($ReportAiProvider -eq 'groq' -and -not $GroqApiKey) { throw 'Configura GroqApiKey o GROQ_API_KEY para usar Groq.' }
+if ($ReportAiProvider -eq 'openai' -and [bool]$ReportAiOpenAiKey -ne [bool]$ReportAiTextModel) { throw 'ReportAiOpenAiKey y ReportAiTextModel deben configurarse juntos.' }
 if ($Prefix -notmatch '^[a-z][a-z0-9-]{2,17}$') { throw 'Prefix debe usar 3-18 caracteres: minúsculas, números o guiones.' }
 
 if (-not $ImageTag) {
@@ -103,6 +133,14 @@ try {
       webOrigin = @{ value = $webOrigin }
       databaseUrl = @{ value = $databaseUrl }
       jwtSecret = @{ value = $JwtSecret }
+      offlineMasterKey = @{ value = $OfflineMasterKey }
+      reportAiProvider = @{ value = $ReportAiProvider }
+      reportAiOpenAiKey = @{ value = $ReportAiOpenAiKey }
+      reportAiTextModel = @{ value = $ReportAiTextModel }
+      reportAiVoiceModel = @{ value = $ReportAiVoiceModel }
+      groqApiKey = @{ value = $GroqApiKey }
+      groqReportsModel = @{ value = $GroqReportsModel }
+      groqVoiceModel = @{ value = $GroqVoiceModel }
     }
   }
   [IO.File]::WriteAllText($appParametersPath, ($appParameters | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))

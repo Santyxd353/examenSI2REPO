@@ -15,6 +15,23 @@ param databaseUrl string
 @secure()
 param jwtSecret string
 
+@secure()
+param offlineMasterKey string
+
+param reportAiProvider string = 'openai'
+
+@secure()
+param reportAiOpenAiKey string = ''
+
+param reportAiTextModel string = ''
+param reportAiVoiceModel string = ''
+
+@secure()
+param groqApiKey string = ''
+
+param groqReportsModel string = 'openai/gpt-oss-20b'
+param groqVoiceModel string = 'whisper-large-v3-turbo'
+
 resource environment 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
   name: environmentName
 }
@@ -61,6 +78,18 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'jwt-secret'
           value: jwtSecret
         }
+        {
+          name: 'offline-master-key'
+          value: offlineMasterKey
+        }
+        {
+          name: 'report-ai-openai-key'
+          value: reportAiOpenAiKey
+        }
+        {
+          name: 'groq-api-key'
+          value: groqApiKey
+        }
       ]
     }
     template: {
@@ -80,9 +109,17 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             { name: 'PYTHON_PATH', value: '/opt/venv/bin/python' }
             { name: 'POSE_MODEL_PATH', value: '/opt/models/pose_landmarker.task' }
             { name: 'BLENDER_PATH', value: '/usr/bin/blender' }
-            { name: 'RUN_DB_SEED', value: 'true' }
+            { name: 'RUN_DB_SEED', value: 'false' }
             { name: 'DATABASE_URL', secretRef: 'database-url' }
             { name: 'JWT_SECRET', secretRef: 'jwt-secret' }
+            { name: 'OFFLINE_MASTER_KEY', secretRef: 'offline-master-key' }
+            { name: 'REPORT_AI_PROVIDER', value: reportAiProvider }
+            { name: 'REPORT_AI_OPENAI_KEY', secretRef: 'report-ai-openai-key' }
+            { name: 'REPORT_AI_TEXT_MODEL', value: reportAiTextModel }
+            { name: 'REPORT_AI_VOICE_MODEL', value: reportAiVoiceModel }
+            { name: 'GROQ_API_KEY', secretRef: 'groq-api-key' }
+            { name: 'GROQ_REPORTS_MODEL', value: groqReportsModel }
+            { name: 'GROQ_VOICE_MODEL', value: groqVoiceModel }
           ]
           probes: [
             {
