@@ -58,8 +58,8 @@ async function prepare() {
         status: 'complete',
         payment_status: 'paid',
         livemode: false,
-        currency: 'bob',
-        amount_total: 29900,
+        currency: 'usd',
+        amount_total: 1999,
         client_reference_id: response.body.id,
         metadata: { intentId: response.body.id, tenantId: f.tenant.id },
       },
@@ -107,7 +107,7 @@ test('firma inválida o reserialización, LIVE, moneda o importe erróneos no ac
   expect((await deliver(event, signature, JSON.stringify(event))).status).toBe(400);
   expect((await deliver({ ...event, livemode: true })).status).toBe(400);
   expect(
-    (await deliver({ ...event, data: { object: { ...event.data.object, currency: 'usd' } } }))
+    (await deliver({ ...event, data: { object: { ...event.data.object, currency: 'bob' } } }))
       .status,
   ).toBe(400);
   expect(

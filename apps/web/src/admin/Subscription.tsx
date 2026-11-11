@@ -10,8 +10,8 @@ import {
 } from '@lumina/contracts';
 import { api } from '../api';
 import './subscription.css';
-const money = (minor: number) =>
-  new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(minor / 100);
+const money = (minor: number, currency = 'USD') =>
+  new Intl.NumberFormat('es-BO', { style: 'currency', currency }).format(minor / 100);
 const date = (stamp: string) =>
   new Date(stamp).toLocaleString('es-BO', {
     dateStyle: 'medium',
@@ -222,7 +222,8 @@ export function SubscriptionPanel() {
               : 'Stripe TEST · demostración académica'}
           </h2>
           <p>
-            {PLAN_CATALOG[checkout.planCode].name} · <strong>{money(checkout.amountMinor)}</strong>
+            {PLAN_CATALOG[checkout.planCode].name} ·{' '}
+            <strong>{money(checkout.amountMinor, checkout.currency)}</strong>
           </p>
           <p className="billing-reference">Referencia: {checkout.id}</p>
           <p>
@@ -306,7 +307,12 @@ export function SubscriptionPanel() {
                   <strong>Sin cobro comercial</strong>
                 ) : (
                   <>
-                    <strong>{money(data.priceMinor)}</strong> / mes por tienda
+                    <strong>
+                      {PLAN_CATALOG[data.planCode].contactSales
+                        ? 'Precio a medida'
+                        : money(data.priceMinor, data.currency)}
+                    </strong>
+                    {!PLAN_CATALOG[data.planCode].contactSales && ' / mes por tienda'}
                   </>
                 )}
               </p>
@@ -381,9 +387,9 @@ export function SubscriptionPanel() {
       )}
       <div className="saas-section-heading">
         <h2>Planes disponibles</h2>
-        <span>Precios en bolivianos por tienda y por mes.</span>
+        <span>Precios en dólares estadounidenses por tienda y por mes.</span>
       </div>
-      {chosen && !pending && (
+      {chosen && !PLAN_CATALOG[chosen].contactSales && !pending && (
         <section className="saas-surface subscription-payment" aria-label="Condiciones del ciclo">
           <h2>
             {PLAN_CATALOG[chosen].name} · {money(PLAN_CATALOG[chosen].priceMinor)}
@@ -438,8 +444,8 @@ export function SubscriptionPanel() {
             </span>
             <h3>{plan.name}</h3>
             <p className="subscription-price">
-              {money(plan.priceMinor)}
-              <small>/ mes</small>
+              {plan.contactSales ? 'A medida' : money(plan.priceMinor)}
+              {!plan.contactSales && <small>/ mes</small>}
             </p>
             <ul>
               {[
@@ -464,7 +470,7 @@ export function SubscriptionPanel() {
             </ul>
             <button
               className="saas-secondary"
-              disabled={!data || loading || paying || Boolean(pending)}
+              disabled={plan.contactSales || !data || loading || paying || Boolean(pending)}
               onClick={() => {
                 setChosen(plan.code);
                 setAccepted(false);

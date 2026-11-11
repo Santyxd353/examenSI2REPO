@@ -15,6 +15,53 @@ export class StripeAdapter {
   assertConfigured() {
     this.client();
   }
+  async createSignupCheckout(input: {
+    id: string;
+    companyName: string;
+    email: string;
+    planName: string;
+    amountMinor: number;
+    expiresAt: Date;
+    billingInterval: 'MONTHLY' | 'YEARLY';
+  }) {
+    const target = new URL(process.env.WEB_ORIGIN || 'http://localhost:5173');
+    target.pathname = '/';
+    target.search = '';
+    target.hash = '';
+    target.searchParams.set('registro', '1');
+    target.searchParams.set('alta', input.id);
+    const session = await this.client().checkout.sessions.create(
+      {
+        mode: 'payment',
+        client_reference_id: input.id,
+        customer_email: input.email,
+        metadata: { signupId: input.id, purpose: 'TENANT_SIGNUP' },
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: 'usd',
+              unit_amount: input.amountMinor,
+              product_data: {
+                name: `Lúmina · ${input.planName} · ${input.billingInterval === 'YEARLY' ? 'un año' : 'un mes'} (TEST)`,
+                description: input.companyName,
+              },
+            },
+          },
+        ],
+        allowed_payment_method_types: ['card'],
+        success_url: target.toString(),
+        cancel_url: target.toString(),
+        expires_at: Math.floor(input.expiresAt.getTime() / 1000),
+      },
+      { idempotencyKey: `lumina-signup-${input.id}` },
+    );
+    if (session.livemode || !session.url) throw new BadRequestException('Sesión TEST inválida.');
+    return { id: session.id, url: session.url };
+  }
+  retrieveCheckout(id: string) {
+    return this.client().checkout.sessions.retrieve(id);
+  }
   async createCheckout(input: {
     intentId: string;
     tenantId: string;
@@ -22,6 +69,8 @@ export class StripeAdapter {
     planName: string;
     amountMinor: number;
     expiresAt: string;
+    currency?: 'BOB' | 'USD';
+    billingInterval?: 'MONTHLY' | 'YEARLY';
   }) {
     const origin = new URL(process.env.WEB_ORIGIN || 'http://localhost:5173');
     if (!['http:', 'https:'].includes(origin.protocol))
@@ -43,9 +92,11 @@ export class StripeAdapter {
           {
             quantity: 1,
             price_data: {
-              currency: 'bob',
+              currency: (input.currency || 'BOB').toLowerCase(),
               unit_amount: input.amountMinor,
-              product_data: { name: `Lúmina · ${input.planName} · un mes (TEST)` },
+              product_data: {
+                name: `Lúmina · ${input.planName} · ${input.billingInterval === 'YEARLY' ? 'un año' : 'un mes'} (TEST)`,
+              },
             },
           },
         ],

@@ -1,6 +1,6 @@
 import QRCode from 'qrcode';
-export async function simulatedQr(id: string, amountMinor: number) {
-  const payload = `LUMINA:QR_SIMULATED:${id}:BOB:${amountMinor}`;
+export async function simulatedQr(id: string, amountMinor: number, currency = 'BOB') {
+  const payload = `LUMINA:QR_SIMULATED:${id}:${currency}:${amountMinor}`;
   return {
     simulated: true,
     qrPayload: payload,

@@ -44,6 +44,32 @@ if ($LASTEXITCODE -ne 0) { throw "La firma APK no es válida.`n$($signing -join 
 $debugSigned = ($signing -join "`n") -match 'CN=Android Debug'
 if ($debugSigned -and -not $AllowDebugCertificate) { throw 'El APK usa certificado Android Debug. Solo es aceptable para QA con -AllowDebugCertificate.' }
 
+# Check the embedded application bundle, rather than merely echoing the requested URL.
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$archive = [System.IO.Compression.ZipFile]::OpenRead($resolvedApk)
+try {
+  $entry = $archive.GetEntry('assets/index.android.bundle')
+  if (-not $entry) { throw 'La APK no contiene un bundle autónomo de Android.' }
+  $input = $entry.Open()
+  $memory = New-Object System.IO.MemoryStream
+  try {
+    $input.CopyTo($memory)
+    $bundle = [System.Text.Encoding]::GetEncoding(28591).GetString($memory.ToArray())
+    if ($bundle.IndexOf($uri.AbsoluteUri.TrimEnd('/'), [StringComparison]::Ordinal) -lt 0) {
+      throw 'La URL API esperada no se encuentra en el bundle empaquetado. Reconstruye la APK con EXPO_PUBLIC_API_URL.'
+    }
+  } finally {
+    $input.Dispose()
+    $memory.Dispose()
+  }
+  $architectures = @($archive.Entries | Where-Object { $_.FullName -match '^lib/([^/]+)/[^/]+\.so$' } | ForEach-Object {
+    [regex]::Match($_.FullName, '^lib/([^/]+)/').Groups[1].Value
+  } | Sort-Object -Unique)
+} finally {
+  $archive.Dispose()
+}
+$certificateHash = [regex]::Match(($signing -join "`n"), 'Signer #1 certificate SHA-256 digest:\s*([0-9a-fA-F]+)').Groups[1].Value
+
 $file = Get-Item -LiteralPath $resolvedApk
 $result = [ordered]@{
   apk = $resolvedApk
@@ -54,6 +80,9 @@ $result = [ordered]@{
   versionCode = [int]$versionCode
   apiUrl = $uri.AbsoluteUri.TrimEnd('/')
   certificate = if ($debugSigned) { 'debug (solo QA)' } else { 'no-debug verificado' }
+  certificateSha256 = $certificateHash
+  architectures = $architectures
+  embeddedApiVerified = $true
   verifiedAtUtc = [DateTime]::UtcNow.ToString('o')
 }
 

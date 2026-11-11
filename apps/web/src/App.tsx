@@ -32,7 +32,7 @@ import { Viewer } from './Viewer';
 import { AdminWorkspace } from './admin/AdminWorkspace';
 import { businessModules, canUseModule } from './admin/modules';
 import { Commerce } from './Commerce';
-import { tenantAsset, tenantSlug, selectTenant } from './tenant';
+import { tenantAsset, tenantSlug } from './tenant';
 import {
   enableOffline,
   restoreOffline,
@@ -130,13 +130,45 @@ const PlatformProvision = lazy(() =>
 const Downloads = lazy(() =>
   import('./Downloads').then((module) => ({ default: module.Downloads })),
 );
+const CommercialHome = lazy(() =>
+  import('./CommercialHome').then((module) => ({ default: module.CommercialHome })),
+);
+const PublicSignup = lazy(() =>
+  import('./PublicSignup').then((module) => ({ default: module.PublicSignup })),
+);
 export function App() {
-  return new URLSearchParams(window.location.search).get('plataforma') === '1' ? (
+  const params = new URLSearchParams(window.location.search);
+  const platform = params.get('plataforma') === '1';
+  const signup = params.get('registro') === '1';
+  const store = [
+    'tienda',
+    'checkout',
+    'stripe_session_id',
+    'stripe_return',
+    'stripe_cancelled',
+    'seccion',
+  ].some((key) => params.has(key));
+  useEffect(() => {
+    document.title = platform
+      ? 'Lúmina · Superadministración'
+      : store
+        ? 'Lúmina · Moda femenina y vestidor 3D'
+        : 'Lúmina · La plataforma para tu negocio de moda';
+  }, [platform, store]);
+  return platform ? (
     <Suspense fallback={<p role="status">Cargando acceso de plataforma…</p>}>
       <PlatformProvision />
     </Suspense>
-  ) : (
+  ) : signup ? (
+    <Suspense fallback={<p role="status">Preparando tu negocio…</p>}>
+      <PublicSignup />
+    </Suspense>
+  ) : store ? (
     <StoreApp />
+  ) : (
+    <Suspense fallback={<p role="status">Cargando Lúmina…</p>}>
+      <CommercialHome />
+    </Suspense>
   );
 }
 function StoreApp() {
@@ -184,7 +216,7 @@ function StoreApp() {
     [galleryIndex, setGalleryIndex] = useState<Record<string, number>>({}),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
-  const [stores, setStores] = useState<{ slug: string; name: string }[]>([]);
+  const [storeName, setStoreName] = useState(tenantSlug());
   const [avatars, setAvatars] = useState<Avatar[]>([]),
     [jobs, setJobs] = useState<Job[]>([]),
     [bodyUrl, setBodyUrl] = useState(tenantAsset('/assets/reference.glb')),
@@ -265,8 +297,10 @@ function StoreApp() {
     const connection = () => setOnline(navigator.onLine);
     window.addEventListener('online', connection);
     window.addEventListener('offline', connection);
-    void api('/platform/stores')
-      .then(setStores)
+    void api('/tenant')
+      .then((store) => {
+        if (typeof store.name === 'string') setStoreName(store.name);
+      })
       .catch(() => {});
     refresh()
       .then(async (d) => {
@@ -486,17 +520,6 @@ function StoreApp() {
     }
     setOfflineSession(local);
     return local;
-  }
-  async function switchStore(slug: string) {
-    try {
-      accountEpoch.current++;
-      viewEpoch.current++;
-      offlineSetup.current?.abort();
-      if (offlineSession) await lockSession(offlineSession, 'keep');
-      selectTenant(slug);
-    } catch (error) {
-      setError((error as Error).message);
-    }
   }
   async function logout(choice?: 'keep' | 'discard') {
     if (offlineSession && !choice) {
@@ -752,21 +775,9 @@ function StoreApp() {
           )}
         </nav>
         <div className="account">
-          <select
-            className="tenant-selector"
-            aria-label="Tienda"
-            value={tenantSlug()}
-            onChange={(event) => void switchStore(event.target.value)}
-          >
-            {!stores.some((store) => store.slug === tenantSlug()) && (
-              <option value={tenantSlug()}>{tenantSlug()}</option>
-            )}
-            {stores.map((store) => (
-              <option key={store.slug} value={store.slug}>
-                {store.name}
-              </option>
-            ))}
-          </select>
+          <span className="current-store" aria-label="Tienda actual" title={tenantSlug()}>
+            {user?.tenant?.name || storeName}
+          </span>
           {user ? (
             <>
               <span>Hola, {user.nombres.split(' ')[0]}</span>

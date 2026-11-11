@@ -26,11 +26,23 @@ const registration = z
   })
   .strict();
 
-export async function provisionTenant(raw: unknown, registry: TenantRegistry) {
+// Trusted server options are separate from the strictly validated public/operator DTO.
+export async function provisionTenant(
+  raw: unknown,
+  registry: TenantRegistry,
+  owner?: {
+    tenantId: string;
+    passwordHash: string;
+    firstName: string;
+    lastName: string;
+  },
+) {
   const input = registration.parse(raw);
   if (input.slug === 'lumina') throw new ConflictException('Ese espacio ya está reservado.');
   await registry.initialize();
-  const id = randomUUID();
+  const id = owner ? z.uuid().parse(owner.tenantId) : randomUUID();
+  if (owner && !/^\$2[aby]\$12\$[./A-Za-z0-9]{53}$/.test(owner.passwordHash))
+    throw new BadRequestException('Credencial de propietario inválida.');
   const databaseName = `store_${id.replaceAll('-', '')}`;
   const control = await registry.pool.connect();
   try {
@@ -79,12 +91,12 @@ export async function provisionTenant(raw: unknown, registry: TenantRegistry) {
     );
     await seedTenantRoles(client);
     const adminRole = await client.rol.findUniqueOrThrow({ where: { nombre: 'Administrador' } });
-    const owner = await client.usuario.create({
+    const ownerUser = await client.usuario.create({
       data: {
-        nombres: 'Administradora',
-        apellidos: input.name,
+        nombres: owner?.firstName || 'Administradora',
+        apellidos: owner?.lastName || input.name,
         correo: input.ownerEmail,
-        clave_hash: await hash(input.ownerPassword, 12),
+        clave_hash: owner?.passwordHash || (await hash(input.ownerPassword, 12)),
         estado: 'ACTIVO',
         preferencias: {},
         creado_en: new Date(),
@@ -96,8 +108,8 @@ export async function provisionTenant(raw: unknown, registry: TenantRegistry) {
         nombre: 'Sucursal principal',
         tipo: 'TIENDA',
         activa: true,
-        responsable_id: owner.id,
-        usuario_ubicacion: { create: { usuario_id: owner.id } },
+        responsable_id: ownerUser.id,
+        usuario_ubicacion: { create: { usuario_id: ownerUser.id } },
       },
     });
     await client.plantilla_corporal.create({

@@ -8,6 +8,7 @@ import {
   Injectable,
   Post,
   Query,
+  Param,
   ServiceUnavailableException,
   UnauthorizedException,
   UseGuards,
@@ -17,6 +18,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { TenantRegistry } from './platform';
 import { provisionTenant } from './provision';
+import { OperatorManagementService } from './operator-management';
 
 const input = z.strictObject({
   username: z.string().min(1).max(100),
@@ -88,19 +90,17 @@ export class PlatformOperatorService {
       )
     ).rows;
     return {
-      tenants: rows
-        .slice(0, 50)
-        .map((row) => ({
-          id: row.id,
-          slug: row.slug,
-          name: row.name,
-          state: row.state,
-          createdAt: row.created_at,
-          planCode: row.plan_code,
-          status: row.status,
-          trialEndsAt: row.trial_ends_at,
-          paidThrough: row.current_period_end,
-        })),
+      tenants: rows.slice(0, 50).map((row) => ({
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        state: row.state,
+        createdAt: row.created_at,
+        planCode: row.plan_code,
+        status: row.status,
+        trialEndsAt: row.trial_ends_at,
+        paidThrough: row.current_period_end,
+      })),
       hasMore: rows.length > 50,
       nextOffset: rows.length > 50 ? offset + 50 : null,
     };
@@ -138,18 +138,43 @@ export class PlatformOperatorGuard implements CanActivate {
 export class PlatformOperatorController {
   constructor(
     @Inject(PlatformOperatorService) private readonly operator: PlatformOperatorService,
+    @Inject(OperatorManagementService) private readonly management: OperatorManagementService,
   ) {}
   @Post('login') login(@Body() raw: unknown) {
     return this.operator.login(raw);
   }
   @Get('tenants')
   @UseGuards(PlatformOperatorGuard)
-  list(@Query('offset') offset = '0') {
-    return this.operator.list(offset);
+  list(@Query() query: Record<string, string>) {
+    return this.management.list(query);
+  }
+  @Get('dashboard')
+  @UseGuards(PlatformOperatorGuard)
+  dashboard() {
+    return this.management.dashboard();
+  }
+  @Get('tenants/:id')
+  @UseGuards(PlatformOperatorGuard)
+  detail(@Param('id') id: string) {
+    return this.management.detail(id);
   }
   @Post('tenants')
   @UseGuards(PlatformOperatorGuard)
   create(@Body() raw: unknown) {
     return this.operator.create(raw);
+  }
+}
+
+// The legacy directory is also control data: a commercial session cannot enumerate tenants.
+@Controller('platform')
+@UseGuards(PlatformOperatorGuard)
+export class PlatformStoresController {
+  constructor(@Inject(TenantRegistry) private readonly registry: TenantRegistry) {}
+  @Get('stores')
+  async stores() {
+    return (await this.registry.listActive()).map((tenant) => ({
+      slug: tenant.slug,
+      name: tenant.name,
+    }));
   }
 }

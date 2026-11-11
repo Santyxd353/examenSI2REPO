@@ -94,7 +94,7 @@ test('API publica tres planes exactos sin proveedor ni claves secretos', async (
   const response = await request(app.getHttpServer()).get('/api/tenant/plans');
   expect(response.status).toBe(200);
   expect(response.body.plans.map((p: { priceMinor: number }) => p.priceMinor)).toEqual([
-    14900, 29900, 59900,
+    999, 1999, 0,
   ]);
   expect(response.body.plans.map((p: { code: string }) => p.code)).toEqual([
     'esencial',
@@ -113,7 +113,7 @@ test('suscripción autorizada cuenta propietaria, ubicación y excluye comprador
   const value = EntitlementsSchema.parse(response.body);
   expect(value.tenantId).toBe(tenant.id);
   expect(value.planCode).toBe('esencial');
-  expect(value.priceMinor).toBe(14900);
+  expect(value.priceMinor).toBe(999);
   expect(value.status).toBe('TRIAL');
   expect(value.usage.staff).toBe(1);
   expect(value.usage.locations).toBe(1);

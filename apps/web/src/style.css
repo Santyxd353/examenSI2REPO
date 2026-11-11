@@ -2518,10 +2518,20 @@ footer > span:last-child {
   border-radius: 10px;
   background: linear-gradient(145deg, #faf9ff, #fff);
 }
-.payment-stripe-panel > svg { color: #635bff; }
-.payment-stripe-panel h3 { margin: 0; font-size: 18px; }
-.payment-stripe-panel p { margin: 0; line-height: 1.5; }
-.payment-stripe-panel small { color: #716d78; }
+.payment-stripe-panel > svg {
+  color: #635bff;
+}
+.payment-stripe-panel h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.payment-stripe-panel p {
+  margin: 0;
+  line-height: 1.5;
+}
+.payment-stripe-panel small {
+  color: #716d78;
+}
 .payment-stripe-panel .primary {
   display: flex;
   align-items: center;
@@ -2577,4 +2587,18 @@ footer > span:last-child {
   .commerce-line strong {
     grid-column: 1 / -1;
   }
+}
+.account .current-store {
+  display: inline-flex;
+  align-items: center;
+  max-width: 170px;
+  min-height: 40px;
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--accent);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

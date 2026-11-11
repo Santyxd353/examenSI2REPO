@@ -21,7 +21,7 @@ import { AuthService, requirePermission } from '../auth';
 import { currentTenant, runForTenant, TenantContext } from '../tenancy/context';
 import { TenantRegistry } from '../tenancy/platform';
 import { Db } from '../db';
-import { billingAnchorDay, calendarMonthAfter } from './periods';
+import { billingAnchorDay, calendarMonthAfter, calendarYearAfter } from './periods';
 import { subscriptionLockKey } from './locks';
 import { StripeAdapter } from './stripe.adapter';
 import { simulatedQr } from './qr-simulation';
@@ -38,7 +38,8 @@ type IntentContext = {
   operationId: string;
   planCode: PlanCode;
   amountMinor: number;
-  currency: 'BOB';
+  currency: 'BOB' | 'USD';
+  billingInterval?: 'MONTHLY' | 'YEARLY';
   expectedVersion: number;
   cycleAction: 'ACTIVATE' | 'RENEW' | 'CHANGE';
   createdAt: string;
@@ -173,13 +174,15 @@ export class SubscriptionService {
       result: c.result || null,
       problemCode: row.error_codigo || null,
       ...(row.provider === 'QR_SIMULATED'
-        ? await simulatedQr(row.id, c.amountMinor)
+        ? await simulatedQr(row.id, c.amountMinor, c.currency)
         : { simulated: false }),
     };
   }
   async createCheckout(token: string, raw: unknown) {
     const input = SubscriptionCheckoutSchema.parse(raw),
       tenant = currentTenant()!;
+    if (PLAN_CATALOG[input.planCode].contactSales)
+      throw new BadRequestException('El plan Negocio requiere una cotización del operador.');
     if (input.provider === 'STRIPE_TEST') this.stripe.assertConfigured();
     const row = await this.control(tenant, token, async (connection, fresh) => {
       if (fresh.state === 'SUSPENDED')
@@ -226,8 +229,12 @@ export class SubscriptionService {
         actorId: actor.id,
         operationId: input.operationId,
         planCode: input.planCode,
-        amountMinor: PLAN_CATALOG[input.planCode].priceMinor,
-        currency: 'BOB',
+        amountMinor:
+          input.billingInterval === 'YEARLY'
+            ? PLAN_CATALOG[input.planCode].yearlyPriceMinor!
+            : PLAN_CATALOG[input.planCode].priceMinor,
+        currency: 'USD',
+        billingInterval: input.billingInterval,
         expectedVersion: subscription.version,
         cycleAction: renewal
           ? 'RENEW'
@@ -264,6 +271,8 @@ export class SubscriptionService {
           amountMinor: row.contexto.amountMinor,
           planName: PLAN_CATALOG[row.contexto.planCode].name,
           expiresAt: row.contexto.expiresAt,
+          currency: row.contexto.currency,
+          billingInterval: row.contexto.billingInterval,
         });
         if (session.livemode || new URL(session.url).origin !== 'https://checkout.stripe.com')
           throw new Error('Sesión TEST inválida.');
@@ -336,8 +345,11 @@ export class SubscriptionService {
       sub.current_period_end > now
     ) {
       start = sub.current_period_start;
-      end = calendarMonthAfter(sub.current_period_end, c.anchorDay);
-    } else end = calendarMonthAfter(now);
+      end =
+        c.billingInterval === 'YEARLY'
+          ? calendarYearAfter(sub.current_period_end)
+          : calendarMonthAfter(sub.current_period_end, c.anchorDay);
+    } else end = c.billingInterval === 'YEARLY' ? calendarYearAfter(now) : calendarMonthAfter(now);
     const version = sub.version + 1;
     const result: BillingResult = {
       periodFrom: start.toISOString(),
@@ -452,7 +464,7 @@ export class SubscriptionService {
     if (
       session.client_reference_id !== row.id ||
       session.metadata?.tenantId !== row.tenant_id ||
-      session.currency !== 'bob' ||
+      session.currency !== row.contexto.currency.toLowerCase() ||
       session.amount_total !== row.contexto.amountMinor ||
       (row.contexto.sessionId && row.contexto.sessionId !== session.id) ||
       !session.id.startsWith('cs_test_')

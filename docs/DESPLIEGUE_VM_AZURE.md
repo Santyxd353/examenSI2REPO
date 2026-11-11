@@ -10,9 +10,41 @@ Los datos PostgreSQL, archivos privados y certificados usan volúmenes persisten
 
 ## Código de la instancia publicada
 
-La instalación anterior se preparó desde `main` de `https://github.com/Santyxd353/examenSI2REPO.git` en `/opt/vestidor18-repo`. El candidato SaaS se trabaja en `integracion/android`: requiere cerrar las comprobaciones pendientes antes de su promoción final. La nueva VM y el despliegue están pendientes por decisión del usuario; estas instrucciones no afirman que el candidato esté publicado.
+### Estado de la VM, actualizado el 11 de noviembre de 2026
 
-El archivo `.env.vm` se conserva solo en el destino. La plantilla actual es `infra/vm/.env.example`; sus marcadores deben reemplazarse, incluidas las claves offline y las credenciales del operador. Una restauración conserva todas las versiones de claves anteriores. `RUN_DB_SEED=false` evita cargar semillas al arrancar. Stripe/IA requieren configuración y comprobación con las cuentas autorizadas.
+- Instancia `vm-lumina`, IP pública `20.25.26.113`, proyecto en `/opt/vestidor18-repo`.
+- Código base `main` en `fcf24ac`, con respuestas estructuradas Groq, portada comercial, registro público SaaS y descarga Android aplicados también en la imagen del servidor. Estos ajustes están pendientes de publicación en Git.
+- Git, Docker, Compose y Buildx instalados. Imagen Linux compilada y los tres contenedores iniciados; PostgreSQL no publica su puerto.
+- Se restauró la base local con 6 cuentas, 15 productos y 24 pedidos, además de los archivos de almacenamiento. Se añadió una cuenta administradora exclusiva para Azure y se aplicaron las migraciones pendientes. La base inicial del servidor se conserva como `vestidor18_beforeimport_20261110`.
+- Respaldo SQL PostgreSQL 18 importado en PostgreSQL 16 en una base separada y dentro de una transacción; se omitió únicamente `SET transaction_timeout`, que PostgreSQL 16 no admite. Los recuentos se contrastaron antes de activar la copia.
+- Credenciales y claves permanecen fuera de Git. Hay respaldos privados en `/home/azureuser/lumina-backups/20261110` y en `C:\Users\HP\AppData\Local\Lumina\azure-deploy-20261110`.
+- Pruebas internas correctas: salud, página web, inicio de sesión administrador, catálogo, Stripe TEST, Groq, interpretación y ejecución de reportes `bar` y `donut`, y validación de un webhook firmado.
+- Sitio publicado: `https://lumina.20-25-26-113.sslip.io`. TCP 80/443 habilitado por el usuario en Azure. Caddy obtuvo un certificado de Let's Encrypt de producción; se verificaron desde internet la cadena de confianza y el nombre del host. HTTP redirige a HTTPS.
+- Comprobaciones públicas correctas: salud HTTP 200, landing y bundle web HTTP 200, inicio de sesión administrador con cookie Secure, 12 productos publicados visibles, interpretación Groq y ejecución del reporte HTTP 200.
+
+### Portada comercial SaaS
+
+- `/` presenta la plataforma: funcionalidades, planes con precios y límites obtenidos de `PLAN_CATALOG`, acceso a la tienda mediante su identificador y preguntas frecuentes. No enumera los negocios registrados.
+- `/?tienda=lumina` conserva la tienda demo. `/?tienda=identificador` abre el espacio de otro negocio.
+- `/?plataforma=1` conserva el acceso independiente del operador. Los botones comerciales conducen al registro del cliente: `/?registro=1&plan=demo|esencial|pro`, con selección mensual/anual. El registro se inspira en RR-HH y conserva el diseño de Lúmina.
+- Precios de la referencia: Demo gratis 10 días; Esencial (Basic) USD 9,99/mes o 99,99/año; Profesional USD 19,99/mes o 199,99/año; Negocio (Enterprise) a medida. Las prendas mantienen BOB. Misma clave Stripe TEST del servidor y QR simulado, con renovación manual sin débito automático.
+- La tienda se prepara tras la confirmación del pago, o inmediatamente para Demo. Registro estricto, contraseña bcrypt, capacidad privada por pestaña, límites de altas y confirmación idempotente. Detalles y pruebas en [Registro público SaaS](REGISTRO_PUBLICO_SAAS.md).
+- Android QA 0.1.3, código 4, ARM64, bundle autónomo y API HTTPS de Azure. Descarga desde la portada o `/descargas/android/lumina-qa-0.1.3-arm64.apk`; firma QA anterior conservada y SHA-256 público en `latest.json`. No se certifica una nueva prueba física: no había dispositivo conectado.
+- Los retornos de Stripe y suscripciones mantienen el acceso a la tienda, incluso los enlaces anteriores que no incluyen `tienda`.
+- `node scripts/check-commercial-home.cjs` comprueba el build local en preview. Con `COMMERCIAL_TEST_URL=https://lumina.20-25-26-113.sslip.io` comprueba el sitio publicado. Verifica 320, 390, 768 y 1440 píxeles, menú móvil, ausencia del directorio público y de peticiones a este, acceso por identificador, plataforma, retornos de pago y ausencia de errores JavaScript.
+- Imagen anterior disponible para reversión: `vestidor18-app:before-commercial-20261110`; fuentes anteriores en el respaldo privado `before-commercial-source.tar.gz`.
+- Corte previo a esta actualización: imagen `vestidor18-app:before-saas-20261111`, respaldo privado por base y fuentes en `/home/azureuser/lumina-backups/20261111-saas`. Se detuvo la aplicación brevemente para los dumps, conservando PostgreSQL y volúmenes.
+- Verificación real en Azure: QR USD 9,99, Demo y Stripe Checkout alojado TEST USD 199,99, creación aislada e inicio de sesión de propietario. Se eliminaron únicamente las tres tiendas QA creadas por estas pruebas. La tienda original conserva 7 cuentas, 15 productos y 24 pedidos.
+- Mejora posterior del operador, conforme al manual entregado: resumen global, búsqueda y filtros, ficha por negocio, alta manual existente con 14 días y ficha de entrega sin contraseña. En las tiendas, el encabezado muestra solo el negocio actual. Véase [Operador de plataforma](OPERADOR_PLATAFORMA.md).
+- Esta actualización preservó Lúmina y universidad. Respaldo por base/fuentes en `/home/azureuser/lumina-backups/20261111-operator-wFbZhs`, imagen anterior `vestidor18-app:before-operator-20261111`. Comprobación autenticada de solo lectura en Azure a 320/390/768/1440 px; sin crear ni modificar negocios durante esa verificación.
+- Ajuste posterior de privacidad: la portada ya no enumera tenants ni llama al directorio. `/api/platform/stores` exige sesión global del operador y devuelve 401 a visitantes o cuentas comerciales. Verificado en Azure: listado autorizado 200, portada responsive sin nombres/enlaces de negocios, acceso y panel del operador conservados. Corte previo en `/home/azureuser/lumina-backups/20261111-directory-privacy-VGNWTs`, imagen `vestidor18-app:before-directory-privacy-20261111`.
+- Hero y acceso global mejorados con la jerarquía de RR-HH y el diseño de Lúmina: ingresar al negocio, planes/registro y Superadmin. Se conservan título, marca, vista de producto, credenciales y flujos existentes. Pruebas de navegación y login real correctas en Azure; respaldo de fuentes `/home/azureuser/lumina-backups/20261111-hero-8F01mk`, imagen `vestidor18-app:before-hero-20261111`.
+
+### Preparación anterior
+
+La preparación inicial usó `main` de `https://github.com/Santyxd353/examenSI2REPO.git` en `/opt/vestidor18-repo`. El candidato SaaS se integró en `fcf24ac`. El estado comprobado del destino se recoge arriba; la publicación web no certifica por sí sola nuevas pruebas físicas ni una nueva firma Android.
+
+El archivo `.env.vm` se conserva fuera de Git, en el destino y su respaldo privado local. La plantilla actual es `infra/vm/.env.example`; sus marcadores deben reemplazarse, incluidas las claves offline y las credenciales del operador. Una restauración conserva todas las versiones de claves anteriores. `RUN_DB_SEED=false` evita cargar semillas al arrancar. Stripe/IA requieren configuración y comprobación con las cuentas autorizadas.
 
 ## Preparación y recuperación antes de publicar
 

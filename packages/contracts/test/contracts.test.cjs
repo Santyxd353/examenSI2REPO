@@ -177,9 +177,9 @@ test('claves Unicode normalizadas se ordenan igual y colisiones no se firman', (
 });
 
 test('planes exactos y prestaciones por nivel, sin cobros reales', () => {
-  assert.equal(c.PLAN_CATALOG.esencial.priceMinor, 14900);
-  assert.equal(c.PLAN_CATALOG.pro.priceMinor, 29900);
-  assert.equal(c.PLAN_CATALOG.negocio.priceMinor, 59900);
+  assert.equal(c.PLAN_CATALOG.esencial.priceMinor, 999);
+  assert.equal(c.PLAN_CATALOG.pro.priceMinor, 1999);
+  assert.equal(c.PLAN_CATALOG.negocio.contactSales, true);
   assert.deepEqual(
     Object.values(c.PLAN_CATALOG).map((p) => p.limits.locations),
     [1, 5, 20],

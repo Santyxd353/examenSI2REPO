@@ -26,8 +26,10 @@ export type PlanCode = z.infer<typeof PlanCodeSchema>;
 export type Plan = {
   code: PlanCode;
   name: string;
-  currency: 'BOB';
+  currency: 'USD';
   priceMinor: number;
+  yearlyPriceMinor: number | null;
+  contactSales: boolean;
   limits: PlanLimits;
   features: PlanFeatures;
 };
@@ -45,8 +47,10 @@ export const PLAN_CATALOG: Readonly<Record<PlanCode, Plan>> = {
   esencial: {
     code: 'esencial',
     name: 'Esencial',
-    currency: 'BOB',
-    priceMinor: 14900,
+    currency: 'USD',
+    priceMinor: 999,
+    yearlyPriceMinor: 9999,
+    contactSales: false,
     limits: {
       locations: 1,
       staff: 3,
@@ -60,8 +64,10 @@ export const PLAN_CATALOG: Readonly<Record<PlanCode, Plan>> = {
   pro: {
     code: 'pro',
     name: 'Profesional',
-    currency: 'BOB',
-    priceMinor: 29900,
+    currency: 'USD',
+    priceMinor: 1999,
+    yearlyPriceMinor: 19999,
+    contactSales: false,
     limits: {
       locations: 5,
       staff: 15,
@@ -75,8 +81,10 @@ export const PLAN_CATALOG: Readonly<Record<PlanCode, Plan>> = {
   negocio: {
     code: 'negocio',
     name: 'Negocio',
-    currency: 'BOB',
-    priceMinor: 59900,
+    currency: 'USD',
+    priceMinor: 0,
+    yearlyPriceMinor: null,
+    contactSales: true,
     limits: {
       locations: 20,
       staff: 100,
@@ -105,7 +113,7 @@ export const EntitlementsSchema = z
     periodTo: TimestampSchema,
     readOnly: z.boolean(),
     cancelAtPeriodEnd: z.boolean(),
-    currency: z.literal('BOB'),
+    currency: z.enum(['BOB', 'USD']),
     priceMinor: MinorSchema,
     billingMode: z.enum(['STRIPE_TEST', 'QR_SIMULATED']).nullable(),
     legacyPilot: z.boolean().default(false),
@@ -133,6 +141,7 @@ export const SubscriptionCheckoutSchema = z.strictObject({
   provider: z.enum(['STRIPE_TEST', 'QR_SIMULATED']),
   operationId: UuidSchema,
   acceptCycleTerms: z.literal(true),
+  billingInterval: z.enum(['MONTHLY', 'YEARLY']).default('MONTHLY'),
 });
 export const SubscriptionCheckoutViewSchema = z.strictObject({
   schemaVersion: z.literal('1.0'),
@@ -142,7 +151,7 @@ export const SubscriptionCheckoutViewSchema = z.strictObject({
   status: z.enum(['INITIALIZING', 'PENDING', 'APPLIED', 'STALE', 'EXPIRED']),
   planCode: PlanCodeSchema,
   amountMinor: MinorSchema,
-  currency: z.literal('BOB'),
+  currency: z.enum(['BOB', 'USD']),
   cycleAction: z.enum(['ACTIVATE', 'RENEW', 'CHANGE']),
   expiresAt: TimestampSchema,
   checkoutUrl: z.string().url().nullable(),

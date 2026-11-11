@@ -50,10 +50,13 @@ import {
   PlatformOperatorController,
   PlatformOperatorService,
   PlatformOperatorGuard,
+  PlatformStoresController,
 } from './tenancy/operator';
 import { PlanWriteInterceptor } from './billing/access.interceptor';
+import { PublicSignupController, PublicSignupService } from './tenancy/signup';
+import { OperatorManagementService } from './tenancy/operator-management';
 import { storedPath, ensureStorage } from './storage';
-import { TenantRegistry, TenantController, PlatformController } from './tenancy/platform';
+import { TenantRegistry, TenantController } from './tenancy/platform';
 import { runForTenant } from './tenancy/context';
 import { HttpException } from '@nestjs/common';
 @Controller('health')
@@ -85,11 +88,12 @@ class HealthController {
     ProfileController,
     OrdersController,
     TenantController,
-    PlatformController,
+    PlatformStoresController,
     EntitlementsController,
     SubscriptionController,
     BillingWebhookController,
     PlatformOperatorController,
+    PublicSignupController,
   ],
   providers: [
     Db,
@@ -118,6 +122,8 @@ class HealthController {
     StripeAdapter,
     PlatformOperatorService,
     PlatformOperatorGuard,
+    PublicSignupService,
+    OperatorManagementService,
     PlanWriteInterceptor,
   ],
 })
@@ -150,14 +156,23 @@ export async function createApp() {
   }
   app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (/^\/api\/health\/?$/i.test(req.path)) return next();
+    if (/^\/api\/public\/signup(?:\/|$)/i.test(req.path)) {
+      res.setHeader('Cache-Control', 'no-store');
+      return next();
+    }
     if (req.method === 'POST' && /^\/api\/billing\/stripe\/webhook\/?$/i.test(req.path))
       return next();
-    if (/^\/api\/platform\/operator\/(login|tenants)\/?$/i.test(req.path)) return next();
+    if (/^\/api\/platform\/operator(?:\/|$)/i.test(req.path)) {
+      res.setHeader('Cache-Control', 'no-store');
+      return next();
+    }
     if (
       ['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
       /^\/api\/platform\/stores\/?$/i.test(req.path)
-    )
+    ) {
+      res.setHeader('Cache-Control', 'no-store');
       return next();
+    }
     if (
       !/^\/(api|assets)(\/|$)/i.test(req.path) &&
       !/^\/stores\/[^/]+\/assets(\/|$)/i.test(req.path)
@@ -202,6 +217,21 @@ export async function createApp() {
     }
   });
   app.enableCors({ origin: allowedOrigins, credentials: true });
+  const signupLimit = rateLimit({
+    windowMs: 3600000,
+    limit: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Demasiados registros. Espera antes de crear otra tienda.' },
+  });
+  app.use(
+    '/api/public/signup',
+    (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      if (req.method === 'POST' && /^\/?$/.test(req.path)) return signupLimit(req, res, next);
+      next();
+    },
+    rateLimit({ windowMs: 60000, limit: 100, standardHeaders: true, legacyHeaders: false }),
+  );
   app.use(
     ['/api/reports/interpret', '/api/reports/transcribe'],
     rateLimit({

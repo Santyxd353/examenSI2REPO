@@ -95,7 +95,7 @@ export class EntitlementsService {
       periodTo: to.toISOString(),
       readOnly: Boolean(scope.readOnly),
       cancelAtPeriodEnd: Boolean(subscription.cancelAtPeriodEnd),
-      currency: 'BOB',
+      currency: 'USD',
       priceMinor: legacy ? 0 : plan.priceMinor,
       billingMode:
         subscription.provider === 'STRIPE'
@@ -131,7 +131,7 @@ export class EntitlementsService {
 export class EntitlementsController {
   constructor(@Inject(EntitlementsService) private readonly entitlements: EntitlementsService) {}
   @Get('plans') plans() {
-    return { schemaVersion: '1.0', currency: 'BOB', plans: Object.values(PLAN_CATALOG) };
+    return { schemaVersion: '1.0', currency: 'USD', plans: Object.values(PLAN_CATALOG) };
   }
   @Get('subscription')
   @UseGuards(AuthGuard)

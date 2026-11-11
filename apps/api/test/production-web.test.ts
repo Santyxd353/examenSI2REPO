@@ -50,7 +50,7 @@ test('suspender Lúmina no bloquea el HTML y JavaScript compartidos por otras ti
   try {
     expect((await request(app.getHttpServer()).get('/?tienda=otro-negocio')).status).toBe(200);
     expect((await request(app.getHttpServer()).get('/assets/app.js')).status).toBe(200);
-    expect((await request(app.getHttpServer()).get('/api/platform/stores')).status).toBe(200);
+    expect((await request(app.getHttpServer()).get('/api/platform/stores')).status).toBe(401);
     expect((await request(app.getHttpServer()).get('/api/catalog')).status).toBe(403);
   } finally {
     await registry.pool.query("UPDATE platform.tenant SET state='ACTIVE' WHERE slug='lumina'");

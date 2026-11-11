@@ -41,6 +41,14 @@ export default defineConfig({
       '/stores': 'http://127.0.0.1:3018',
     },
   },
+  preview: {
+    proxy: {
+      '/api': 'http://127.0.0.1:3018',
+      '/stores': 'http://127.0.0.1:3018',
+      // Built JS/CSS live under /assets too; only product/model assets belong to the API.
+      '^/assets/(?![^/]+\\.(?:js|css|woff2?)$)': 'http://127.0.0.1:3018',
+    },
+  },
   build: {
     commonjsOptions: { include: [/node_modules/, /packages[\\/](contracts|reporting)[\\/]dist/] },
     outDir: '../../dist/web',

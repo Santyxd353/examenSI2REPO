@@ -64,6 +64,9 @@ export function calendarMonthAfter(date: Date, anchorDay?: number): Date {
 export function billingAnchorDay(date: Date): number {
   return parts(date).day;
 }
+export function calendarYearAfter(date: Date): Date {
+  return boundary(parts(date), 12);
+}
 export function monthlyPeriodAt(anchor: Date, now: Date): { from: Date; to: Date } {
   const a = parts(anchor),
     n = parts(now);

@@ -36,8 +36,8 @@ test('QR explícitamente simulado: importe del servidor, replay y confirmación 
   expect(first.status).toBe(201);
   expect(first.body).toMatchObject({
     provider: 'QR_SIMULATED',
-    amountMinor: 14900,
-    currency: 'BOB',
+    amountMinor: 999,
+    currency: 'USD',
     status: 'PENDING',
     simulated: true,
   });
@@ -92,7 +92,7 @@ test('cambio a Profesional inicia ciclo completo y rechazo de downgrade no borra
   const pending = await post('/checkout', intent('pro'));
   const paid = await post(`/qr/${pending.body.id}/confirm`, { simulatedPayment: true });
   expect(paid.status).toBe(201);
-  expect(paid.body.amountMinor).toBe(29900);
+  expect(paid.body.amountMinor).toBe(1999);
   expect((await get('')).body.limits.aiPerPeriod).toBe(100);
   await f.registry.pool.query(
     `UPDATE platform.subscription SET plan_code='negocio' WHERE tenant_id=$1`,

@@ -3,7 +3,6 @@ import {
   Controller,
   ForbiddenException,
   Get,
-  Inject,
   Injectable,
   NotFoundException,
   HttpException,
@@ -116,7 +115,7 @@ export class TenantRegistry implements OnModuleDestroy {
           ...(plan.features.anomalies ? ['anomalies', 'multilocation'] : []),
         ];
         await connection.query(
-          `UPDATE platform.plan SET monthly_amount=$2,currency='BOB',limits=$3,features=$4,published=true WHERE code=$1`,
+          `UPDATE platform.plan SET monthly_amount=$2,currency='USD',limits=$3,features=$4,published=true WHERE code=$1`,
           [
             plan.code,
             minorToDecimal(plan.priceMinor),
@@ -294,17 +293,5 @@ export class TenantController {
       readOnly: tenant?.readOnly,
       subscription: tenant?.subscription,
     };
-  }
-}
-
-@Controller('platform')
-export class PlatformController {
-  constructor(@Inject(TenantRegistry) private registry: TenantRegistry) {}
-  @Get('stores')
-  async stores() {
-    return (await this.registry.listActive()).map((tenant) => ({
-      slug: tenant.slug,
-      name: tenant.name,
-    }));
   }
 }
