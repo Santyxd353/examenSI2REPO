@@ -1,6 +1,14 @@
 import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import Stripe from 'stripe';
 
+// Only a single, definitive HTTP rejection proves a NEW checkout was not created.
+// Network retries (even those implicit in the SDK) leave the outcome uncertain.
+export class SignupCheckoutRejected extends ServiceUnavailableException {
+  constructor() {
+    super('Stripe rechazó la preparación del pago. Puedes continuar con QR o reintentar Stripe.');
+  }
+}
+
 @Injectable()
 export class StripeAdapter {
   private client() {
@@ -31,34 +39,54 @@ export class StripeAdapter {
     target.hash = '';
     target.searchParams.set('registro', '1');
     target.searchParams.set('alta', input.id);
-    const session = await this.client().checkout.sessions.create(
-      {
-        mode: 'payment',
-        client_reference_id: input.id,
-        customer_email: input.email,
-        metadata: { signupId: input.id, purpose: 'TENANT_SIGNUP' },
-        line_items: [
-          {
-            quantity: 1,
-            price_data: {
-              currency: 'usd',
-              unit_amount: input.amountMinor,
-              product_data: {
-                name: `Lúmina · ${input.planName} · ${input.billingInterval === 'YEARLY' ? 'un año' : 'un mes'} (TEST)`,
-                description: input.companyName,
+    const client = this.client();
+    let requests = 0;
+    const countRequest = () => {
+      requests++;
+    };
+    client.on('request', countRequest);
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await client.checkout.sessions.create(
+        {
+          mode: 'payment',
+          client_reference_id: input.id,
+          customer_email: input.email,
+          metadata: { signupId: input.id, purpose: 'TENANT_SIGNUP' },
+          line_items: [
+            {
+              quantity: 1,
+              price_data: {
+                currency: 'usd',
+                unit_amount: input.amountMinor,
+                product_data: {
+                  name: `Lúmina · ${input.planName} · ${input.billingInterval === 'YEARLY' ? 'un año' : 'un mes'} (TEST)`,
+                  description: input.companyName,
+                },
               },
             },
-          },
-        ],
-        allowed_payment_method_types: ['card'],
-        success_url: target.toString(),
-        cancel_url: target.toString(),
-        expires_at: Math.floor(input.expiresAt.getTime() / 1000),
-      },
-      {
-        idempotencyKey: `lumina-signup-${input.id}${input.paymentAttempt ? `-payment-${input.paymentAttempt}` : ''}`,
-      },
-    );
+          ],
+          allowed_payment_method_types: ['card'],
+          success_url: target.toString(),
+          cancel_url: target.toString(),
+          expires_at: Math.floor(input.expiresAt.getTime() / 1000),
+        },
+        {
+          idempotencyKey: `lumina-signup-${input.id}${input.paymentAttempt ? `-payment-${input.paymentAttempt}` : ''}`,
+        },
+      );
+    } catch (error) {
+      if (
+        requests === 1 &&
+        (error instanceof Stripe.errors.StripeAuthenticationError ||
+          error instanceof Stripe.errors.StripePermissionError ||
+          error instanceof Stripe.errors.StripeInvalidRequestError)
+      )
+        throw new SignupCheckoutRejected();
+      throw error;
+    } finally {
+      client.off('request', countRequest);
+    }
     if (session.livemode || !session.url) throw new BadRequestException('Sesión TEST inválida.');
     return { id: session.id, url: session.url };
   }

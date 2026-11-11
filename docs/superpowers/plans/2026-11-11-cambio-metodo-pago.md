@@ -4,7 +4,7 @@
 
 **Goal:** Permitir volver de Stripe TEST y elegir QR sin perder el registro ni habilitar dos pagos para la misma tienda.
 
-**Architecture:** Una operación autenticada por la capacidad del registro cambia su proveedor pendiente. Bloqueo de fila serializa cambios, confirmaciones y webhooks; antes de pasar de Stripe a QR se comprueba y vence el checkout remoto. Cada nuevo intento Stripe tiene su propia clave de idempotencia, conservando la clave histórica del intento cero.
+**Architecture:** Una operación autenticada por la capacidad del registro cambia su proveedor pendiente. Un bloqueo de sesión por registro y bloqueo de fila serializan cambios, confirmaciones y webhooks, incluso al confirmar la intención antes de llamar a Stripe; antes de pasar de Stripe a QR se comprueba y vence el checkout remoto. Cada nuevo intento Stripe tiene su propia clave de idempotencia, conservando la clave histórica del intento cero.
 
 **Tech Stack:** NestJS, PostgreSQL, Stripe TEST, React, Jest/Supertest, Playwright.
 
@@ -23,6 +23,7 @@
 - Respuesta perdida al crear Stripe: recuperar la misma sesión antes de habilitar QR.
 - Pago simultáneo al cambio: reconocer Stripe si se completó, sin habilitar QR ni duplicar altas.
 - Stripe no disponible: conservar la forma de pago actual y permitir reintentar.
+- Rechazo definitivo del primer envío Stripe: conservar QR solamente si un único envío HTTP confirma que no se creó checkout; los reintentos implícitos del SDK cuentan como resultado incierto.
 - Cambio de ida y vuelta: crear otra sesión Stripe, nunca reutilizar una vencida.
 - Recarga y solicitudes simultáneas: conservar capacidad y datos, serializar operaciones y mantener una sola activación.
 

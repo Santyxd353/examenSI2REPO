@@ -342,7 +342,7 @@ test('an in-flight Stripe creation cannot race with QR confirmation', async () =
     return { id, url: checkoutUrl(id) };
   });
   jest.spyOn(app.get(StripeAdapter), 'retrieveCheckout').mockResolvedValue(stripeSession(data, id));
-  const changing = change(data.operationId, key, 'STRIPE_TEST').then((r) => r);
+  const changing = change(data.operationId.toUpperCase(), key, 'STRIPE_TEST').then((r) => r);
   await creating;
   const confirming = complete(data.operationId, key, true).then((r) => r);
   release();
@@ -498,7 +498,11 @@ test('the Stripe SDK receives the legacy idempotency key for existing drafts and
     .mockResolvedValue({ id: 'cs_test_sdk', url: checkoutUrl('cs_test_sdk'), livemode: false });
   jest
     .spyOn(adapter as any, 'client')
-    .mockReturnValue({ checkout: { sessions: { create: prepare } } });
+    .mockReturnValue({
+      on: jest.fn(),
+      off: jest.fn(),
+      checkout: { sessions: { create: prepare } },
+    });
   const data = {
     id: randomUUID(),
     companyName: 'QA',
@@ -520,4 +524,87 @@ test('the Stripe SDK receives the legacy idempotency key for existing drafts and
   expect(new URL(params.cancel_url).searchParams.get('alta')).toBe(data.id);
   expect(params.success_url).toBe(params.cancel_url);
   expect(params.line_items[0].price_data).toMatchObject({ currency: 'usd', unit_amount: 999 });
+});
+
+function rejectingStripe(status: number, loseFirstReply = false) {
+  let sent = 0;
+  const send = jest.fn(async () => {
+    if (loseFirstReply && sent++ === 0)
+      throw Object.assign(new Error('Reply lost after remote processing'), { code: 'ECONNRESET' });
+    return {
+      getStatusCode: () => status,
+      getHeaders: () => ({ 'request-id': 'req_qa', 'stripe-should-retry': 'false' }),
+      getRawResponse: () => null,
+      toStream: () => null,
+      toJSON: async () => ({ error: { type: 'invalid_request_error', message: 'Rejected' } }),
+    };
+  });
+  // Exercise the actual installed SDK, including its implicit ECONNRESET retry.
+  const client = new Stripe('sk_test_fixture', {
+    maxNetworkRetries: 0,
+    httpClient: { getClientName: () => 'qa-http', makeRequest: send },
+  });
+  jest.spyOn(app.get(StripeAdapter) as any, 'client').mockReturnValue(client);
+  return send;
+}
+test.each([401, 403, 400])(
+  'a definitive first checkout rejection (%s) preserves a usable QR registration',
+  async (status) => {
+    const data = input(),
+      key = token();
+    expect((await create(data, key)).status).toBe(201);
+    const before = await saved(data.operationId);
+    const send = rejectingStripe(status);
+    const response = await change(data.operationId, key, 'STRIPE_TEST');
+    expect(response.status).toBe(503);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(await saved(data.operationId)).toMatchObject({
+      provider: 'QR_SIMULATED',
+      state: 'PENDING',
+      session_id: null,
+      checkout_url: null,
+      password_hash: before.password_hash,
+      request_hash: before.request_hash,
+    });
+    expect(
+      (
+        await request(app.getHttpServer())
+          .post(`/api/public/signup/${data.operationId}/qr`)
+          .set('X-Signup-Token', key)
+          .send({})
+      ).status,
+    ).toBe(201);
+  },
+);
+
+test('a definitive rejection while recovering an unknown checkout must not re-enable QR', async () => {
+  const data = input(),
+    key = token();
+  expect((await create(data, key)).status).toBe(201);
+  const prepare = mockCreate('cs_test_unknown').mockRejectedValueOnce(new Error('Lost reply'));
+  expect((await change(data.operationId, key, 'STRIPE_TEST')).status).toBe(503);
+  prepare.mockRestore();
+  rejectingStripe(401);
+  expect((await change(data.operationId, key, 'QR_SIMULATED')).status).toBe(503);
+  expect(await saved(data.operationId)).toMatchObject({
+    provider: 'STRIPE_TEST',
+    session_id: null,
+    state: 'PENDING',
+  });
+});
+
+test('an implicit SDK retry ending in 401 cannot make an unknown remote checkout QR-payable', async () => {
+  const data = input(),
+    key = token();
+  expect((await create(data, key)).status).toBe(201);
+  const send = rejectingStripe(401, true);
+  expect((await change(data.operationId, key, 'STRIPE_TEST')).status).toBe(503);
+  expect(send).toHaveBeenCalledTimes(2);
+  expect(await saved(data.operationId)).toMatchObject({
+    provider: 'STRIPE_TEST',
+    session_id: null,
+    state: 'PENDING',
+  });
+  expect((await change(data.operationId, key, 'QR_SIMULATED')).status).toBe(503);
+  expect(await saved(data.operationId)).toMatchObject({ provider: 'STRIPE_TEST' });
 });

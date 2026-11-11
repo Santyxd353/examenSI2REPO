@@ -21,7 +21,7 @@ import type { PoolClient } from 'pg';
 import { PLAN_CATALOG, type PlanCode } from '@lumina/contracts';
 import { TenantRegistry, validTenantSlug } from './platform';
 import { provisionTenant } from './provision';
-import { StripeAdapter } from '../billing/stripe.adapter';
+import { SignupCheckoutRejected, StripeAdapter } from '../billing/stripe.adapter';
 import { calendarMonthAfter, calendarYearAfter } from '../billing/periods';
 
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -88,10 +88,15 @@ export class PublicSignupService {
     token: string | undefined,
     action: (row: Signup, connection: PoolClient) => Promise<void>,
   ) {
+    const guardKey = 'signup:' + z.uuid().parse(id).toLowerCase();
     const connection = await this.registry.pool.connect();
+    let guarded = false;
     try {
       await connection.query('BEGIN');
       await connection.query("SET LOCAL lock_timeout='10s'");
+      // Session guard also spans the durable intent commit before a NEW checkout.
+      await connection.query('SELECT pg_advisory_lock(hashtextextended($1,0))', [guardKey]);
+      guarded = true;
       const row = await this.row(id, token, connection);
       await action(row, connection);
       const next = await this.row(id, token, connection);
@@ -105,6 +110,10 @@ export class PublicSignupService {
         );
       throw error;
     } finally {
+      if (guarded)
+        await connection
+          .query('SELECT pg_advisory_unlock(hashtextextended($1,0))', [guardKey])
+          .catch(() => {});
       connection.release();
     }
   }
@@ -211,7 +220,7 @@ export class PublicSignupService {
     if (row.expires_at.getTime() <= Date.now())
       throw new ConflictException('El registro venció. Inicia otro desde Planes.');
   }
-  private async ensureStripeCheckout(row: Signup, connection: PoolClient) {
+  private async ensureStripeCheckout(row: Signup, connection: PoolClient, fresh = false) {
     if (row.session_id) return;
     let session: { id: string; url: string };
     try {
@@ -225,7 +234,8 @@ export class PublicSignupService {
         expiresAt: row.expires_at,
         paymentAttempt: row.payment_attempt,
       });
-    } catch {
+    } catch (error) {
+      if (fresh && error instanceof SignupCheckoutRejected) throw error;
       throw new ServiceUnavailableException(
         'Stripe no pudo preparar el pago. Reintenta para recuperar este mismo registro.',
       );
@@ -313,6 +323,8 @@ export class PublicSignupService {
     return this.finish(row, token);
   }
   async changePaymentMethod(id: string, token: string, provider: 'STRIPE_TEST' | 'QR_SIMULATED') {
+    let rejected: SignupCheckoutRejected | undefined;
+    let prepared = false;
     const row = await this.locked(id, capability.parse(token), async (row, connection) => {
       if (row.state === 'EXPIRED') this.assertPending(row);
       if (row.state !== 'PENDING') return;
@@ -331,6 +343,23 @@ export class PublicSignupService {
           "UPDATE platform.signup SET provider='STRIPE_TEST',session_id=NULL,checkout_url=NULL,payment_attempt=payment_attempt+1 WHERE id=$1",
           [id],
         );
+        await connection.query('COMMIT');
+        await connection.query('BEGIN');
+        await connection.query("SET LOCAL lock_timeout='10s'");
+        // The same session guard excludes other callers across both transactions.
+        row = await this.row(id, token, connection);
+        try {
+          await this.ensureStripeCheckout(row, connection, true);
+          prepared = true;
+        } catch (error) {
+          if (!(error instanceof SignupCheckoutRejected)) throw error;
+          // This is the first exclusive send, with exactly one definitive HTTP
+          // rejection. Recovery of an older/unknown attempt never takes this path.
+          await connection.query("UPDATE platform.signup SET provider='QR_SIMULATED' WHERE id=$1", [
+            id,
+          ]);
+          rejected = error;
+        }
         return;
       }
       // Recover an unknown checkout with the same durable idempotency key first.
@@ -366,7 +395,8 @@ export class PublicSignupService {
         [id],
       );
     });
-    if (row.state === 'PENDING' && row.provider === 'STRIPE_TEST')
+    if (rejected) throw rejected;
+    if (row.state === 'PENDING' && row.provider === 'STRIPE_TEST' && !prepared)
       return this.complete(id, token, false);
     return this.finish(row, token);
   }
