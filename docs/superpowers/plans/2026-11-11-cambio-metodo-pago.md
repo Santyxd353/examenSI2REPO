@@ -15,7 +15,7 @@
 - Conservar tienda, credenciales, plan, importe y capacidad existentes.
 - Solo se puede cambiar una solicitud PENDING no vencida; un pago completado se reconoce, no se reemplaza.
 - No modificar precios ni activar cobros LIVE.
-- No desplegar en la VM: todavía faltan sus credenciales.
+- Desplegar en la VM cuando el usuario facilite acceso SSH. La credencial se recibió después de publicar la corrección y se usó para completar el despliegue el 11/11/2026.
 - Agregar una migración nueva; no modificar migraciones ya aplicadas.
 
 ## Review Focus
@@ -64,4 +64,4 @@
 - Compilación de API y web aprobada. Navegador: formulario y cambio Stripe→error recuperable→QR→recarga→Stripe→QR→activación en 320, 390, 768 y 1440 px; sin errores JavaScript ni desbordamiento.
 - Revisión independiente: el único hallazgo importante quedó corregido y comprobado con SDK real y transporte HTTP de prueba, incluidos reintentos implícitos.
 - Migración de altas existentes conserva credenciales y checkout e inicializa el intento cero sin alterar su clave de idempotencia.
-- Despliegue en la nueva VM pendiente de acceso SSH. No se accedió a la VM ni se ejecutó APK.
+- Despliegue posterior en la nueva VM completado con acceso SSH proporcionado por el usuario: código `9ab049f`, migración aplicada, respaldo privado y recuentos conservados. Prueba real publicada Stripe→QR→recarga→Stripe→QR y limpieza del registro sintético aprobadas. No se confirmó ningún pago durante esta prueba ni se ejecutó APK.

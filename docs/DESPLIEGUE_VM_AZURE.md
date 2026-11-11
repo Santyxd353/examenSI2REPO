@@ -13,7 +13,7 @@ Los datos PostgreSQL, archivos privados y certificados usan volúmenes persisten
 ### Estado de la VM, actualizado el 11 de noviembre de 2026
 
 - Instancia `vm-lumina`, IP pública `20.25.26.113`, proyecto en `/opt/vestidor18-repo`.
-- Código base `main` en `fcf24ac`, con respuestas estructuradas Groq, portada comercial, registro público SaaS y descarga Android aplicados también en la imagen del servidor. Estos ajustes están pendientes de publicación en Git.
+- Código funcional desplegado desde `main` en `9ab049f`, incluida la corrección de cambio Stripe/QR (`7c52003`). Los 48 cambios locales anteriores coincidían con la base publicada `47b3e2f`; se conservaron en un respaldo privado y un stash antes de actualizar Git. La imagen del servidor contiene esta versión.
 - Git, Docker, Compose y Buildx instalados. Imagen Linux compilada y los tres contenedores iniciados; PostgreSQL no publica su puerto.
 - Se restauró la base local con 6 cuentas, 15 productos y 24 pedidos, además de los archivos de almacenamiento. Se añadió una cuenta administradora exclusiva para Azure y se aplicaron las migraciones pendientes. La base inicial del servidor se conserva como `vestidor18_beforeimport_20261110`.
 - Respaldo SQL PostgreSQL 18 importado en PostgreSQL 16 en una base separada y dentro de una transacción; se omitió únicamente `SET transaction_timeout`, que PostgreSQL 16 no admite. Los recuentos se contrastaron antes de activar la copia.
@@ -39,6 +39,16 @@ Los datos PostgreSQL, archivos privados y certificados usan volúmenes persisten
 - Esta actualización preservó Lúmina y universidad. Respaldo por base/fuentes en `/home/azureuser/lumina-backups/20261111-operator-wFbZhs`, imagen anterior `vestidor18-app:before-operator-20261111`. Comprobación autenticada de solo lectura en Azure a 320/390/768/1440 px; sin crear ni modificar negocios durante esa verificación.
 - Ajuste posterior de privacidad: la portada ya no enumera tenants ni llama al directorio. `/api/platform/stores` exige sesión global del operador y devuelve 401 a visitantes o cuentas comerciales. Verificado en Azure: listado autorizado 200, portada responsive sin nombres/enlaces de negocios, acceso y panel del operador conservados. Corte previo en `/home/azureuser/lumina-backups/20261111-directory-privacy-VGNWTs`, imagen `vestidor18-app:before-directory-privacy-20261111`.
 - Hero y acceso global mejorados con la jerarquía de RR-HH y el diseño de Lúmina: ingresar al negocio, planes/registro y Superadmin. Se conservan título, marca, vista de producto, credenciales y flujos existentes. Pruebas de navegación y login real correctas en Azure; respaldo de fuentes `/home/azureuser/lumina-backups/20261111-hero-8F01mk`, imagen `vestidor18-app:before-hero-20261111`.
+
+### Cambio de forma de pago, publicado el 11 de noviembre de 2026
+
+- Acceso SSH a `azureuser@20.25.26.113` comprobado con la clave facilitada por el propietario; clave y configuración permanecen fuera de Git.
+- Se compiló la nueva imagen manteniendo el servicio anterior en marcha. Antes del reinicio se detuvo únicamente la aplicación para respaldar bases, roles, almacenamiento y certificados. PostgreSQL, proxy y volúmenes se conservaron.
+- Respaldo privado: `/home/azureuser/lumina-backups/20261111-payment-method-ksWyKt`, con manifiesto SHA-256, fuentes, configuración, dumps y referencia del stash. Imagen anterior: `vestidor18-app:before-payment-method-20261111-payment-method-ksWyKt`.
+- Aplicada la migración aditiva `202611110002_signup_payment_attempt.sql`. Inventario y recuentos anteriores/posteriores coinciden: dos tenants, dos suscripciones, dos registros públicos y un evento de facturación; también se contrastaron usuarios, productos, pedidos y pagos de cada tienda.
+- Verificación pública real por HTTPS: salud 200; alta sintética pendiente con Stripe TEST; cambio a QR; recarga; regreso a Stripe con checkout nuevo; segundo cambio a QR. Ambas sesiones abandonadas quedaron cerradas, sin confirmar ningún pago ni crear una tienda de prueba. Después se eliminó únicamente ese registro sintético pendiente.
+- Interfaz publicada comprobada a 320/390/768/1440 px, sin desbordamiento ni errores JavaScript. Evidencia local privada: `D:/SI2-builds/azure-payment-20261111/live-verification.json`. Los 277 tests de API y 25 compartidos se ejecutaron previamente en el entorno local aislado.
+- Esta corrección actualiza web/API y conserva la APK existente; no se ejecutó una APK.
 
 ### Preparación anterior
 
