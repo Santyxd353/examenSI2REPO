@@ -6,7 +6,32 @@ from pathlib import Path
 import pytest
 
 from lumina_analytics.cli import _assert_artifact_scope
-from lumina_analytics.job_schema import JobValidationError, parse_job
+from lumina_analytics.job_schema import JobValidationError, parse_job, repository_root
+
+
+def test_packaged_runtime_without_git_resolves_its_own_project(tmp_path: Path) -> None:
+    import shutil
+    import subprocess
+    import sys
+
+    runtime = tmp_path / "runtime"
+    worker = runtime / "workers" / "analytics"
+    worker.mkdir(parents=True)
+    shutil.copytree(Path.cwd() / "lumina_analytics", worker / "lumina_analytics")
+    (runtime / "package.json").write_text('{"name":"vestidor-grupo18"}', encoding="utf-8")
+    (runtime / "prisma").mkdir()
+    (runtime / "prisma" / "schema.prisma").write_text("// Runtime marker", encoding="utf-8")
+    request = runtime / "job.json"
+    request.write_text(json.dumps(_request()), encoding="utf-8")
+    assert not (runtime / ".git").exists()
+    completed = subprocess.run(
+        [sys.executable, "-m", "lumina_analytics.cli", "--job", str(request)],
+        cwd=worker, capture_output=True, text=True, check=False,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    response = json.loads(completed.stdout)
+    assert response["ok"] is True
+    assert (runtime / ".local" / "analytics" / "pytest-scope" / response["resultPath"]).is_file()
 
 
 def _request(**changes: object) -> dict[str, object]:
@@ -24,6 +49,16 @@ def _request(**changes: object) -> dict[str, object]:
     }
     request.update(changes)
     return request
+
+
+def test_unrelated_package_markers_do_not_authorize_another_root(tmp_path: Path) -> None:
+    worker = tmp_path / "workers" / "analytics" / "lumina_analytics"
+    worker.mkdir(parents=True)
+    (tmp_path / "package.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "prisma").mkdir()
+    (tmp_path / "prisma" / "schema.prisma").write_text("// marker", encoding="utf-8")
+    with pytest.raises(JobValidationError, match="raíz autorizada"):
+        repository_root(worker.parent)
 
 
 def test_job_rejects_path_outside_private_workdir(tmp_path: Path) -> None:

@@ -64,6 +64,8 @@ services:
       GROQ_VOICE_MODEL: ${GROQ_VOICE_MODEL:-whisper-large-v3-turbo}
     volumes:
       - application-data:/data
+      # Persist private ML artifacts in the existing data volume as well.
+      - application-data:/app/.local
     networks:
       - internal
 

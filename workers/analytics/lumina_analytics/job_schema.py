@@ -45,8 +45,19 @@ def _validate_id(value: Any, field: str) -> str:
 
 
 def repository_root(start: Path) -> Path:
+    module_directory = Path(__file__).resolve().parent
     for candidate in (start.resolve(), *start.resolve().parents):
         if (candidate / ".git").exists():
+            return candidate
+        # Release images contain the application, not the Git working directory.
+        # Anchor the packaged root to this installed worker, preserving the same
+        # private .local boundary instead of trusting an arbitrary package file.
+        if (
+            (candidate / "package.json").is_file()
+            and (candidate / "prisma" / "schema.prisma").is_file()
+            and (candidate / "workers" / "analytics" / "lumina_analytics").resolve()
+            == module_directory
+        ):
             return candidate
     raise JobValidationError("INVALID_PATH", "No se encontró la raíz autorizada del repositorio")
 
