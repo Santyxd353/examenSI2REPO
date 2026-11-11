@@ -22,6 +22,7 @@ export class StripeAdapter {
     planName: string;
     amountMinor: number;
     expiresAt: Date;
+    paymentAttempt: number;
     billingInterval: 'MONTHLY' | 'YEARLY';
   }) {
     const target = new URL(process.env.WEB_ORIGIN || 'http://localhost:5173');
@@ -54,13 +55,18 @@ export class StripeAdapter {
         cancel_url: target.toString(),
         expires_at: Math.floor(input.expiresAt.getTime() / 1000),
       },
-      { idempotencyKey: `lumina-signup-${input.id}` },
+      {
+        idempotencyKey: `lumina-signup-${input.id}${input.paymentAttempt ? `-payment-${input.paymentAttempt}` : ''}`,
+      },
     );
     if (session.livemode || !session.url) throw new BadRequestException('Sesión TEST inválida.');
     return { id: session.id, url: session.url };
   }
   retrieveCheckout(id: string) {
     return this.client().checkout.sessions.retrieve(id);
+  }
+  expireCheckout(id: string) {
+    return this.client().checkout.sessions.expire(id);
   }
   async createCheckout(input: {
     intentId: string;

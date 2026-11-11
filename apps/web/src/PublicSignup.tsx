@@ -151,10 +151,40 @@ export function PublicSignup() {
         ),
       );
       setView(next);
+      setQr(null);
       if (next.state === 'PENDING' && next.provider === 'QR_SIMULATED')
         setQr(await call('/' + access.id + '/qr', access.token, {}));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo consultar el registro.');
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  async function changePaymentMethod(provider: 'STRIPE_TEST' | 'QR_SIMULATED') {
+    if (!access || lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setError('');
+    async function display(next: View) {
+      setView(next);
+      setQr(null);
+      if (next.state === 'PENDING' && next.provider === 'QR_SIMULATED')
+        setQr(await call('/' + access!.id + '/qr', access!.token, {}));
+    }
+    try {
+      await display(
+        assertView(await call('/' + access.id + '/payment-method', access.token, { provider })),
+      );
+    } catch (e) {
+      // A creation request can have reached Stripe even when its reply is lost.
+      // Recover the committed provider without discarding this registration.
+      try {
+        await display(assertView(await call('/' + access.id, access.token)));
+      } catch {
+        /* Retry remains available. */
+      }
+      setError(e instanceof Error ? e.message : 'No se pudo cambiar la forma de pago.');
     } finally {
       lock.current = false;
       setBusy(false);
@@ -347,6 +377,32 @@ export function PublicSignup() {
                 </>
               ) : (
                 <>
+                  {view.state === 'PENDING' && (
+                    <fieldset className="signup-payment-method" disabled={busy}>
+                      <legend>Cambiar forma de pago</legend>
+                      <p>Conservaremos los datos de tu negocio y el plan elegido.</p>
+                      <div className="signup-methods">
+                        <button
+                          type="button"
+                          className={view.provider === 'STRIPE_TEST' ? 'selected' : ''}
+                          aria-pressed={view.provider === 'STRIPE_TEST'}
+                          disabled={busy || view.provider === 'STRIPE_TEST'}
+                          onClick={() => void changePaymentMethod('STRIPE_TEST')}
+                        >
+                          <CreditCard size={17} /> Usar Stripe TEST
+                        </button>
+                        <button
+                          type="button"
+                          className={view.provider === 'QR_SIMULATED' ? 'selected' : ''}
+                          aria-pressed={view.provider === 'QR_SIMULATED'}
+                          disabled={busy || view.provider === 'QR_SIMULATED'}
+                          onClick={() => void changePaymentMethod('QR_SIMULATED')}
+                        >
+                          <QrCode size={17} /> Usar QR simulado
+                        </button>
+                      </div>
+                    </fieldset>
+                  )}
                   {view.state === 'PENDING' &&
                     view.provider === 'STRIPE_TEST' &&
                     view.checkoutUrl && (
@@ -354,7 +410,14 @@ export function PublicSignup() {
                         <p>
                           Completa el pago seguro en Stripe y vuelve aquí para activar tu tienda.
                         </p>
-                        <a className="sh-button sh-button-primary" href={view.checkoutUrl}>
+                        <a
+                          className="sh-button sh-button-primary"
+                          href={view.checkoutUrl}
+                          aria-disabled={busy}
+                          onClick={(event) => {
+                            if (busy) event.preventDefault();
+                          }}
+                        >
                           <CreditCard size={17} /> Ir a Stripe TEST
                         </a>
                       </>

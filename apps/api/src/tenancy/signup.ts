@@ -17,6 +17,7 @@ import { hash } from 'bcryptjs';
 import { z } from 'zod';
 import Stripe from 'stripe';
 import QRCode from 'qrcode';
+import type { PoolClient } from 'pg';
 import { PLAN_CATALOG, type PlanCode } from '@lumina/contracts';
 import { TenantRegistry, validTenantSlug } from './platform';
 import { provisionTenant } from './provision';
@@ -58,6 +59,7 @@ type Signup = {
   provider: 'STRIPE_TEST' | 'QR_SIMULATED' | 'NONE';
   state: string;
   session_id: string | null;
+  payment_attempt: number;
   checkout_url: string | null;
   expires_at: Date;
 };
@@ -67,11 +69,12 @@ export class PublicSignupService {
     @Inject(TenantRegistry) private readonly registry: TenantRegistry,
     @Inject(StripeAdapter) private readonly stripe: StripeAdapter,
   ) {}
-  private async row(id: string, token?: string): Promise<Signup> {
+  private async row(id: string, token?: string, connection?: PoolClient): Promise<Signup> {
     const row = (
-      await this.registry.pool.query<Signup>('SELECT * FROM platform.signup WHERE id=$1', [
-        z.uuid().parse(id),
-      ])
+      await (connection || this.registry.pool).query<Signup>(
+        `SELECT * FROM platform.signup WHERE id=$1${connection ? ' FOR UPDATE' : ''}`,
+        [z.uuid().parse(id)],
+      )
     ).rows[0];
     // An unknown id and a wrong capability deliberately have the same response.
     if (!row || (token !== undefined && row.capability_hash !== digest(capability.parse(token))))
@@ -79,6 +82,31 @@ export class PublicSignupService {
         'No se encontró el registro. Ábrelo desde el navegador donde lo iniciaste.',
       );
     return row;
+  }
+  private async locked(
+    id: string,
+    token: string | undefined,
+    action: (row: Signup, connection: PoolClient) => Promise<void>,
+  ) {
+    const connection = await this.registry.pool.connect();
+    try {
+      await connection.query('BEGIN');
+      await connection.query("SET LOCAL lock_timeout='10s'");
+      const row = await this.row(id, token, connection);
+      await action(row, connection);
+      const next = await this.row(id, token, connection);
+      await connection.query('COMMIT');
+      return next;
+    } catch (error) {
+      await connection.query('ROLLBACK');
+      if ((error as { code?: string }).code === '55P03')
+        throw new ServiceUnavailableException(
+          'Hay otra operación de pago en curso. Comprueba el estado en unos segundos.',
+        );
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
   async view(id: string, token: string) {
     const row = await this.row(id, capability.parse(token));
@@ -179,60 +207,51 @@ export class PublicSignupService {
     }
     return this.complete(input.operationId, token, false);
   }
-  async complete(id: string, token: string, confirmQr: boolean) {
-    let row = await this.row(id, capability.parse(token));
-    if (row.state === 'PENDING') {
-      if (row.expires_at.getTime() <= Date.now())
-        throw new ConflictException('El registro venció. Inicia otro desde Planes.');
-      if (row.provider === 'QR_SIMULATED' && confirmQr) {
-        await this.registry.pool.query(
-          "UPDATE platform.signup SET state='PAID',paid_at=now() WHERE id=$1 AND state='PENDING'",
-          [id],
-        );
-      } else if (row.provider === 'STRIPE_TEST') {
-        if (!row.session_id) {
-          let session: { id: string; url: string };
-          try {
-            session = await this.stripe.createSignupCheckout({
-              id: row.id,
-              companyName: row.company_name,
-              email: row.owner_email,
-              planName: PLAN_CATALOG[row.plan_code].name,
-              amountMinor: row.amount_minor,
-              billingInterval: row.billing_interval as 'MONTHLY' | 'YEARLY',
-              expiresAt: row.expires_at,
-            });
-          } catch {
-            throw new ServiceUnavailableException(
-              'Stripe no pudo preparar el pago. Reintenta para recuperar este mismo registro.',
-            );
-          }
-          if (
-            new URL(session.url).origin !== 'https://checkout.stripe.com' ||
-            !session.id.startsWith('cs_test_')
-          )
-            throw new BadRequestException('El checkout no pertenece a Stripe TEST.');
-          await this.registry.pool.query(
-            'UPDATE platform.signup SET session_id=$2,checkout_url=$3 WHERE id=$1 AND session_id IS NULL',
-            [id, session.id, session.url],
-          );
-        } else {
-          const session = await this.stripe.retrieveCheckout(row.session_id);
-          if (session.payment_status === 'paid') await this.acceptStripe(row, session);
-        }
-      }
-    }
-    row = await this.row(id);
-    if (['PAID', 'PROVISIONING'].includes(row.state)) await this.provision(row);
-    return this.view(id, token);
+  private assertPending(row: Signup) {
+    if (row.expires_at.getTime() <= Date.now())
+      throw new ConflictException('El registro venció. Inicia otro desde Planes.');
   }
-  private async acceptStripe(row: Signup, session: Stripe.Checkout.Session) {
+  private async ensureStripeCheckout(row: Signup, connection: PoolClient) {
+    if (row.session_id) return;
+    let session: { id: string; url: string };
+    try {
+      session = await this.stripe.createSignupCheckout({
+        id: row.id,
+        companyName: row.company_name,
+        email: row.owner_email,
+        planName: PLAN_CATALOG[row.plan_code].name,
+        amountMinor: row.amount_minor,
+        billingInterval: row.billing_interval as 'MONTHLY' | 'YEARLY',
+        expiresAt: row.expires_at,
+        paymentAttempt: row.payment_attempt,
+      });
+    } catch {
+      throw new ServiceUnavailableException(
+        'Stripe no pudo preparar el pago. Reintenta para recuperar este mismo registro.',
+      );
+    }
+    let valid = false;
+    try {
+      valid =
+        new URL(session.url).origin === 'https://checkout.stripe.com' &&
+        session.id.startsWith('cs_test_');
+    } catch {
+      /* Reject an invalid provider response. */
+    }
+    if (!valid) throw new BadRequestException('El checkout no pertenece a Stripe TEST.');
+    await connection.query('UPDATE platform.signup SET session_id=$2,checkout_url=$3 WHERE id=$1', [
+      row.id,
+      session.id,
+      session.url,
+    ]);
+    row.session_id = session.id;
+    row.checkout_url = session.url;
+  }
+  private assertStripeSession(row: Signup, session: Stripe.Checkout.Session) {
     if (
       row.provider !== 'STRIPE_TEST' ||
       session.livemode !== false ||
       session.mode !== 'payment' ||
-      session.status !== 'complete' ||
-      session.payment_status !== 'paid' ||
       session.currency !== 'usd' ||
       session.amount_total !== row.amount_minor ||
       session.client_reference_id !== row.id ||
@@ -242,10 +261,114 @@ export class PublicSignupService {
       !session.id.startsWith('cs_test_')
     )
       throw new BadRequestException('El pago TEST no coincide con este registro.');
-    await this.registry.pool.query(
+  }
+  private async retrieveStripe(row: Signup) {
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await this.stripe.retrieveCheckout(row.session_id!);
+    } catch {
+      throw new ServiceUnavailableException(
+        'No se pudo consultar Stripe. Conservamos tu registro; reintenta en unos segundos.',
+      );
+    }
+    this.assertStripeSession(row, session);
+    return session;
+  }
+  private async acceptStripe(
+    row: Signup,
+    session: Stripe.Checkout.Session,
+    connection: PoolClient,
+  ) {
+    this.assertStripeSession(row, session);
+    if (session.status !== 'complete' || session.payment_status !== 'paid')
+      throw new BadRequestException('El pago TEST todavía no está completado.');
+    await connection.query(
       "UPDATE platform.signup SET state='PAID',paid_at=COALESCE(paid_at,now()) WHERE id=$1 AND state IN ('PENDING','EXPIRED')",
       [row.id],
     );
+  }
+  private async finish(row: Signup, token: string) {
+    // Release the payment transaction before provisioning databases/migrations.
+    if (['PAID', 'PROVISIONING'].includes(row.state)) await this.provision(row);
+    return this.view(row.id, token);
+  }
+  async complete(id: string, token: string, confirmQr: boolean) {
+    const row = await this.locked(id, capability.parse(token), async (row, connection) => {
+      if (row.state !== 'PENDING') return;
+      this.assertPending(row);
+      if (row.provider === 'QR_SIMULATED' && confirmQr) {
+        await connection.query(
+          "UPDATE platform.signup SET state='PAID',paid_at=now() WHERE id=$1",
+          [id],
+        );
+      } else if (row.provider === 'STRIPE_TEST') {
+        const existed = Boolean(row.session_id);
+        await this.ensureStripeCheckout(row, connection);
+        if (existed) {
+          const session = await this.retrieveStripe(row);
+          if (session.payment_status === 'paid') await this.acceptStripe(row, session, connection);
+        }
+      }
+    });
+    return this.finish(row, token);
+  }
+  async changePaymentMethod(id: string, token: string, provider: 'STRIPE_TEST' | 'QR_SIMULATED') {
+    const row = await this.locked(id, capability.parse(token), async (row, connection) => {
+      if (row.state === 'EXPIRED') this.assertPending(row);
+      if (row.state !== 'PENDING') return;
+      this.assertPending(row);
+      if (row.provider === provider) return;
+      if (provider === 'STRIPE_TEST') {
+        this.stripe.assertConfigured();
+        // Stripe requires at least 30 minutes when creating a new Checkout Session.
+        if (row.expires_at.getTime() - Date.now() < 31 * 60000)
+          throw new ConflictException(
+            'Quedan menos de 31 minutos para terminar este registro. Puedes continuar con el QR actual.',
+          );
+        // Commit this intent BEFORE calling Stripe: a lost creation response must
+        // never leave QR confirmable while an unknown card checkout remains open.
+        await connection.query(
+          "UPDATE platform.signup SET provider='STRIPE_TEST',session_id=NULL,checkout_url=NULL,payment_attempt=payment_attempt+1 WHERE id=$1",
+          [id],
+        );
+        return;
+      }
+      // Recover an unknown checkout with the same durable idempotency key first.
+      await this.ensureStripeCheckout(row, connection);
+      let session = await this.retrieveStripe(row);
+      if (session.status === 'complete' && session.payment_status === 'paid') {
+        await this.acceptStripe(row, session, connection);
+        return;
+      }
+      if (session.status === 'complete' || session.payment_status !== 'unpaid')
+        throw new ConflictException(
+          'Stripe está procesando este pago. Comprueba el estado antes de cambiar la forma de pago.',
+        );
+      if (session.status === 'open') {
+        try {
+          session = await this.stripe.expireCheckout(row.session_id!);
+        } catch {
+          // Expiration may have succeeded despite a lost reply, or payment won.
+          session = await this.retrieveStripe(row);
+        }
+        this.assertStripeSession(row, session);
+      }
+      if (session.status === 'complete' && session.payment_status === 'paid') {
+        await this.acceptStripe(row, session, connection);
+        return;
+      }
+      if (session.status !== 'expired' || session.payment_status !== 'unpaid')
+        throw new ServiceUnavailableException(
+          'No se pudo cerrar el pago de Stripe. Conservamos Stripe; reintenta para cambiar a QR.',
+        );
+      await connection.query(
+        "UPDATE platform.signup SET provider='QR_SIMULATED',session_id=NULL,checkout_url=NULL WHERE id=$1",
+        [id],
+      );
+    });
+    if (row.state === 'PENDING' && row.provider === 'STRIPE_TEST')
+      return this.complete(id, token, false);
+    return this.finish(row, token);
   }
   async webhook(event: Stripe.Event) {
     if (
@@ -256,10 +379,15 @@ export class PublicSignupService {
       return { status: 'IGNORED' };
     if (event.livemode !== false) throw new BadRequestException('Solo se admite Stripe TEST.');
     const session = event.data.object as Stripe.Checkout.Session;
-    const row = await this.row(session.metadata?.signupId || '');
     if (session.payment_status !== 'paid') return { status: 'PENDING' };
-    await this.acceptStripe(row, session);
-    await this.provision(await this.row(row.id));
+    const row = await this.locked(
+      session.metadata?.signupId || '',
+      undefined,
+      async (row, connection) => {
+        await this.acceptStripe(row, session, connection);
+      },
+    );
+    if (['PAID', 'PROVISIONING'].includes(row.state)) await this.provision(row);
     return { status: (await this.row(row.id)).state };
   }
   private async provision(row: Signup) {
@@ -400,5 +528,13 @@ export class PublicSignupController {
       qrDataUrl: await QRCode.toDataURL(url.toString(), { width: 280, margin: 4 }),
       paymentUrl: url.toString(),
     };
+  }
+  @Post(':id/payment-method') changePaymentMethod(
+    @Param('id') id: string,
+    @Headers('x-signup-token') token = '',
+    @Body() raw: unknown,
+  ) {
+    const input = z.strictObject({ provider: z.enum(['STRIPE_TEST', 'QR_SIMULATED']) }).parse(raw);
+    return this.service.changePaymentMethod(id, token, input.provider);
   }
 }

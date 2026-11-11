@@ -224,14 +224,50 @@ test('control migra suscripciones/eventos una vez y detecta SQL alterado', async
     try {
       await applyControlMigrations(db);
       await db.query('COMMIT');
+      if (i === 0) {
+        // Reconstruct the deployed pre-change signup schema in this disposable DB.
+        await db.query('ALTER TABLE platform.signup DROP COLUMN payment_attempt');
+        await db.query(
+          "DELETE FROM platform.schema_migration WHERE name='202611110002_signup_payment_attempt.sql'",
+        );
+        await db.query(
+          `INSERT INTO platform.signup
+          (id,capability_hash,request_hash,slug,company_name,owner_email,first_name,last_name,password_hash,
+           plan_code,amount_minor,billing_interval,provider,state,expires_at,session_id,checkout_url)
+          VALUES($1,repeat('a',64),repeat('b',64),'alta-existente','QA','qa@example.test','Ana','Prueba','hash-conservado',
+          'esencial',999,'MONTHLY','STRIPE_TEST','PENDING',now()+interval '1 hour','cs_test_legacy','https://checkout.stripe.com/c/pay/cs_test_legacy')`,
+          [actor],
+        );
+      }
     } catch (error) {
       await db.query('ROLLBACK');
       throw error;
     }
   }
-  expect((await db.query('SELECT count(*) FROM platform.schema_migration')).rows[0].count).toBe(
-    '1',
-  );
+  // A second application must be harmless, including after upgrading a real draft.
+  await applyControlMigrations(db);
+  expect(
+    (await db.query('SELECT name FROM platform.schema_migration ORDER BY name')).rows.map(
+      (row) => row.name,
+    ),
+  ).toEqual([
+    '202611010001_billing.sql',
+    '202611110001_public_signup.sql',
+    '202611110002_signup_payment_attempt.sql',
+  ]);
+  expect(
+    (
+      await db.query(
+        'SELECT payment_attempt,password_hash,session_id,provider FROM platform.signup WHERE id=$1',
+        [actor],
+      )
+    ).rows[0],
+  ).toEqual({
+    payment_attempt: 0,
+    password_hash: 'hash-conservado',
+    session_id: 'cs_test_legacy',
+    provider: 'STRIPE_TEST',
+  });
   expect(
     (
       await db.query(

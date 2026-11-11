@@ -226,7 +226,8 @@
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
-.signup-methods label {
+.signup-methods label,
+.signup-methods button {
   border: 1px solid #ded5da;
   padding: 14px 10px;
   border-radius: 8px;
@@ -236,9 +237,41 @@
   cursor: pointer;
   font-size: 11px;
 }
-.signup-methods label.selected {
+.signup-methods button {
+  background: white;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  min-width: 0;
+  text-align: left;
+}
+.signup-methods button > svg {
+  flex-shrink: 0;
+}
+.signup-methods button:disabled {
+  cursor: default;
+}
+.signup-methods button:focus-visible {
+  outline: 2px solid #713d59;
+  outline-offset: 3px;
+}
+.signup-methods label.selected,
+.signup-methods button.selected {
   background: #f6eef2;
   border-color: #854e6c;
+}
+.signup-payment-method {
+  border: 0;
+  padding: 0;
+  margin: 8px 0;
+  min-width: 0;
+}
+.signup-payment-method legend {
+  font-size: 14px;
+  font-weight: 600;
+}
+.signup-payment-method p {
+  font-size: 12px;
 }
 .signup-methods input {
   accent-color: #713d59;
@@ -396,7 +429,8 @@
   .signup-methods {
     gap: 8px;
   }
-  .signup-methods label {
+  .signup-methods label,
+  .signup-methods button {
     font-size: 10px;
     padding: 12px 7px;
   }
