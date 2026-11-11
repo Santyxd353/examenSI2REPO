@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Plus, ReceiptText, ShoppingBag, Trash2 } from 'lucide-react';
+import { CheckCircle2, Plus, ReceiptText, ShoppingBag, Trash2, X } from 'lucide-react';
+import { QrPaymentPanel } from './QrPayment';
 import { api } from './api';
 import { useOperationIdentity } from './useOperationIdentity';
 
@@ -21,6 +22,8 @@ type Location = {
 type CartLine = Variant & { quantity: number };
 type Sale = {
   id: string;
+  estado: string;
+  ubicacion_id: string;
   numero: string;
   total: number | string;
   creado_en: string;
@@ -43,6 +46,7 @@ export function Sales() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [paymentSale, setPaymentSale] = useState<Sale | null>(null);
   const location = locations.find((item) => item.id === locationId);
   const variants = location?.variants ?? [];
   const total = useMemo(
@@ -61,6 +65,33 @@ export function Sales() {
   useEffect(() => {
     void reload().catch((reason) => setError(reason.message));
   }, []);
+
+  useEffect(() => {
+    if (!paymentSale) return;
+    let active = true;
+    const timer = window.setInterval(() => {
+      void api(`/sales?location=${paymentSale.ubicacion_id}`)
+        .then((sales: Sale[]) => {
+          if (!active) return;
+          setRecent(sales);
+          const sale = sales.find((row) => row.id === paymentSale.id);
+          if (sale && sale.estado !== 'PENDIENTE_PAGO') {
+            setPaymentSale(null);
+            setMessage(
+              sale.estado === 'CONFIRMADO'
+                ? `Venta ${sale.numero} confirmada por ${money(sale.total)} con QR de prueba.`
+                : 'La reserva de la venta venció. Puedes preparar otra venta.',
+            );
+            void reload(locationId).catch((reason) => setError(reason.message));
+          }
+        })
+        .catch(() => {});
+    }, 2500);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [paymentSale, locationId]);
 
   function addLine() {
     const variant = variants.find((item) => item.id === variantId);
@@ -103,7 +134,10 @@ export function Sales() {
       saleIdentity.complete(payload);
       setCart([]);
       formElement.reset();
-      setMessage(`Venta ${sale.numero} confirmada por ${money(sale.total)}.`);
+      if (sale.estado === 'PENDIENTE_PAGO') {
+        setPaymentSale(sale);
+        setMessage(`Venta ${sale.numero} pendiente de pago. Escanea el QR para confirmarla.`);
+      } else setMessage(`Venta ${sale.numero} confirmada por ${money(sale.total)}.`);
       await reload(locationId);
     } catch (reason) {
       setError((reason as Error).message);
@@ -120,8 +154,8 @@ export function Sales() {
           Registrar una <em>venta.</em>
         </h1>
         <p>
-          El stock se descuenta de forma atómica en tu sucursal y la venta aparece de inmediato en
-          los reportes.
+          El efectivo confirma la venta al registrarla. Con QR reservamos las prendas durante 15
+          minutos y confirmamos la venta cuando se completa el pago simulado.
         </p>
       </div>
       {error && <div className="message error">{error}</div>}
@@ -224,7 +258,6 @@ export function Sales() {
               Método de pago
               <select name="paymentMethod" defaultValue="EFECTIVO">
                 <option value="EFECTIVO">Efectivo</option>
-                <option value="TARJETA">Tarjeta</option>
                 <option value="QR">QR</option>
               </select>
             </label>
@@ -258,6 +291,11 @@ export function Sales() {
                   {sale.detalle_pedido.reduce((sum, line) => sum + line.cantidad, 0)} unidades ·{' '}
                   {sale.pago[0]?.proveedor.replace('POS_', '')}
                 </small>
+                {sale.estado === 'PENDIENTE_PAGO' && sale.pago[0]?.proveedor === 'POS_QR' && (
+                  <button type="button" onClick={() => setPaymentSale(sale)}>
+                    Cobrar con QR
+                  </button>
+                )}
               </article>
             ))
           ) : (
@@ -265,6 +303,35 @@ export function Sales() {
           )}
         </aside>
       </div>
+      {paymentSale && (
+        <div className="modal-overlay" onClick={() => setPaymentSale(null)}>
+          <section
+            className="auth-modal sales-qr-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pos-qr-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="modal-close"
+              aria-label="Cerrar QR de venta"
+              onClick={() => setPaymentSale(null)}
+            >
+              <X size={18} />
+            </button>
+            <h2 id="pos-qr-title">Cobrar venta con QR</h2>
+            <p>
+              Venta {paymentSale.numero} · <b>{money(paymentSale.total)}</b>
+            </p>
+            <QrPaymentPanel
+              endpoint={`/sales/${paymentSale.id}/qr-link`}
+              orderNumber={paymentSale.numero}
+            />
+            <p role="status">Esperando confirmación del pago simulado…</p>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

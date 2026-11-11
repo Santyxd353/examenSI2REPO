@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, QrCode, ShieldCheck, ShoppingBag, X } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { QrPaymentPanel } from './QrPayment';
 import { api } from './api';
 import { useOperationIdentity } from './useOperationIdentity';
 
@@ -30,8 +30,6 @@ type Order = {
 type Location = { id: string; nombre: string; tipo: string };
 const money = (value: number) =>
   new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(value);
-const paymentQrPayload = (order: Pick<Order, 'id' | 'total'>) =>
-  `LUMINA-PAY-DEMO:${order.id}:${Number(order.total).toFixed(2)}:BOB`;
 const locationLabel = (location: Location) => {
   const kind = location.tipo === 'TIENDA' ? 'Sucursal' : 'Almacén';
   return location.nombre.toLocaleLowerCase('es-BO').startsWith(kind.toLocaleLowerCase('es-BO'))
@@ -547,17 +545,10 @@ export function Commerce({
               </div>
             ) : (
               <>
-                <div className="payment-qr">
-                  <QRCodeSVG
-                    value={paymentQrPayload(paymentOrder)}
-                    size={190}
-                    level="M"
-                    marginSize={4}
-                    title={`QR de prueba del pedido ${paymentOrder.numero}`}
-                  />
-                  <b>Escanea con Lúmina Pay Demo en otro dispositivo</b>
-                  <small>El pedido y el importe se verifican al escanear.</small>
-                </div>
+                <QrPaymentPanel
+                  endpoint={`/commerce/orders/${paymentOrder.id}/qr-link`}
+                  orderNumber={paymentOrder.numero}
+                />
                 <small className="payment-demo-note">
                   QR de simulación académica. No realiza un cobro bancario.
                 </small>

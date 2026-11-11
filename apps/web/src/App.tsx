@@ -136,10 +136,14 @@ const CommercialHome = lazy(() =>
 const PublicSignup = lazy(() =>
   import('./PublicSignup').then((module) => ({ default: module.PublicSignup })),
 );
+const QrDemoPage = lazy(() =>
+  import('./QrPayment').then((module) => ({ default: module.QrDemoPage })),
+);
 export function App() {
   const params = new URLSearchParams(window.location.search);
   const platform = params.get('plataforma') === '1';
   const signup = params.get('registro') === '1';
+  const qrPayment = params.get('pago_qr') === '1';
   const store = [
     'tienda',
     'checkout',
@@ -149,13 +153,19 @@ export function App() {
     'seccion',
   ].some((key) => params.has(key));
   useEffect(() => {
-    document.title = platform
-      ? 'Lúmina · Superadministración'
-      : store
-        ? 'Lúmina · Moda femenina y vestidor 3D'
-        : 'Lúmina · La plataforma para tu negocio de moda';
-  }, [platform, store]);
-  return platform ? (
+    document.title = qrPayment
+      ? 'Lúmina · Pago QR de prueba'
+      : platform
+        ? 'Lúmina · Superadministración'
+        : store
+          ? 'Lúmina · Moda femenina y vestidor 3D'
+          : 'Lúmina · La plataforma para tu negocio de moda';
+  }, [platform, store, qrPayment]);
+  return qrPayment ? (
+    <Suspense fallback={<p role="status">Verificando QR…</p>}>
+      <QrDemoPage />
+    </Suspense>
+  ) : platform ? (
     <Suspense fallback={<p role="status">Cargando acceso de plataforma…</p>}>
       <PlatformProvision />
     </Suspense>

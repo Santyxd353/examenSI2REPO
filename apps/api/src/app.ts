@@ -36,6 +36,7 @@ import { AnalysisResults } from './analytics/results.service';
 import { AnalyticsWorkerBridge } from './analytics/worker-bridge';
 import { SalesController } from './sales';
 import { CommerceController } from './commerce';
+import { QrDemoController, QrDemoService, QrLinkController } from './commerce/qr-demo';
 import { ProfileController } from './profile';
 import { OrdersController } from './orders';
 import { RealtimeGateway } from './realtime';
@@ -85,6 +86,8 @@ class HealthController {
     AnalyticsController,
     SalesController,
     CommerceController,
+    QrDemoController,
+    QrLinkController,
     ProfileController,
     OrdersController,
     TenantController,
@@ -97,6 +100,7 @@ class HealthController {
   ],
   providers: [
     Db,
+    QrDemoService,
     AuthService,
     AuthGuard,
     AvatarJobs,
@@ -217,6 +221,18 @@ export async function createApp() {
     }
   });
   app.enableCors({ origin: allowedOrigins, credentials: true });
+  app.use(
+    '/api/payments/qr-demo',
+    rateLimit({
+      windowMs: 60_000,
+      limit: 60,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: {
+        message: 'Demasiadas comprobaciones del QR. Espera un minuto y vuelve a intentar.',
+      },
+    }),
+  );
   const signupLimit = rateLimit({
     windowMs: 3600000,
     limit: 10,

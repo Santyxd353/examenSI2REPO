@@ -178,7 +178,7 @@ test('venta confirma pago, descuenta stock y registra movimiento una sola vez', 
   const payload = {
     locationId,
     customerName: 'Cliente de prueba',
-    paymentMethod: 'QR',
+    paymentMethod: 'EFECTIVO',
     idempotency,
     items: [{ variantId, quantity: 2 }],
   };
@@ -192,7 +192,7 @@ test('venta confirma pago, descuenta stock y registra movimiento una sola vez', 
     ubicacion_id: locationId,
     estado: 'CONFIRMADO',
   });
-  expect(first.body.pago[0]).toMatchObject({ estado: 'CONFIRMADO', proveedor: 'POS_QR' });
+  expect(first.body.pago[0]).toMatchObject({ estado: 'CONFIRMADO', proveedor: 'POS_EFECTIVO' });
 
   const retry = await request(app.getHttpServer())
     .post('/api/sales')

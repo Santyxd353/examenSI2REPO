@@ -1,12 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useNetworkState } from 'expo-network';
 import { api, captureSessionScope, isCurrentSessionScope } from '../../api';
 import { ApiProblem } from '../../errors/ApiProblem';
 import { bootstrapOfflineVault } from '../../offline/bootstrap';
 import type { Identity } from '../../types';
 import { openPointOfSale } from './nativeStorage';
-import { salePayload, type SalePayload, type StoredSale } from './workflow';
+import { salePayload, type SalePayload, type SaleReceipt, type StoredSale } from './workflow';
 
 type Variant = {
   id: string;
@@ -195,7 +203,9 @@ export function PointOfSaleScreen({ user }: { user: Identity }) {
               receipt.numero +
               ' registrada por ' +
               money(receipt.total) +
-              '. Ya está disponible en los registros y reportes de la tienda.',
+              (receipt.estado === 'PENDIENTE_PAGO'
+                ? '. Falta confirmar el pago QR; todavía no es una venta pagada.'
+                : '. Ya está disponible en los registros y reportes de la tienda.'),
           );
         }
       },
@@ -273,6 +283,45 @@ export function PointOfSaleScreen({ user }: { user: Identity }) {
               </Text>
             </>
           ) : null}
+          {saved.receipt?.estado === 'PENDIENTE_PAGO' && saved.payload.paymentMethod === 'QR' ? (
+            <>
+              <Button
+                label="Abrir pago QR simulado"
+                disabled={!!busy || !online}
+                press={() =>
+                  void run('Preparando pago QR…', async (work) => {
+                    const link = await api<{ url: string }>(`/sales/${saved.receipt!.id}/qr-link`, {
+                      method: 'POST',
+                    });
+                    work.guard();
+                    await Linking.openURL(link.url);
+                  })
+                }
+              />
+              <Button
+                label="Comprobar pago QR"
+                disabled={!!busy || !online}
+                press={() =>
+                  void run('Comprobando pago…', async (work, current) => {
+                    const rows = await api<SaleReceipt[]>(
+                      `/sales?location=${saved.payload.locationId}`,
+                    );
+                    work.guard();
+                    const receipt = rows.find((row) => row.id === saved.receipt!.id);
+                    if (receipt) await work.workflow.updateReceipt(receipt);
+                    if (current())
+                      setNotice(
+                        receipt?.estado === 'CONFIRMADO'
+                          ? 'Pago QR confirmado. La venta ya está pagada.'
+                          : 'La venta continúa ' +
+                              (receipt?.estado || 'pendiente de comprobación') +
+                              '.',
+                      );
+                  })
+                }
+              />
+            </>
+          ) : null}
           {saved.phase === 'PENDING' ? (
             <>
               <Text style={s.copy}>
@@ -329,10 +378,10 @@ export function PointOfSaleScreen({ user }: { user: Identity }) {
           />
           <Text style={s.subtitle}>Cobro recibido</Text>
           <View style={s.chips}>
-            {(['EFECTIVO', 'TARJETA', 'QR'] as const).map((value) => (
+            {(['EFECTIVO', 'QR'] as const).map((value) => (
               <Choice
                 key={value}
-                label={value === 'EFECTIVO' ? 'Efectivo' : value === 'TARJETA' ? 'Tarjeta' : 'QR'}
+                label={value === 'EFECTIVO' ? 'Efectivo' : 'QR de prueba'}
                 selected={method === value}
                 disabled={!!busy}
                 press={() => setMethod(value)}

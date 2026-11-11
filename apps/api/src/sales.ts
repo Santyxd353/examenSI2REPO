@@ -32,7 +32,7 @@ const saleSchema = z
       .uuid()
       .transform((value) => value.toLowerCase()),
     customerName: z.string().trim().min(2).max(160).optional(),
-    paymentMethod: z.enum(['EFECTIVO', 'TARJETA', 'QR']),
+    paymentMethod: z.enum(['EFECTIVO', 'QR']),
     idempotency: z
       .string()
       .uuid()
@@ -171,6 +171,8 @@ export class SalesController {
   async create(@Req() req: AuthRequest, @Body() body: unknown) {
     requirePermission(req.user, 'ventas:registrar');
     const input = saleSchema.parse(body);
+    const pendingQr = input.paymentMethod === 'QR';
+    const orderState = pendingQr ? 'PENDIENTE_PAGO' : 'CONFIRMADO';
     await requireLocationScope(this.db, req.user, input.locationId);
     input.items.sort((a, b) => a.variantId.localeCompare(b.variantId));
     const hash = requestHash({ actorId: req.user.id, ...input });
@@ -273,7 +275,7 @@ export class SalesController {
             metodoPago: input.paymentMethod,
             requestHash: hash,
           },
-          estado: 'CONFIRMADO',
+          estado: orderState,
           creado_en: now,
           idempotencia: input.idempotency,
         },
@@ -283,8 +285,10 @@ export class SalesController {
           pedido_id: order.id,
           actor_id: req.user.id,
           estado_anterior: null,
-          estado_nuevo: 'CONFIRMADO',
-          motivo: 'Venta de mostrador confirmada al registrarse.',
+          estado_nuevo: orderState,
+          motivo: pendingQr
+            ? 'Venta de mostrador pendiente de pago QR simulado.'
+            : 'Venta de mostrador confirmada al registrarse.',
           creado_en: now,
         },
       });
@@ -295,7 +299,12 @@ export class SalesController {
             fisico: { gte: line.item.quantity },
             disponible: { gte: line.item.quantity },
           },
-          data: { fisico: { decrement: line.item.quantity }, version: { increment: 1 } },
+          data: {
+            ...(pendingQr
+              ? { reservado: { increment: line.item.quantity } }
+              : { fisico: { decrement: line.item.quantity } }),
+            version: { increment: 1 },
+          },
         });
         if (changed.count !== 1)
           throw new BadRequestException(
@@ -315,13 +324,24 @@ export class SalesController {
             total_linea: line.total,
           },
         });
+        if (pendingQr)
+          await tx.reserva_stock.create({
+            data: {
+              detalle_pedido_id: detail.id,
+              inventario_id: line.inventory.id,
+              cantidad: line.item.quantity,
+              estado: 'ACTIVA',
+              creada_en: now,
+              vence_en: new Date(now.getTime() + 15 * 60_000),
+            },
+          });
         await tx.movimiento_stock.create({
           data: {
             inventario_id: line.inventory.id,
             grupo_operacion: order.id,
-            tipo: 'SALIDA',
-            delta_fisico: -line.item.quantity,
-            delta_reservado: 0,
+            tipo: pendingQr ? 'RESERVA' : 'SALIDA',
+            delta_fisico: pendingQr ? 0 : -line.item.quantity,
+            delta_reservado: pendingQr ? line.item.quantity : 0,
             delta_comprometido: 0,
             motivo: `Venta ${number} · detalle ${detail.id}`,
             actor_id: req.user.id,
@@ -338,9 +358,9 @@ export class SalesController {
           idempotencia: randomUUID(),
           monto: total,
           moneda: 'BOB',
-          estado: 'CONFIRMADO',
+          estado: pendingQr ? 'PENDIENTE' : 'CONFIRMADO',
           creado_en: now,
-          confirmado_en: now,
+          confirmado_en: pendingQr ? null : now,
         },
       });
       return tx.pedido.findUniqueOrThrow({

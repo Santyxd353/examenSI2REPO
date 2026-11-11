@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import QRCode from 'react-native-qrcode-svg';
-import { api } from './api';
+import { api, API_URL } from './api';
 import type { CatalogLocation, CustomerAddress } from './types';
 import { checkoutBlocker } from './checkoutBlocker';
 import {
@@ -75,8 +75,6 @@ type Props = {
 const money = (amount: number) => `Bs. ${Number(amount).toFixed(Number(amount) % 1 ? 2 : 0)}`;
 const addressText = (address: CustomerAddress) =>
   `${address.destinatario}, ${address.telefono}. ${address.ciudad}, ${address.zona}. ${address.detalle}`;
-const paymentQrPayload = (order: Pick<MobileOrder, 'id' | 'total'>) =>
-  `LUMINA-PAY-DEMO:${order.id}:${Number(order.total).toFixed(2)}:BOB`;
 
 export function MobileCommerceSheet({
   visible,
@@ -627,6 +625,25 @@ function DemoPaymentSheet({
   onStripe: () => void;
   onVerifyStripe: () => void;
 }) {
+  const [qrLink, setQrLink] = useState(''),
+    [qrError, setQrError] = useState('');
+  useEffect(() => {
+    let active = true;
+    setQrLink('');
+    setQrError('');
+    if (order && order.pago[0]?.proveedor !== 'STRIPE_TEST') {
+      void api<{ url: string }>(`/commerce/orders/${order.id}/qr-link`, { method: 'POST' })
+        .then((value) => {
+          if (active) setQrLink(value.url);
+        })
+        .catch((reason) => {
+          if (active) setQrError((reason as Error).message);
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [order?.id, order?.pago[0]?.proveedor]);
   if (!order) return null;
   const stripeOrder = order.pago[0]?.proveedor === 'STRIPE_TEST';
 
@@ -646,16 +663,27 @@ function DemoPaymentSheet({
             <>
               <Text style={styles.gatewayLabel}>QR generado para este pedido</Text>
               <View style={styles.gatewayQr}>
-                <QRCode
-                  value={paymentQrPayload(order)}
-                  size={176}
-                  color={green}
-                  backgroundColor="#fff"
-                />
+                {qrLink ? (
+                  <QRCode value={qrLink} size={220} color={green} backgroundColor="#fff" />
+                ) : (
+                  <Text>{qrError || 'Preparando QR…'}</Text>
+                )}
                 <Text style={styles.gatewayQrText}>
-                  Escanéalo desde Lúmina Pay Demo en otro dispositivo.
+                  Escanea con la cámara del teléfono y confirma el pago simulado en el navegador.
                 </Text>
               </View>
+              {!!qrLink && (
+                <Pressable
+                  style={styles.gatewayPay}
+                  onPress={() =>
+                    void Linking.openURL(qrLink).catch(() =>
+                      setQrError('No se pudo abrir el navegador.'),
+                    )
+                  }
+                >
+                  <Text style={styles.gatewayPayText}>Abrir simulador de pago QR</Text>
+                </Pressable>
+              )}
               <Text style={styles.gatewayWaiting}>Esperando el escaneo del QR…</Text>
             </>
           )}
@@ -721,6 +749,19 @@ function DemoWalletScanner({
     setError('');
     setStatus('Verificando pedido y monto…');
     try {
+      if (/^https?:\/\//i.test(qr)) {
+        const link = new URL(qr);
+        if (
+          link.origin !== new URL(API_URL).origin ||
+          link.searchParams.get('pago_qr') !== '1' ||
+          !new URLSearchParams(link.hash.slice(1)).get('token')
+        )
+          throw new Error('El enlace no pertenece al simulador QR de esta tienda.');
+        await Linking.openURL(link.toString());
+        setStatus('Confirma el pago en el navegador y vuelve a tus pedidos para comprobarlo.');
+        setCompleted(true);
+        return;
+      }
       const order = await api<MobileOrder>('/commerce/demo-wallet/scan', {
         method: 'POST',
         body: JSON.stringify(demoWalletIntent(qr)),

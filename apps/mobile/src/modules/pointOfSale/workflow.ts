@@ -4,7 +4,7 @@ import { ApiProblem } from '../../errors/ApiProblem';
 export type SalePayload = {
   locationId: string;
   customerName?: string;
-  paymentMethod: 'EFECTIVO' | 'TARJETA' | 'QR';
+  paymentMethod: 'EFECTIVO' | 'QR';
   items: { variantId: string; quantity: number }[];
 };
 export type SaleReceipt = {
@@ -38,7 +38,7 @@ export function salePayload(raw: SalePayload): SalePayload {
   const name = raw.customerName?.trim();
   if (
     !uuid.test(raw.locationId) ||
-    !['EFECTIVO', 'TARJETA', 'QR'].includes(raw.paymentMethod) ||
+    !['EFECTIVO', 'QR'].includes(raw.paymentMethod) ||
     (name && (name.length < 2 || name.length > 160)) ||
     !Array.isArray(raw.items) ||
     !raw.items.length ||
@@ -130,6 +130,22 @@ export class PointOfSaleWorkflow {
         this.io.guard();
         throw reason;
       }
+    });
+  }
+  updateReceipt(receipt: SaleReceipt) {
+    return this.serial(async () => {
+      this.io.guard();
+      const saved = await this.current();
+      if (
+        !saved?.receipt ||
+        receipt.id !== saved.receipt.id ||
+        receipt.idempotencia !== saved.id ||
+        receipt.canal !== 'TIENDA' ||
+        receipt.ubicacion_id !== saved.payload.locationId
+      )
+        throw new Error('El comprobante no corresponde a esta venta.');
+      await this.io.save({ ...saved, receipt });
+      this.io.guard();
     });
   }
   startNew() {

@@ -1,0 +1,85 @@
+.qr-open-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border: 1px solid #6c3c58;
+  border-radius: 8px;
+  color: #6c3c58;
+  text-decoration: none;
+  font-weight: 600;
+}
+.qr-demo-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  background: #faf7f5;
+}
+.qr-demo-card {
+  width: min(100%, 480px);
+  padding: clamp(22px, 5vw, 40px);
+  border: 1px solid #e4d9dd;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 12px 48px #41283a0c;
+  overflow-wrap: anywhere;
+}
+.qr-demo-brand {
+  display: block;
+  margin-bottom: 24px;
+  font-size: 32px;
+  font-weight: 700;
+  color: #64364f;
+  text-decoration: none;
+}
+.qr-demo-card h1 {
+  font-size: clamp(26px, 5vw, 34px);
+  line-height: 1.2;
+  margin: 22px 0;
+}
+.qr-demo-card p {
+  line-height: 1.6;
+}
+.qr-demo-card > small {
+  display: block;
+  margin-top: 24px;
+  color: #6b6370;
+  line-height: 1.6;
+}
+.qr-payment-details {
+  padding: 16px 0;
+  border-block: 1px solid #eee5e9;
+  margin: 22px 0;
+}
+.qr-payment-details div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 10px 0;
+}
+.qr-payment-details dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 600;
+}
+.qr-confirm {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 12px;
+}
+.qr-paid {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 12px;
+  color: #24543c;
+  padding: 16px 0;
+}
+.sales-qr-modal {
+  width: min(100% - 32px, 460px);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+}

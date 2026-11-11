@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { randomUUID } from 'node:crypto';
-import { PointOfSaleWorkflow } from '../src/modules/pointOfSale/workflow';
+import { PointOfSaleWorkflow, salePayload } from '../src/modules/pointOfSale/workflow';
 import { ApiProblem } from '../src/errors/ApiProblem';
 
 function fixture() {
@@ -71,6 +71,20 @@ function fixture() {
     },
   };
 }
+
+test('POS solo permite efectivo y QR, y actualiza el mismo comprobante después del pago', async () => {
+  const f = fixture();
+  f.online();
+  assert.throws(() => salePayload({ ...f.payload, paymentMethod: 'TARJETA' as any }));
+  const send = f.io.send;
+  f.io.send = async (body) => ({ ...(await send(body)), estado: 'PENDIENTE_PAGO' });
+  const workflow = new PointOfSaleWorkflow(f.io),
+    receipt = await workflow.submit(f.payload);
+  assert.equal(receipt.estado, 'PENDIENTE_PAGO');
+  await assert.rejects(workflow.updateReceipt({ ...receipt, id: randomUUID() }));
+  await workflow.updateReceipt({ ...receipt, estado: 'CONFIRMADO' });
+  assert.equal(f.getSaved().receipt.estado, 'CONFIRMADO');
+});
 test('reiniciar tras perder una respuesta reenvía la misma venta y conserva un único comprobante', async () => {
   const f = fixture();
   const first = new PointOfSaleWorkflow(f.io);

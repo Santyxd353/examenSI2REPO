@@ -54,11 +54,30 @@ async function main() {
     await page.screenshot({ path: '.local/checkout-qr-desktop.png', fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: '.local/checkout-qr-mobile.png', fullPage: true });
-    const qr = 'LUMINA-PAY-DEMO:' + order.id + ':50.00:BOB';
-    const scan = () =>
-      f.http('post', '/commerce/demo-wallet/scan', { qr, idempotency: order.id }, 'APP');
-    const results = await Promise.all([scan(), scan()]);
-    expect(results.map((row) => row.status)).toEqual([201, 201]);
+    const anonymous = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const wallet = await anonymous.newPage();
+    wallet.on('pageerror', (error) => errors.push(error.message));
+    const link = await dialog
+      .getByRole('link', { name: 'Abrir simulador de pago' })
+      .getAttribute('href');
+    expect(new URL(link).searchParams.get('pago_qr')).toBe('1');
+    await wallet.goto(link);
+    await expect(
+      wallet.getByRole('button', { name: 'Confirmar pago simulado', exact: true }),
+    ).toBeVisible();
+    await expect(wallet.getByText(order.numero, { exact: true })).toBeVisible();
+    for (const width of [320, 390, 768, 1440]) {
+      await wallet.setViewportSize({ width, height: 900 });
+      expect(await wallet.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+    }
+    await wallet.getByRole('button', { name: 'Confirmar pago simulado', exact: true }).click();
+    await expect(wallet.getByRole('heading', { name: 'Pago simulado confirmado' })).toBeVisible();
+    await wallet.reload();
+    await expect(
+      wallet.getByRole('button', { name: 'Confirmar pago simulado', exact: true }),
+    ).toHaveCount(0);
     await expect(dialog).toHaveCount(0);
     await expect(
       page.getByText('QR escaneado. Pago de demostración confirmado.', { exact: true }),
@@ -80,8 +99,57 @@ async function main() {
     });
     expect(errors).toEqual([]);
     await page.screenshot({ path: '.local/checkout-confirmed-mobile.png', fullPage: true });
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.getByRole('button', { name: 'Administración', exact: true }).click();
+    await page
+      .locator('.business-sidebar')
+      .getByRole('button', { name: 'Vender', exact: true })
+      .click();
+    await page.getByLabel(/^Sucursal o almacén/).selectOption(item.locationId);
+    const method = page.getByLabel(/^Método de pago/);
+    expect(
+      await method
+        .locator('option')
+        .evaluateAll((options) => options.map((option) => option.value)),
+    ).toEqual(['EFECTIVO', 'QR']);
+    await page.getByLabel(/^Prenda/).selectOption(item.variantId);
+    await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+    await method.selectOption('QR');
+    await page.getByRole('button', { name: 'Confirmar venta', exact: true }).click();
+    const pos = page.getByRole('dialog', { name: 'Cobrar venta con QR' });
+    await expect(pos).toBeVisible();
+    const posLink = await pos
+      .getByRole('link', { name: 'Abrir simulador de pago' })
+      .getAttribute('href');
+    await f.inStore(async () =>
+      expect(
+        await f.db.inventario.findUniqueOrThrow({ where: { id: item.inventoryId } }),
+      ).toMatchObject({ fisico: 9, reservado: 1 }),
+    );
+    await wallet.goto(posLink);
+    await wallet.getByRole('button', { name: 'Confirmar pago simulado', exact: true }).click();
+    await expect(wallet.getByRole('heading', { name: 'Pago simulado confirmado' })).toBeVisible();
+    await expect(pos).toHaveCount(0);
+    await expect(page.getByText(/confirmada por.*con QR de prueba/)).toBeVisible();
+    await f.inStore(async () =>
+      expect(
+        await f.db.inventario.findUniqueOrThrow({ where: { id: item.inventoryId } }),
+      ).toMatchObject({ fisico: 8, reservado: 0 }),
+    );
+    await page.getByLabel(/^Prenda/).selectOption(item.variantId);
+    await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+    await method.selectOption('EFECTIVO');
+    await page.getByRole('button', { name: 'Confirmar venta', exact: true }).click();
+    await expect(page.getByText(/Venta VTA-.*confirmada por/).first()).toBeVisible();
+    await f.inStore(async () =>
+      expect(
+        (await f.db.inventario.findUniqueOrThrow({ where: { id: item.inventoryId } })).fisico,
+      ).toBe(7),
+    );
+    await anonymous.close();
+    expect(errors).toEqual([]);
     console.log(
-      'Compra WEB confirmada desde APP por QR: reapertura persistida, un pago, una salida y stock=9. Chromium escritorio/390 px, sin errores de página.',
+      'Compra WEB y POS pagados con QR URL desde navegador sin sesión. GET no paga, confirmación persistida, sin duplicados. POS solo efectivo/QR; efectivo confirmado. Responsive 320/390/768/1440 px, sin errores JS.',
     );
   } catch (error) {
     await page.screenshot({ path: '.local/checkout-error.png', fullPage: true }).catch(() => {});
