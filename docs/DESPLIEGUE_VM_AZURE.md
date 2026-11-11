@@ -13,7 +13,7 @@ Los datos PostgreSQL, archivos privados y certificados usan volúmenes persisten
 ### Estado de la VM, actualizado el 11 de noviembre de 2026
 
 - Instancia `vm-lumina`, IP pública `20.25.26.113`, proyecto en `/opt/vestidor18-repo`.
-- Código funcional desplegado desde `main` en `9ab049f`, incluida la corrección de cambio Stripe/QR (`7c52003`). Los 48 cambios locales anteriores coincidían con la base publicada `47b3e2f`; se conservaron en un respaldo privado y un stash antes de actualizar Git. La imagen del servidor contiene esta versión.
+- Código funcional desplegado desde `main` en `78ee5c5`, incluida la corrección de cambio Stripe/QR (`7c52003`) y la ejecución persistente de analítica en Docker. Los 48 cambios locales anteriores coincidían con la base publicada `47b3e2f`; se conservaron en un respaldo privado y un stash antes de actualizar Git. Las posteriores actualizaciones de documentación no requieren reconstruir esta imagen.
 - Git, Docker, Compose y Buildx instalados. Imagen Linux compilada y los tres contenedores iniciados; PostgreSQL no publica su puerto.
 - Se restauró la base local con 6 cuentas, 15 productos y 24 pedidos, además de los archivos de almacenamiento. Se añadió una cuenta administradora exclusiva para Azure y se aplicaron las migraciones pendientes. La base inicial del servidor se conserva como `vestidor18_beforeimport_20261110`.
 - Respaldo SQL PostgreSQL 18 importado en PostgreSQL 16 en una base separada y dentro de una transacción; se omitió únicamente `SET transaction_timeout`, que PostgreSQL 16 no admite. Los recuentos se contrastaron antes de activar la copia.
@@ -49,6 +49,15 @@ Los datos PostgreSQL, archivos privados y certificados usan volúmenes persisten
 - Verificación pública real por HTTPS: salud 200; alta sintética pendiente con Stripe TEST; cambio a QR; recarga; regreso a Stripe con checkout nuevo; segundo cambio a QR. Ambas sesiones abandonadas quedaron cerradas, sin confirmar ningún pago ni crear una tienda de prueba. Después se eliminó únicamente ese registro sintético pendiente.
 - Interfaz publicada comprobada a 320/390/768/1440 px, sin desbordamiento ni errores JavaScript. Evidencia local privada: `D:/SI2-builds/azure-payment-20261111/live-verification.json`. Los 277 tests de API y 25 compartidos se ejecutaron previamente en el entorno local aislado.
 - Esta corrección actualiza web/API y conserva la APK existente; no se ejecutó una APK.
+
+### Tienda poblada y analítica, publicado el 11 de noviembre de 2026
+
+- Se creó `lumina-demo` como tienda aislada, plan Negocio habilitado sin cargo académico. Se conservaron `lumina`, `universidad` y `ficct`. Las credenciales se entregaron por separado; la cuenta global existente no se modificó.
+- Se reutilizó la ropa femenina publicada de Lúmina: 12 prendas, 36 variantes y sus recursos 3D/AR. Se incorporaron 40 clientas ficticias, 4 cuentas de personal, 4 ubicaciones, 3.447 unidades físicas, 540 ventas simuladas, devoluciones, reembolsos y 6 diseños de reportes. Véase [Tienda de demostración](TIENDA_DEMOSTRACION.md).
+- Se corrigió la detección de raíz del worker en imágenes sin `.git`: exige las marcas del paquete y la ubicación del módulo instalado. El volumen `application-data` también se monta en `/app/.local` para conservar `.local/analytics-private`; no se añaden servicios ni volúmenes distintos. Verificación: reproducción del fallo anterior y 10 pruebas Python correctas, revisión independiente, compilación y comprobación real del almacenamiento persistente.
+- La imagen `78ee5c5` completó dataset sintético, entrenamiento RandomForestRegressor, entrenamiento IsolationForest, pronósticos de 7/30 días y reposición. Los artefactos se verificaron por hash; todos los resultados se identifican como demostración sintética.
+- Comprobaciones reales: ambos inicios de sesión en navegador, indicadores comerciales poblados, módulos administrativos, apertura de reporte guardado, ausencia de errores JavaScript, fotos/AR públicos, 36 GLB autenticados, prueba de prenda y paquetes offline de diez prendas para web y Android con hashes correctos. No se ejecutó una APK.
+- Respaldo privado: `/home/azureuser/lumina-backups/20261111-demo-store-l6DNGr`. Dump final de la tienda y archivo de modelos persistentes validados por manifiesto SHA-256. Salud HTTPS 200 y configuración privada original conservada.
 
 ### Preparación anterior
 
