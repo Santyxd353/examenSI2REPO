@@ -22,22 +22,22 @@
 
 - Respuesta perdida al crear Stripe: recuperar la misma sesión antes de habilitar QR.
 - Pago simultáneo al cambio: reconocer Stripe si se completó, sin habilitar QR ni duplicar altas.
-- Stripe no disponible: conservar la forma de pago actual y permitir reintentar.
+- Stripe→QR con Stripe no disponible: conservar Stripe y permitir reintentar. QR→Stripe con respuesta incierta: conservar la intención Stripe para poder recuperar y cerrar un posible checkout antes de volver a QR.
 - Rechazo definitivo del primer envío Stripe: conservar QR solamente si un único envío HTTP confirma que no se creó checkout; los reintentos implícitos del SDK cuentan como resultado incierto.
 - Cambio de ida y vuelta: crear otra sesión Stripe, nunca reutilizar una vencida.
 - Recarga y solicitudes simultáneas: conservar capacidad y datos, serializar operaciones y mantener una sola activación.
 
 ### Task 1: Cambio de proveedor en API
 
-**Files:** `apps/api/src/tenancy/signup.ts`, `apps/api/src/billing/stripe.adapter.ts`, nueva migración `prisma/platform/migrations/202611110002_signup_payment_attempt.sql`, `apps/api/test/public-signup.test.ts`.
+**Files:** `apps/api/src/tenancy/signup.ts`, `apps/api/src/billing/stripe.adapter.ts`, nueva migración `prisma/platform/migrations/202611110002_signup_payment_attempt.sql`, `apps/api/test/public-signup.test.ts`, `apps/api/test/public-signup-payment.test.ts`, `apps/api/test/saas-schema.test.ts`.
 
 **Interfaces:** POST `/api/public/signup/:id/payment-method`, cabecera `X-Signup-Token`, cuerpo estricto `{provider: 'STRIPE_TEST' | 'QR_SIMULATED'}`; responde con la vista pública existente.
 
-- [ ] Ejecutar las cinco pruebas actuales como línea base.
-- [ ] Añadir regresiones HTTP: Stripe→QR conservando datos; autenticación/DTO; Stripe→QR→Stripe con nuevo intento; errores de Stripe; pago antes/durante el cambio; confirmación QR concurrente; recuperación tras respuesta perdida.
-- [ ] Ejecutar pruebas y observar fallo por ruta ausente.
-- [ ] Agregar contador de intentos, expiración Stripe y operación serializada. Sacar el aprovisionamiento de la transacción de cambio.
-- [ ] Ejecutar pruebas hasta que pasen, incluidos reintentos y webhooks.
+- [x] Ejecutar las cinco pruebas actuales como línea base.
+- [x] Añadir regresiones HTTP: Stripe→QR conservando datos; autenticación/DTO; Stripe→QR→Stripe con nuevo intento; errores de Stripe; pago antes/durante el cambio; confirmación QR concurrente; recuperación tras respuesta perdida.
+- [x] Ejecutar pruebas y observar fallo por ruta ausente.
+- [x] Agregar contador de intentos, expiración Stripe y operación serializada. Sacar el aprovisionamiento de la transacción de cambio.
+- [x] Ejecutar pruebas hasta que pasen, incluidos reintentos y webhooks.
 
 ### Task 2: Selección en pantalla pendiente
 
@@ -45,14 +45,23 @@
 
 **Interfaces:** Consumir la operación de Task 1, sin recrear el registro ni borrar `lumina.signup.pending`.
 
-- [ ] Añadir prueba de navegador de registro Stripe recuperado: cambiar a QR, recargar, volver a Stripe; conservar id y datos; ocultar selector al activar.
-- [ ] Observar fallo por control ausente.
-- [ ] Mostrar selector durante PENDING y conservar errores recuperables; limpiar QR al pasar a Stripe y bloquear acciones mientras hay una solicitud.
-- [ ] Verificar flujo y tamaños 320/390/768/1440 sin desbordamiento.
+- [x] Añadir prueba de navegador de registro Stripe recuperado: cambiar a QR, recargar, volver a Stripe; conservar id y datos; ocultar selector al activar.
+- [x] Observar fallo por control ausente.
+- [x] Mostrar selector durante PENDING y conservar errores recuperables; limpiar QR al pasar a Stripe y bloquear acciones mientras hay una solicitud.
+- [x] Verificar flujo y tamaños 320/390/768/1440 sin desbordamiento.
 
 ### Task 3: Verificación e integración
 
-- [ ] Ejecutar build, pruebas compartidas, suite API y prueba de navegador sobre aplicación local.
-- [ ] Revisión independiente del diff: capacidades, carreras, idempotencia, migración y accesibilidad del selector.
-- [ ] Corregir hallazgos relevantes y repetir las comprobaciones afectadas.
-- [ ] Publicar la corrección en GitHub y comunicar commit y límite de despliegue.
+- [x] Ejecutar build, pruebas compartidas, suite API y prueba de navegador sobre aplicación local.
+- [x] Revisión independiente del diff: capacidades, carreras, idempotencia, migración y accesibilidad del selector.
+- [x] Corregir hallazgos relevantes y repetir las comprobaciones afectadas.
+- [x] Publicar la corrección en GitHub y comunicar commit y límite de despliegue.
+
+## Resultado verificado
+
+- Código probado y publicado en `main`: `7c52003` (base `47b3e2f`).
+- API: 52 suites, 277 pruebas aprobadas; contratos/reporting compartidos: 25 aprobadas.
+- Compilación de API y web aprobada. Navegador: formulario y cambio Stripe→error recuperable→QR→recarga→Stripe→QR→activación en 320, 390, 768 y 1440 px; sin errores JavaScript ni desbordamiento.
+- Revisión independiente: el único hallazgo importante quedó corregido y comprobado con SDK real y transporte HTTP de prueba, incluidos reintentos implícitos.
+- Migración de altas existentes conserva credenciales y checkout e inicializa el intento cero sin alterar su clave de idempotencia.
+- Despliegue en la nueva VM pendiente de acceso SSH. No se accedió a la VM ni se ejecutó APK.
