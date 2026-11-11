@@ -19,6 +19,7 @@ Actualización: 11 de noviembre de 2026.
 - `apps/api/test/qr-demo.test.ts`: enlaces WEB/APP, consulta sin pago, confirmación sin sesión, duplicados concurrentes, aislamiento de tienda, firma y audiencia, vencimiento, POS efectivo/QR y liberación de reservas.
 - `apps/api/test/sales.test.ts` y `checkout-payments.test.ts`: regresión de precios, canales, stock, idempotencia y Stripe de prueba. Los tres archivos suman 24 pruebas.
 - `scripts/check-checkout-ui.cjs`: compra WEB y POS QR desde un segundo navegador sin sesión; persistencia tras recarga; cambio de QR en la misma pestaña; POS sin tarjeta y venta en efectivo; anchos 320, 390, 768 y 1440 píxeles.
-- Android: pruebas unitarias de flujo de mostrador/pagos y comprobación de tipos. Los fuentes incluyen enlaces QR y eliminación de tarjeta del POS. Esta actualización del servidor no reemplaza por sí sola una APK ya instalada; esos cambios nativos requieren una nueva compilación.
+- Android: ocho pruebas unitarias de flujo de mostrador/pagos y comprobación de tipos. Se compiló y publicó QA 0.1.4, versionCode 5, ARM64, con el mismo paquete y certificado que QA 0.1.3. Incluye enlaces QR y eliminación de tarjeta del POS. Una APK ya instalada debe actualizarse desde Descargas para recibir esos cambios de interfaz. Firma, versión, arquitectura y URL HTTPS dentro del bundle verificadas; véase [artefacto de Android](REGISTRO_PUBLICO_SAAS.md#apk-para-azure).
+- Azure: servicio saludable; POS publicado con opciones EFECTIVO/QR; página de simulador accesible sin sesión y rechazo de enlaces inválidos. Verificación en navegador a 390 y 1440 píxeles sin crear ventas ni errores JavaScript.
 
 Las pruebas automatizadas usan bases y prendas de QA, sin modificar ventas ni inventario de clientes en Azure.

@@ -41,12 +41,12 @@ Si al pasar de QR a Stripe el primer envío se rechaza definitivamente, QR perma
 
 ## APK para Azure
 
-QA autónoma 0.1.3, versionCode 4, paquete `bo.edu.grupo18.vestidorar.qa`, ARM64, API `https://lumina.20-25-26-113.sslip.io/api`. Contiene el bundle y no necesita Metro ni la PC. Firma Android Debug, solo QA; coincide con la APK QA anterior. No es una publicación firmada para Google Play.
+QA autónoma 0.1.4, versionCode 5, paquete `bo.edu.grupo18.vestidorar.qa`, ARM64, API `https://lumina.20-25-26-113.sslip.io/api`. Incluye los enlaces de pago QR y POS efectivo/QR. Contiene el bundle y no necesita Metro ni la PC. Firma Android Debug, solo QA; coincide con la APK QA anterior. No es una publicación firmada para Google Play.
 
-- Archivo: `lumina-qa-0.1.3-arm64.apk`, 59.409.647 bytes.
-- SHA-256: `1babba849c0c62a8798915dc2ffe69ceab80d3f93c4044e0595eaf00e758817d`.
+- Archivo: `lumina-qa-0.1.4-arm64.apk`, 59.414.615 bytes.
+- SHA-256: `41362b18a1ca0ae4f7a23e32cb94101b6da22adf6beca73c4198ebc31ef0b370`.
 - Certificado SHA-256: `fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c`.
-- Descarga publicada: `/descargas/android/lumina-qa-0.1.3-arm64.apk`; manifiesto público `/descargas/android/latest.json`.
+- Descarga publicada: `/descargas/android/lumina-qa-0.1.4-arm64.apk`; manifiesto público `/descargas/android/latest.json`.
 
 `verify-android-artifact.ps1` verificó firma, paquete, versión, ABI y dirección API dentro del bundle. No había dispositivo ADB conectado en esta compilación, por lo que no se afirma una nueva prueba física. El artefacto y el material de firma no se suben a Git.
 
