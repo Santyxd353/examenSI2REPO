@@ -225,7 +225,10 @@ export function executeReport(
     widgets: definition.dashboard.widgets.map((widget) => ({
       id: widget.id,
       groups: sortGroups(summarize(current, [widget.metric], [widget.dimension]).groups, [
-        { metric: widget.metric, direction: 'desc' },
+        (widget.chart === 'line' || widget.chart === 'area') &&
+        ['dia', 'semana', 'mes'].includes(widget.dimension)
+          ? { dimension: widget.dimension, direction: 'asc' }
+          : { metric: widget.metric, direction: 'desc' },
       ]).slice(0, definition.limit),
     })),
     detail: { rows: detail, total: detail.length },

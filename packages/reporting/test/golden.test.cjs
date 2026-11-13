@@ -51,6 +51,31 @@ test('pedidos globales se deduplican entre categorías y top N conserva totales'
   assert.match(one.warnings.join(' '), /grupos/);
 });
 
+test('la evolución temporal se ordena por fecha antes del límite, conservando el ranking de barras', () => {
+  const data = dataset();
+  for (const order of data.orders) {
+    if (order.id === 'O1') order.confirmedAt = '2026-09-20T16:00:00.000Z';
+    if (order.id === 'O2') order.confirmedAt = '2026-09-10T16:00:00.000Z';
+  }
+  const input = definition();
+  input.dashboard.widgets = [
+    { id: 'evolucion', chart: 'line', dimension: 'dia', metric: 'ventas_confirmadas_bob' },
+    { id: 'area', chart: 'area', dimension: 'dia', metric: 'ventas_confirmadas_bob' },
+    { id: 'ranking', chart: 'bar', dimension: 'dia', metric: 'ventas_confirmadas_bob' },
+  ];
+  const result = executeReport(input, data);
+  for (const widget of result.widgets.slice(0, 2)) {
+    assert.deepEqual(
+      widget.groups.map((group) => group.dimensions.dia),
+      ['2026-09-10', '2026-09-20'],
+    );
+  }
+  assert.equal(result.widgets[2].groups[0].dimensions.dia, '2026-09-20');
+  const limited = executeReport({ ...input, limit: 1 }, data);
+  assert.equal(limited.widgets[0].groups[0].dimensions.dia, '2026-09-10');
+  assert.equal(limited.kpis.ventas_confirmadas_bob.value, 22000);
+});
+
 test('stock es un corte separado y no acepta pagos o períodos históricos', () => {
   const input = definition({
     fact: 'stock_al_corte',
