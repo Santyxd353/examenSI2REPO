@@ -146,6 +146,45 @@
   gap: 0.35rem;
   margin: 0.7rem 0;
 }
+.report-builder .report-source-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.report-assistant {
+  border-color: #cfadc0;
+  background: linear-gradient(135deg, #fffdfd, #fcf3f8);
+}
+.report-assistant > p {
+  max-width: 72ch;
+  color: #675363;
+  line-height: 1.6;
+}
+.report-assistant-tag {
+  color: #743456;
+  background: #f0dfe9;
+  padding: 0.4rem 0.7rem;
+  border-radius: 2rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.report-assistant-hint {
+  font-size: 0.84rem;
+}
+.report-assistant-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+.report-assistant-examples .secondary {
+  max-width: 100%;
+  text-align: left;
+  font-size: 0.78rem;
+}
+.report-assistant-actions {
+  margin-top: 0.85rem;
+}
 .report-question textarea {
   padding: 0.6rem;
   min-width: 0;

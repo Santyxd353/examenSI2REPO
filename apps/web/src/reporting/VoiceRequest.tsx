@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Mic, Square } from 'lucide-react';
+import { ChartNoAxesCombined, Mic, Sparkles, Square } from 'lucide-react';
 import {
   ReportDefinitionSchema,
   type ReportDataset,
@@ -18,22 +18,41 @@ export function VoiceRequest({
   data,
   identity,
   review,
+  prepare,
+  apply,
+  onBusy,
 }: {
-  data: ReportDataset;
+  data: ReportDataset | null;
   identity: ReportIdentity;
+  prepare: (signal: AbortSignal) => Promise<ReportDataset>;
   review: (definition: ReportDefinition) => void;
+  apply: (definition: ReportDefinition) => void;
+  onBusy: (busy: boolean) => void;
 }) {
   const [text, setText] = useState('');
   const [channel, setChannel] = useState<'TEXTO' | 'VOZ'>('TEXTO');
   const [state, setState] = useState<
-    'idle' | 'permission' | 'recording' | 'transcribing' | 'interpreting'
+    'idle' | 'permission' | 'recording' | 'transcribing' | 'preparing' | 'interpreting'
   >('idle');
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const lifecycle = useRef<AbortController | null>(null);
   const recording = useRef<Recording | null>(null);
-  const intent = useRef<{ text: string; channel: string; id: string } | null>(null);
+  const intent = useRef<{ text: string; channel: string; datasetId: string; id: string } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    onBusy(state !== 'idle');
+    return () => onBusy(false);
+  }, [state, onBusy]);
+
+  useEffect(() => {
+    setSuggestion((previous) =>
+      previous?.definition?.datasetId === data?.datasetId ? previous : null,
+    );
+  }, [data?.datasetId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -146,18 +165,30 @@ export function VoiceRequest({
     const signal = lifecycle.current?.signal;
     const question = text.trim();
     if (!signal || state !== 'idle' || question.length < 4) return;
-    setState('interpreting');
+    setState(data ? 'interpreting' : 'preparing');
     setError('');
     setMessage('');
     setSuggestion(null);
-    if (intent.current?.text !== question || intent.current.channel !== channel)
-      intent.current = { text: question, channel, id: crypto.randomUUID() };
     try {
+      const dataset = await prepare(signal);
+      signal.throwIfAborted();
+      setState('interpreting');
+      if (
+        intent.current?.text !== question ||
+        intent.current.channel !== channel ||
+        intent.current.datasetId !== dataset.datasetId
+      )
+        intent.current = {
+          text: question,
+          channel,
+          datasetId: dataset.datasetId,
+          id: crypto.randomUUID(),
+        };
       const response = await offlineResponse(identity, '/api/reports/interpret', {
         method: 'POST',
         body: JSON.stringify({
           text: question,
-          datasetId: data.datasetId,
+          datasetId: dataset.datasetId,
           operationId: intent.current.id,
           channel,
         }),
@@ -168,7 +199,7 @@ export function VoiceRequest({
       if (body.consultationId !== intent.current.id || typeof body.explanation !== 'string')
         throw new Error('No se recibió una propuesta válida.');
       const definition = ReportDefinitionSchema.nullable().parse(body.definition);
-      if (definition && !validateReport(definition, data).ok)
+      if (definition && !validateReport(definition, dataset).ok)
         throw new Error('La propuesta quedó fuera del corte actual.');
       setSuggestion({ explanation: body.explanation, definition });
     } catch (reason) {
@@ -182,12 +213,28 @@ export function VoiceRequest({
   }
 
   return (
-    <section className="report-panel report-control" aria-label="Asistencia para reportes">
-      <h2>Asistencia para reportes</h2>
+    <section
+      className="report-panel report-control report-assistant"
+      aria-label="Asistencia para reportes"
+    >
+      <div className="report-panel-title">
+        <div>
+          <p className="report-kicker">
+            <Sparkles size={16} /> ASISTENTE IA
+          </p>
+          <h2>Tu reporte, con tus palabras</h2>
+        </div>
+        <span className="report-assistant-tag">Texto y voz</span>
+      </div>
       <p>
-        Describe el reporte que buscas. Revisa el período, las métricas y los filtros sugeridos
-        antes de aplicarlos.
+        Escribe o dicta tu consulta. La IA propone los gráficos y filtros; las cifras se calculan
+        con los datos de tu tienda. Revisa la propuesta y genera tu dashboard.
       </p>
+      {!data && (
+        <p className="report-assistant-hint">
+          Prepararemos los datos del período seleccionado al enviar tu consulta.
+        </p>
+      )}
       <form onSubmit={interpret}>
         <label className="report-question">
           Consulta
@@ -201,6 +248,7 @@ export function VoiceRequest({
             placeholder="Ejemplo: ventas de vestidos por semana en el período descargado"
             onChange={(event) => {
               setText(event.target.value);
+              setChannel('TEXTO');
               setSuggestion(null);
             }}
           />
@@ -211,7 +259,7 @@ export function VoiceRequest({
             type="submit"
             disabled={state !== 'idle' || text.trim().length < 4}
           >
-            Proponer diseño
+            <Sparkles size={16} /> Consultar IA
           </button>
           {state === 'recording' ? (
             <button
@@ -228,6 +276,27 @@ export function VoiceRequest({
           )}
         </div>
       </form>
+      <div className="report-assistant-examples" aria-label="Ejemplos de consultas">
+        {[
+          'Dashboard de ventas con barras por categoría, anillo por canal y evolución por día',
+          '¿Cuáles son los productos más vendidos del período?',
+          'Muéstrame el inventario disponible por sucursal',
+        ].map((example) => (
+          <button
+            key={example}
+            type="button"
+            className="secondary"
+            disabled={state !== 'idle'}
+            onClick={() => {
+              setText(example);
+              setChannel('TEXTO');
+              setSuggestion(null);
+            }}
+          >
+            {example}
+          </button>
+        ))}
+      </div>
       {state !== 'idle' && (
         <p role="status">
           {
@@ -235,7 +304,8 @@ export function VoiceRequest({
               permission: 'Esperando permiso del micrófono…',
               recording: 'Grabando hasta 30 segundos…',
               transcribing: 'Transcribiendo consulta…',
-              interpreting: 'Preparando la propuesta…',
+              preparing: 'Preparando los datos de tu tienda…',
+              interpreting: 'La IA está diseñando tu reporte…',
             }[state]
           }
         </p>
@@ -266,21 +336,66 @@ export function VoiceRequest({
                   </li>
                 )}
                 {suggestion.definition.filters.map((filter, index) => (
-                  <li key={index}>{describeFilter(data, filter)}</li>
+                  <li key={index}>{data && describeFilter(data, filter)}</li>
                 ))}
+                <li>
+                  Gráficos ·{' '}
+                  {[
+                    suggestion.definition.chart,
+                    ...suggestion.definition.dashboard.widgets.map((widget) => widget.chart),
+                  ]
+                    .map(
+                      (chart) =>
+                        ({
+                          bar: 'Barras',
+                          line: 'Línea',
+                          area: 'Área',
+                          donut: 'Anillo',
+                          table: 'Tabla',
+                        })[chart],
+                    )
+                    .join(' · ')}
+                </li>
               </ul>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => {
-                  if (!suggestion.definition) return;
-                  review(suggestion.definition);
-                  setMessage('La propuesta está en el formulario. Revisa y aplica los cambios.');
-                  document.getElementById('report-settings')?.scrollIntoView({ block: 'start' });
-                }}
-              >
-                Pasar al formulario
-              </button>
+              <div className="report-toolbar report-assistant-actions">
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={!data || data.datasetId !== suggestion.definition.datasetId}
+                  onClick={() => {
+                    if (
+                      !suggestion.definition ||
+                      !data ||
+                      !validateReport(suggestion.definition, data).ok
+                    )
+                      return;
+                    apply(suggestion.definition);
+                    setMessage(
+                      'Dashboard generado con los datos del período. Puedes ajustar los filtros y exportarlo.',
+                    );
+                    window.requestAnimationFrame(() =>
+                      document
+                        .querySelector('.report-dashboard')
+                        ?.scrollIntoView({ block: 'start', behavior: 'smooth' }),
+                    );
+                  }}
+                >
+                  <ChartNoAxesCombined size={16} /> Generar dashboard
+                </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={!data || data.datasetId !== suggestion.definition.datasetId}
+                  onClick={() => {
+                    if (!suggestion.definition) return;
+                    review(suggestion.definition);
+                    setMessage('La propuesta está en el formulario. Revisa y aplica los cambios.');
+                    document.getElementById('report-settings')?.scrollIntoView({ block: 'start' });
+                  }}
+                >
+                  Pasar al formulario
+                </button>
+              </div>
             </>
           )}
         </section>

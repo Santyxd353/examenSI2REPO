@@ -62,6 +62,7 @@ const writable = new Set([
   'comparison',
   'filters',
   'chart',
+  'widgets',
   'order',
   'limit',
 ]);
@@ -100,6 +101,7 @@ function proposal(raw: unknown, data: ReportDataset, operationId: string) {
   if (Object.keys(specification).some((key) => !writable.has(key))) throw invalidProposal();
   const stock = specification.fact === 'stock_al_corte';
   const at = boliviaDate(data.asOf);
+  const { widgets = [], ...settings } = specification;
   const definition = ReportDefinitionSchema.safeParse({
     schemaVersion: '1.0',
     source: data.source,
@@ -113,16 +115,23 @@ function proposal(raw: unknown, data: ReportDataset, operationId: string) {
     chart: 'bar',
     limit: 12,
     dashboard: {
-      widgets: [],
+      widgets,
       crossFilter: true,
       detailAvailableColumns: (stock
         ? ['ubicacion', 'producto', 'variante', 'disponible_al_corte']
         : ['dia', 'ubicacion', 'producto', 'talla', 'canal', 'unidades', 'importe_bob']
       ).filter((key) => data.availableColumns.includes(key)),
     },
-    ...specification,
+    ...settings,
   });
-  if (!definition.success || !validateReport(definition.data, data).ok) throw invalidProposal();
+  if (
+    !definition.success ||
+    definition.data.dashboard.widgets.length > 4 ||
+    new Set(definition.data.dashboard.widgets.map((widget) => widget.id)).size !==
+      definition.data.dashboard.widgets.length ||
+    !validateReport(definition.data, data).ok
+  )
+    throw invalidProposal();
   return responseSchema.parse({
     consultationId: operationId,
     explanation,
@@ -222,7 +231,7 @@ export class ReportAssistantService {
             return { replay: responseSchema.parse(previous.resultado_resumen) };
           return { conflict: previous.estado === 'RECHAZADA' };
         }
-        const { model } = this.provider.model('text');
+        const { model, provider } = this.provider.model('text');
         await tx.consulta_analitica.create({
           data: {
             id,
@@ -230,7 +239,7 @@ export class ReportAssistantService {
             tipo: 'LENGUAJE',
             estado: 'ACLARACION',
             canal_entrada: input.channel,
-            proveedor_ia: 'openai',
+            proveedor_ia: provider,
             modelo_ia: model,
             interpretacion: { requestHash: hash },
             filtros: [],

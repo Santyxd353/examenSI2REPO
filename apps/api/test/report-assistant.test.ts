@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { commerceFixture } from './helpers/commerce';
+import { ReportAiProvider } from '../src/reporting/ai-provider';
 
 let fixture: Awaited<ReturnType<typeof commerceFixture>>;
 let datasetId: string;
@@ -154,3 +155,59 @@ test('rejects an unauthorized cut before calling the provider and rejects SQL in
   );
   expect(use.estado).toBe('LIBERADO');
 });
+
+test('a Groq dashboard contains validated charts calculated from the authorized dataset', async () => {
+  jest
+    .spyOn(ReportAiProvider.prototype, 'model')
+    .mockReturnValue({ provider: 'groq', model: 'qa-model', key: 'qa-only' });
+  const widgets = [
+    { id: 'canales', chart: 'donut', dimension: 'canal', metric: 'ventas_confirmadas_bob' },
+    { id: 'dias', chart: 'line', dimension: 'dia', metric: 'ventas_confirmadas_bob' },
+  ];
+  jest
+    .spyOn(ReportAiProvider.prototype, 'interpret')
+    .mockResolvedValue(interpretation({ ...proposal, widgets }));
+  const input = intent();
+  const response = await fixture.http('post', '/reports/interpret', input);
+  expect(response.status).toBe(200);
+  expect(response.body.definition.dashboard.widgets).toEqual(widgets);
+  const result = await fixture.http('post', '/reports/execute', {
+    definition: response.body.definition,
+  });
+  expect(result.status).toBe(200);
+  expect(result.body.kpis.ventas_confirmadas_bob.value).toBe(22000);
+  expect(result.body.widgets.map((widget: { id: string }) => widget.id)).toEqual([
+    'canales',
+    'dias',
+  ]);
+  const audit = await fixture.inStore(() =>
+    fixture.db.consulta_analitica.findUniqueOrThrow({ where: { id: input.operationId } }),
+  );
+  expect(audit.proveedor_ia).toBe('groq');
+});
+
+test.each([
+  [
+    { id: 'repetido', chart: 'bar', dimension: 'categoria', metric: 'ventas_confirmadas_bob' },
+    { id: 'repetido', chart: 'donut', dimension: 'canal', metric: 'ventas_confirmadas_bob' },
+  ],
+  [{ id: 'incompatible', chart: 'line', dimension: 'dia', metric: 'fisico_al_corte' }],
+  [{ id: 'fuera', chart: 'sql', dimension: 'categoria', metric: 'ventas_confirmadas_bob' }],
+])(
+  'rejects incompatible or ambiguous AI widgets without consuming quota: %j',
+  async (...widgets) => {
+    jest
+      .spyOn(ReportAiProvider.prototype, 'interpret')
+      .mockResolvedValue(interpretation({ ...proposal, widgets }));
+    const input = intent();
+    const response = await fixture.http('post', '/reports/interpret', input);
+    expect(response.status).toBe(422);
+    expect(response.body.code).toBe('REPORT_AI_INVALID_PROPOSAL');
+    const usage = await fixture.inStore(() =>
+      fixture.db.consumo_cuota.findUniqueOrThrow({
+        where: { consulta_analitica_id: input.operationId },
+      }),
+    );
+    expect(usage.estado).toBe('LIBERADO');
+  },
+);

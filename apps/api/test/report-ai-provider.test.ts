@@ -38,6 +38,13 @@ test('GPT-OSS requests strict report shapes and translates an absent comparison'
   const specification = schema.properties.specification.anyOf.find((s: any) => s.type === 'object');
   expect(specification.properties.order.type).toBe('array');
   expect(specification.properties.limit.type).toBe('integer');
+  expect(specification.properties.widgets).toMatchObject({ type: 'array', maxItems: 4 });
+  expect(specification.properties.widgets.items.required).toEqual([
+    'id',
+    'chart',
+    'dimension',
+    'metric',
+  ]);
   expect(specification.additionalProperties).toBe(false);
   expect(result).toMatchObject({ specification: { order: [], limit: 12, filters: [] } });
   expect((result as any).specification).not.toHaveProperty('comparison');

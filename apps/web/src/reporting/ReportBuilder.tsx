@@ -59,10 +59,13 @@ export function ReportBuilder({
   const [checking, setChecking] = useState(false);
   const [legacy, setLegacy] = useState(false);
   const [busy, setBusy] = useState('');
+  const [assistantBusy, setAssistantBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const lifecycle = useRef<AbortController | null>(null);
   const verifiedCut = useRef<string | null>(null);
+  const prepared = useRef<{ key: string; data: ReportDataset } | null>(null);
+  const preparationKey = source + ':' + (source === 'REAL' ? from + ':' + to : 'demo');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -156,10 +159,11 @@ export function ReportBuilder({
     }
   }, [applied, cross, data]);
 
-  async function prepare(event: FormEvent) {
-    event.preventDefault();
-    const signal = lifecycle.current?.signal;
-    if (!signal || !online || busy) return;
+  async function prepareDataset(signal: AbortSignal, reuse = false): Promise<ReportDataset> {
+    if (reuse && prepared.current?.key === preparationKey) return prepared.current.data;
+    if (!online) throw new Error('Necesitas conexión para consultar a la IA.');
+    if (from > to || to > today())
+      throw new Error('Selecciona un período válido antes de consultar.');
     setBusy('Preparando corte…');
     setError('');
     setMessage('');
@@ -171,16 +175,34 @@ export function ReportBuilder({
         (loaded, total) => setBusy('Descargando hechos ' + loaded + ' de ' + total + '…'),
       );
       const definition = defaultReport(dataset);
+      prepared.current = { key: preparationKey, data: dataset };
       verifiedCut.current = dataset.datasetId;
       setData(dataset);
       setDraft(definition);
       setApplied(definition);
       setCross(null);
-    } catch (reason) {
-      if (!signal.aborted) setError(readError(reason));
+      return dataset;
     } finally {
       if (!signal.aborted) setBusy('');
     }
+  }
+
+  async function prepare(event: FormEvent) {
+    event.preventDefault();
+    const signal = lifecycle.current?.signal;
+    if (!signal || !online || busy || assistantBusy) return;
+    try {
+      await prepareDataset(signal);
+    } catch (reason) {
+      if (!signal.aborted) setError(readError(reason));
+    }
+  }
+
+  function applyAssistant(definition: ReportDefinition) {
+    if (definition.datasetId !== data?.datasetId) return;
+    setDraft(definition);
+    setApplied(definition);
+    setCross(null);
   }
 
   async function saveOffline() {
@@ -259,47 +281,53 @@ export function ReportBuilder({
       </header>
       {online ? (
         <form className="report-panel report-control" onSubmit={prepare}>
-          <h2>Preparar datos</h2>
-          <div className="report-fields">
-            <label>
-              Fuente
-              <select
-                value={source}
-                onChange={(e) => setSource(e.target.value as ReportDataset['source'])}
-              >
-                <option value="REAL">Datos de mi tienda</option>
-                <option value="DEMOSTRACION_SINTETICA">Demostración sintética</option>
-              </select>
-            </label>
-            {source === 'REAL' && (
-              <>
-                <label>
-                  Inicio de descarga
-                  <input
-                    required
-                    type="date"
-                    max={today()}
-                    value={from}
-                    onChange={(e) => setFrom(e.target.value)}
-                  />
-                </label>
-                <label>
-                  Fin de descarga
-                  <input
-                    required
-                    type="date"
-                    min={from}
-                    max={today()}
-                    value={to}
-                    onChange={(e) => setTo(e.target.value)}
-                  />
-                </label>
-              </>
-            )}
-            <button type="submit" className="primary" disabled={Boolean(busy)}>
-              Preparar datos
-            </button>
-          </div>
+          <h2>Datos para tu reporte</h2>
+          <p>
+            Selecciona la fuente y el período. Puedes consultar a la IA o preparar el reporte
+            manualmente.
+          </p>
+          <fieldset className="report-source-fields" disabled={Boolean(busy) || assistantBusy}>
+            <div className="report-fields">
+              <label>
+                Fuente
+                <select
+                  value={source}
+                  onChange={(e) => setSource(e.target.value as ReportDataset['source'])}
+                >
+                  <option value="REAL">Datos de mi tienda</option>
+                  <option value="DEMOSTRACION_SINTETICA">Demostración sintética</option>
+                </select>
+              </label>
+              {source === 'REAL' && (
+                <>
+                  <label>
+                    Inicio de descarga
+                    <input
+                      required
+                      type="date"
+                      max={today()}
+                      value={from}
+                      onChange={(e) => setFrom(e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Fin de descarga
+                    <input
+                      required
+                      type="date"
+                      min={from}
+                      max={today()}
+                      value={to}
+                      onChange={(e) => setTo(e.target.value)}
+                    />
+                  </label>
+                </>
+              )}
+              <button type="submit" className="primary" disabled={Boolean(busy)}>
+                Preparar datos
+              </button>
+            </div>
+          </fieldset>
         </form>
       ) : (
         <p className="report-warning report-control">
@@ -309,6 +337,23 @@ export function ReportBuilder({
             : 'Conéctate y guarda un corte cifrado para abrir reportes sin conexión.'}
         </p>
       )}
+      {online &&
+        (aiEnabled && !readOnly ? (
+          <VoiceRequest
+            key={'assistant:' + preparationKey}
+            data={data}
+            identity={identity}
+            prepare={(signal) => prepareDataset(signal, true)}
+            review={setDraft}
+            apply={applyAssistant}
+            onBusy={setAssistantBusy}
+          />
+        ) : (
+          <p className="report-criteria report-control">
+            Las consultas por IA y voz requieren un plan Profesional o Negocio activo. Puedes seguir
+            usando los reportes manuales.
+          </p>
+        ))}
       {busy && (
         <p role="status" className="report-control">
           {busy}
@@ -401,20 +446,6 @@ export function ReportBuilder({
               }}
             />
           )}
-          {online &&
-            (aiEnabled && !readOnly ? (
-              <VoiceRequest
-                key={'assistant:' + data.datasetId}
-                data={data}
-                identity={identity}
-                review={setDraft}
-              />
-            ) : (
-              <p className="report-criteria report-control">
-                La asistencia por texto y voz está disponible con un plan Profesional o Negocio
-                activo.
-              </p>
-            ))}
           <form
             id="report-settings"
             className="report-panel report-control"

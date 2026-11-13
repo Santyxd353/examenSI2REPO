@@ -22,38 +22,51 @@ async function main() {
   process.env.WEB_ROOT = resolve('dist/web');
   process.env.WEB_ORIGIN = origin;
   process.env.OFFLINE_MASTER_KEY = randomBytes(32).toString('base64');
-  delete process.env.REPORT_AI_OPENAI_KEY;
+  // Empty values also prevent Prisma's local dotenv loader from restoring real keys.
+  process.env.REPORT_AI_OPENAI_KEY = '';
+  process.env.OPENAI_API_KEY = '';
+  process.env.GROQ_API_KEY = '';
+  process.env.REPORT_AI_PROVIDER = 'groq';
   const originalFetch = global.fetch;
   const voiceText = 'Ventas de vestidos por categoría';
   global.fetch = async (url, options) => {
-    if (String(url) === 'https://api.openai.com/v1/audio/transcriptions') {
+    if (String(url) === 'https://api.groq.com/openai/v1/audio/transcriptions') {
       const file = options.body.get('file');
       expect(file.type).toBe('audio/webm');
       expect(file.size).toBeGreaterThan(16);
       return Response.json({ text: voiceText });
     }
-    if (String(url) === 'https://api.openai.com/v1/responses') {
+    if (String(url) === 'https://api.groq.com/openai/v1/chat/completions') {
       return Response.json({
-        status: 'completed',
-        output: [
+        choices: [
           {
-            type: 'message',
-            content: [
-              {
-                type: 'output_text',
-                text: JSON.stringify({
-                  action: 'PROPOSE',
-                  explanation: 'Filtrar vestidos dentro del corte.',
-                  specification: {
-                    title: 'Ventas de vestidos',
-                    fact: 'ventas_confirmadas',
-                    metrics: ['ventas_confirmadas_bob'],
-                    dimensions: ['categoria'],
-                    filters: [{ field: 'categoria', operator: 'eq', value: 'Vestidos' }],
-                  },
-                }),
-              },
-            ],
+            message: {
+              content: JSON.stringify({
+                action: 'PROPOSE',
+                explanation: 'Filtrar vestidos dentro del corte.',
+                specification: {
+                  title: 'Ventas de vestidos',
+                  fact: 'ventas_confirmadas',
+                  metrics: ['ventas_confirmadas_bob'],
+                  dimensions: ['categoria'],
+                  filters: [{ field: 'categoria', operator: 'eq', value: 'Vestidos' }],
+                  widgets: [
+                    {
+                      id: 'canales',
+                      chart: 'donut',
+                      dimension: 'canal',
+                      metric: 'ventas_confirmadas_bob',
+                    },
+                    {
+                      id: 'evolucion',
+                      chart: 'line',
+                      dimension: 'dia',
+                      metric: 'ventas_confirmadas_bob',
+                    },
+                  ],
+                },
+              }),
+            },
           },
         ],
       });
@@ -113,7 +126,12 @@ async function main() {
       .getByRole('button', { name: 'Iniciar sesión', exact: true })
       .click();
     await reports();
-    await prepare();
+    await expect(page.getByRole('region', { name: 'Asistencia para reportes' })).toBeVisible();
+    await page.getByRole('textbox', { name: 'Consulta', exact: true }).fill(voiceText);
+    await page.getByRole('button', { name: 'Consultar IA', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText(
+      'Puedes seguir usando los filtros manuales.',
+    );
     await expect(kpi()).toContainText('Bs 0,00');
     await page
       .getByRole('combobox', { name: 'Fuente', exact: true })
@@ -122,20 +140,35 @@ async function main() {
     await expect(kpi()).toContainText('Bs 220,00');
     await expect(page.locator('.report-cut')).toContainText('DEMOSTRACIÓN SINTÉTICA');
     await page.getByRole('textbox', { name: 'Consulta', exact: true }).fill(voiceText);
-    await page.getByRole('button', { name: 'Proponer diseño' }).click();
+    await page.getByRole('button', { name: 'Consultar IA', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText(
       'Puedes seguir usando los filtros manuales.',
     );
     await expect(kpi()).toContainText('Bs 220,00');
-    process.env.REPORT_AI_OPENAI_KEY = 'qa-no-network';
-    process.env.REPORT_AI_TEXT_MODEL = 'qa-text';
-    process.env.REPORT_AI_VOICE_MODEL = 'qa-voice';
+    process.env.GROQ_API_KEY = 'qa-no-network';
+    process.env.GROQ_REPORTS_MODEL = 'openai/gpt-oss-20b';
+    process.env.GROQ_VOICE_MODEL = 'whisper-large-v3-turbo';
+    await page.getByRole('button', { name: 'Consultar IA', exact: true }).click();
+    await expect(page.getByRole('region', { name: 'Propuesta para revisar' })).toContainText(
+      'Ventas de vestidos',
+    );
+    await page.getByRole('button', { name: 'Generar dashboard', exact: true }).click();
+    await expect(kpi()).toContainText('Bs 170,00');
+    await expect(page.locator('.report-donut')).toBeVisible();
+    await expect(page.locator('.report-line')).toBeVisible();
+    for (const width of [320, 390, 768, 1440]) {
+      await page.setViewportSize({ width, height: 960 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+        width,
+      );
+    }
+    await prepare();
     await page.getByRole('button', { name: 'Dictar consulta' }).click();
     await expect(page.getByText('Grabando hasta 30 segundos…')).toBeVisible();
     await page.waitForTimeout(350);
     await page.getByRole('button', { name: 'Detener grabación' }).click();
     await expect(page.getByText('Puedes corregir la transcripción')).toBeVisible();
-    await page.getByRole('button', { name: 'Proponer diseño' }).click();
+    await page.getByRole('button', { name: 'Consultar IA', exact: true }).click();
     await expect(page.getByRole('region', { name: 'Propuesta para revisar' })).toContainText(
       'Ventas de vestidos',
     );
@@ -196,7 +229,7 @@ async function main() {
     });
     expect(errors).toEqual([]);
     console.log(
-      'Chromium verificó cortes, propuesta de voz revisable con proveedor simulado, diseño guardado, reinicio offline, filtros, CSV y PDF. ' +
+      'Chromium verificó IA visible, descarga automática, texto y voz con Groq simulado, dashboard de barras/anillo/línea, 320–1440 px, copia offline, filtros, CSV y PDF. ' +
         workspace,
     );
   } catch (error) {
