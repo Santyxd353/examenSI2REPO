@@ -167,7 +167,9 @@ async function main() {
     await teamForm.getByRole('button', { name: 'Guardar integrante', exact: true }).click();
     await expect(member.getByText('Activa', { exact: true })).toBeVisible();
     await context.setOffline(true);
-    await expect(team.getByRole('button', { name: 'Agregar integrante', exact: true })).toBeDisabled();
+    await expect(
+      team.getByRole('button', { name: 'Agregar integrante', exact: true }),
+    ).toBeDisabled();
     await expect(member.getByRole('button', { name: 'Editar', exact: true })).toBeDisabled();
     await expect(member.getByText(teammateEmail, { exact: true })).toBeVisible();
     await context.setOffline(false);
@@ -289,11 +291,11 @@ async function main() {
     expect(persisted.vendedor_id).toBe(admin.id);
     expect(persisted.estado).toBe('CONFIRMADO');
     // El informe debe incluir esta venta de la ubicación exclusiva de la prueba.
-    await nav.getByRole('button', { name: 'Reportes y análisis', exact: true }).click();
+    await nav.getByRole('button', { name: 'Reportes paramétricos', exact: true }).click();
     await expect(page.getByRole('heading', { name: /Reportes/, level: 1 })).toBeVisible();
     for (const [roleName, allowed, denied] of [
-      ['Vendedor', 'Vender', 'Reportes y análisis'],
-      ['Analista', 'Reportes y análisis', 'Vender'],
+      ['Vendedor', 'Vender', 'Reportes paramétricos'],
+      ['Analista', 'Reportes paramétricos', 'Vender'],
     ]) {
       const staffRole = await db.rol.findUniqueOrThrow({ where: { nombre: roleName } });
       const staffEmail = `saas-ui-${randomUUID()}@grupo18.test`;

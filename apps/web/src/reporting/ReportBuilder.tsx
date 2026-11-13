@@ -39,6 +39,7 @@ export function ReportBuilder({
   enableOffline,
   readOnly,
   aiEnabled,
+  mode,
 }: {
   identity: ReportIdentity;
   online: boolean;
@@ -46,8 +47,10 @@ export function ReportBuilder({
   enableOffline: (signal: AbortSignal) => Promise<OfflineSession>;
   readOnly: boolean;
   aiEnabled: boolean;
+  mode: 'parameters' | 'assistant';
 }) {
   const { slug, actorId, tenantId } = identity;
+  const copyKey = mode === 'assistant' ? reportCopyKey + ':assistant' : reportCopyKey;
   const [source, setSource] = useState<ReportDataset['source']>('REAL');
   const [from, setFrom] = useState(firstDay);
   const [to, setTo] = useState(today);
@@ -87,7 +90,7 @@ export function ReportBuilder({
     )
       return;
     let active = true;
-    void readJson<LocalReport>(session, reportCopyKey)
+    void readJson<LocalReport>(session, copyKey)
       .then((row) => {
         if (!active || !row) return;
         const dataset = ReportDatasetSchema.parse(row.data.dataset);
@@ -110,7 +113,7 @@ export function ReportBuilder({
     return () => {
       active = false;
     };
-  }, [online, session, data, savedCopyId, actorId, tenantId, slug]);
+  }, [online, session, data, savedCopyId, actorId, tenantId, slug, copyKey]);
 
   useEffect(() => {
     if (!online) {
@@ -135,7 +138,7 @@ export function ReportBuilder({
           setApplied(null);
           setSavedCopyId(null);
           setCross(null);
-          if (session) await removeLocal(session, [reportCopyKey]).catch(() => {});
+          if (session) await removeLocal(session, [copyKey]).catch(() => {});
           setMessage('');
           setError('Actualiza el corte para seguir consultando este reporte. ' + reason.message);
         } else setError(readError(reason));
@@ -147,7 +150,7 @@ export function ReportBuilder({
       controller.abort();
       setChecking(false);
     };
-  }, [online, savedCopyId, data?.datasetId, slug, actorId, session]);
+  }, [online, savedCopyId, data?.datasetId, slug, actorId, session, copyKey]);
 
   const output = useMemo(() => {
     if (!applied || !data) return null;
@@ -179,7 +182,7 @@ export function ReportBuilder({
       verifiedCut.current = dataset.datasetId;
       setData(dataset);
       setDraft(definition);
-      setApplied(definition);
+      setApplied(mode === 'parameters' ? definition : null);
       setCross(null);
       return dataset;
     } finally {
@@ -227,7 +230,7 @@ export function ReportBuilder({
         authorized.slug !== slug
       )
         throw new Error('Cambió la sesión antes de guardar el reporte.');
-      await putJson(authorized, reportCopyKey, {
+      await putJson(authorized, copyKey, {
         dataset: data,
         definition: output.definition,
       } satisfies LocalReport);
@@ -258,7 +261,7 @@ export function ReportBuilder({
     return (
       <>
         <button className="secondary" onClick={() => setLegacy(false)}>
-          Volver a reportes personalizados
+          Volver a reportes paramétricos
         </button>
         <Reports />
       </>
@@ -270,10 +273,14 @@ export function ReportBuilder({
           <p className="report-kicker">
             <ChartNoAxesCombined size={16} /> ANÁLISIS DE LA TIENDA
           </p>
-          <h1>Reportes personalizados</h1>
-          <p>Explora ventas, devoluciones e inventario con los datos de tu espacio.</p>
+          <h1>{mode === 'assistant' ? 'Reportes con IA y voz' : 'Reportes paramétricos'}</h1>
+          <p>
+            {mode === 'assistant'
+              ? 'Pregunta por texto o voz y genera un dashboard con los datos de tu tienda.'
+              : 'Elige fechas, métricas y filtros para construir tus reportes y gráficos.'}
+          </p>
         </div>
-        {online && (
+        {online && mode === 'parameters' && (
           <button className="secondary" onClick={() => setLegacy(true)}>
             Resumen de ventas
           </button>
@@ -283,8 +290,9 @@ export function ReportBuilder({
         <form className="report-panel report-control" onSubmit={prepare}>
           <h2>Datos para tu reporte</h2>
           <p>
-            Selecciona la fuente y el período. Puedes consultar a la IA o preparar el reporte
-            manualmente.
+            {mode === 'assistant'
+              ? 'Selecciona la fuente y el período que podrá consultar el asistente.'
+              : 'Selecciona la fuente y el período para configurar los parámetros del reporte.'}
           </p>
           <fieldset className="report-source-fields" disabled={Boolean(busy) || assistantBusy}>
             <div className="report-fields">
@@ -338,13 +346,13 @@ export function ReportBuilder({
         </p>
       )}
       {online &&
+        mode === 'assistant' &&
         (aiEnabled && !readOnly ? (
           <VoiceRequest
             key={'assistant:' + preparationKey}
             data={data}
             identity={identity}
             prepare={(signal) => prepareDataset(signal, true)}
-            review={setDraft}
             apply={applyAssistant}
             onBusy={setAssistantBusy}
           />
@@ -396,9 +404,11 @@ export function ReportBuilder({
           {output?.result && output.definition && (
             <>
               <div className="report-toolbar report-control">
-                <a className="report-edit-link" href="#report-settings">
-                  Editar filtros y diseño
-                </a>
+                {mode === 'parameters' && (
+                  <a className="report-edit-link" href="#report-settings">
+                    Editar filtros y diseño
+                  </a>
+                )}
                 {cross && (
                   <button type="button" className="secondary" onClick={() => setCross(null)}>
                     Quitar selección {fields[cross.dimension]} ·{' '}
@@ -432,7 +442,7 @@ export function ReportBuilder({
               />
             </>
           )}
-          {online && (
+          {online && (mode === 'parameters' || output?.result) && (
             <SavedReports
               key={'saved:' + data.datasetId}
               identity={identity}
@@ -446,30 +456,32 @@ export function ReportBuilder({
               }}
             />
           )}
-          <form
-            id="report-settings"
-            className="report-panel report-control"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setApplied(draft);
-              setCross(null);
-            }}
-          >
-            <ReportLayout
-              data={data}
-              draft={draft}
-              change={(update) => setDraft({ ...draft, ...update })}
-            />
-            <Filters
-              key={data.datasetId + draft.fact}
-              data={data}
-              definition={draft}
-              change={(filters) => setDraft({ ...draft, filters })}
-            />
-            <button type="submit" className="primary">
-              Aplicar filtros y diseño
-            </button>
-          </form>
+          {mode === 'parameters' && (
+            <form
+              id="report-settings"
+              className="report-panel report-control"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setApplied(draft);
+                setCross(null);
+              }}
+            >
+              <ReportLayout
+                data={data}
+                draft={draft}
+                change={(update) => setDraft({ ...draft, ...update })}
+              />
+              <Filters
+                key={data.datasetId + draft.fact}
+                data={data}
+                definition={draft}
+                change={(filters) => setDraft({ ...draft, filters })}
+              />
+              <button type="submit" className="primary">
+                Aplicar filtros y diseño
+              </button>
+            </form>
+          )}
         </div>
       )}
     </section>

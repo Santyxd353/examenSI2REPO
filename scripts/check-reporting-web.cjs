@@ -95,13 +95,14 @@ async function main() {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(origin + '/?tienda=' + slug);
   }
-  async function reports() {
+  async function reports(mode = 'parameters') {
+    const name = mode === 'assistant' ? 'Reportes con IA y voz' : 'Reportes paramétricos';
     await page.getByRole('button', { name: 'Administración', exact: true }).click();
     await page
       .getByRole('complementary', { name: 'Módulos administrativos' })
-      .getByRole('button', { name: 'Reportes y análisis', exact: true })
+      .getByRole('button', { name, exact: true })
       .click();
-    await expect(page.getByRole('heading', { name: 'Reportes personalizados' })).toBeVisible();
+    await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
   }
   const kpi = () => page.locator('.report-kpi').first();
   const prepare = () => page.getByRole('button', { name: 'Preparar datos', exact: true }).click();
@@ -126,25 +127,34 @@ async function main() {
       .getByRole('button', { name: 'Iniciar sesión', exact: true })
       .click();
     await reports();
+    await expect(page.getByRole('region', { name: 'Asistencia para reportes' })).toHaveCount(0);
+    await prepare();
+    await expect(
+      page.getByRole('button', { name: 'Aplicar filtros y diseño', exact: true }),
+    ).toBeVisible();
+    await reports('assistant');
     await expect(page.getByRole('region', { name: 'Asistencia para reportes' })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Aplicar filtros y diseño', exact: true }),
+    ).toHaveCount(0);
     await page.getByRole('textbox', { name: 'Consulta', exact: true }).fill(voiceText);
     await page.getByRole('button', { name: 'Consultar IA', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText(
       'Puedes seguir usando los filtros manuales.',
     );
-    await expect(kpi()).toContainText('Bs 0,00');
+    await expect(kpi()).toHaveCount(0);
     await page
       .getByRole('combobox', { name: 'Fuente', exact: true })
       .selectOption('DEMOSTRACION_SINTETICA');
     await prepare();
-    await expect(kpi()).toContainText('Bs 220,00');
+    await expect(kpi()).toHaveCount(0);
     await expect(page.locator('.report-cut')).toContainText('DEMOSTRACIÓN SINTÉTICA');
     await page.getByRole('textbox', { name: 'Consulta', exact: true }).fill(voiceText);
     await page.getByRole('button', { name: 'Consultar IA', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText(
       'Puedes seguir usando los filtros manuales.',
     );
-    await expect(kpi()).toContainText('Bs 220,00');
+    await expect(kpi()).toHaveCount(0);
     process.env.GROQ_API_KEY = 'qa-no-network';
     process.env.GROQ_REPORTS_MODEL = 'openai/gpt-oss-20b';
     process.env.GROQ_VOICE_MODEL = 'whisper-large-v3-turbo';
@@ -172,10 +182,15 @@ async function main() {
     await expect(page.getByRole('region', { name: 'Propuesta para revisar' })).toContainText(
       'Ventas de vestidos',
     );
-    await page.getByRole('button', { name: 'Pasar al formulario' }).click();
-    await expect(kpi()).toContainText('Bs 220,00');
-    await page.getByRole('button', { name: 'Aplicar filtros y diseño' }).click();
+    await page.getByRole('button', { name: 'Generar dashboard', exact: true }).click();
     await expect(kpi()).toContainText('Bs 170,00');
+    await page.getByRole('button', { name: 'Guardar copia sin conexión', exact: true }).click();
+    await expect(page.getByText('Copia cifrada guardada en este dispositivo.')).toBeVisible();
+    await reports();
+    await expect(page.getByRole('region', { name: 'Asistencia para reportes' })).toHaveCount(0);
+    await page
+      .getByRole('combobox', { name: 'Fuente', exact: true })
+      .selectOption('DEMOSTRACION_SINTETICA');
     await prepare();
     await expect(kpi()).toContainText('Bs 220,00');
     await page.getByLabel('Título', { exact: true }).fill('Colección de septiembre');
@@ -198,6 +213,12 @@ async function main() {
     await page.screenshot({ path: resolve(workspace, 'reportes-escritorio.png'), fullPage: true });
     await context.close();
     await open(true);
+    await reports('assistant');
+    await expect(page.getByRole('region', { name: 'Asistencia para reportes' })).toHaveCount(0);
+    await expect(kpi()).toContainText('Bs 170,00');
+    await expect(
+      page.getByRole('button', { name: 'Aplicar filtros y diseño', exact: true }),
+    ).toHaveCount(0);
     await reports();
     await expect(page.getByRole('region', { name: 'Asistencia para reportes' })).toHaveCount(0);
     await expect(kpi()).toContainText('Bs 220,00');
@@ -229,7 +250,7 @@ async function main() {
     });
     expect(errors).toEqual([]);
     console.log(
-      'Chromium verificó IA visible, descarga automática, texto y voz con Groq simulado, dashboard de barras/anillo/línea, 320–1440 px, copia offline, filtros, CSV y PDF. ' +
+      'Chromium verificó módulos paramétricos/IA separados, texto y voz con Groq simulado, dashboards, 320–1440 px, copias offline independientes, filtros, CSV y PDF. ' +
         workspace,
     );
   } catch (error) {

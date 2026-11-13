@@ -13,6 +13,7 @@ import {
   Wifi,
   WifiOff,
   CloudUpload,
+  Sparkles,
 } from 'lucide-react';
 import { Admin } from '../Admin';
 import { ReportBuilder } from '../reporting/ReportBuilder';
@@ -45,6 +46,7 @@ const icons = {
   sales: ShoppingBag,
   orders: ClipboardList,
   reports: BarChart3,
+  'reports-ai': Sparkles,
   analysis: BrainCircuit,
   business: Settings,
   sync: CloudUpload,
@@ -200,10 +202,11 @@ export function AdminWorkspace({
               multiLocation={['negocio', 'piloto'].includes(tenant?.subscription.plan ?? '')}
             />
           )
-        ) : selected === 'reports' ? (
+        ) : selected === 'reports' || selected === 'reports-ai' ? (
           reportIdentity && (
             <ReportBuilder
-              key={reportIdentity.tenantId + ':' + reportIdentity.actorId}
+              key={selected + ':' + reportIdentity.tenantId + ':' + reportIdentity.actorId}
+              mode={selected === 'reports-ai' ? 'assistant' : 'parameters'}
               identity={reportIdentity}
               online={online}
               session={offlineSession}

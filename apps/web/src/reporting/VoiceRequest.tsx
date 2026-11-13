@@ -17,7 +17,6 @@ type Recording = { media: MediaRecorder; stream: MediaStream; timer: number };
 export function VoiceRequest({
   data,
   identity,
-  review,
   prepare,
   apply,
   onBusy,
@@ -25,7 +24,6 @@ export function VoiceRequest({
   data: ReportDataset | null;
   identity: ReportIdentity;
   prepare: (signal: AbortSignal) => Promise<ReportDataset>;
-  review: (definition: ReportDefinition) => void;
   apply: (definition: ReportDefinition) => void;
   onBusy: (busy: boolean) => void;
 }) {
@@ -371,7 +369,7 @@ export function VoiceRequest({
                       return;
                     apply(suggestion.definition);
                     setMessage(
-                      'Dashboard generado con los datos del período. Puedes ajustar los filtros y exportarlo.',
+                      'Dashboard generado con los datos del período. Puedes hacer otra consulta o exportarlo.',
                     );
                     window.requestAnimationFrame(() =>
                       document
@@ -381,19 +379,6 @@ export function VoiceRequest({
                   }}
                 >
                   <ChartNoAxesCombined size={16} /> Generar dashboard
-                </button>
-                <button
-                  type="button"
-                  className="secondary"
-                  disabled={!data || data.datasetId !== suggestion.definition.datasetId}
-                  onClick={() => {
-                    if (!suggestion.definition) return;
-                    review(suggestion.definition);
-                    setMessage('La propuesta está en el formulario. Revisa y aplica los cambios.');
-                    document.getElementById('report-settings')?.scrollIntoView({ block: 'start' });
-                  }}
-                >
-                  Pasar al formulario
                 </button>
               </div>
             </>

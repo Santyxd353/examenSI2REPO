@@ -7,6 +7,7 @@ export type BusinessModule =
   | 'sales'
   | 'orders'
   | 'reports'
+  | 'reports-ai'
   | 'analysis'
   | 'sync'
   | 'business';
@@ -50,9 +51,15 @@ export const businessModules: {
   },
   {
     id: 'reports',
-    label: 'Reportes y análisis',
+    label: 'Reportes paramétricos',
     permission: 'reportes:consultar',
-    description: 'Resultados comerciales',
+    description: 'Filtros, métricas y gráficos manuales',
+  },
+  {
+    id: 'reports-ai',
+    label: 'Reportes con IA y voz',
+    permission: 'reportes:consultar',
+    description: 'Consultas en lenguaje natural y dictado',
   },
   {
     id: 'analysis',
